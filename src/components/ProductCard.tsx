@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Button from "./ui/Button";
 import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
 
@@ -5,12 +6,20 @@ interface ProductCardProps {
   image: string;
   name: string;
   price: string;
+  id?: number;
 }
 
-function ProductCard({ image, name, price }: ProductCardProps) {
+function ProductCard({ image, name, price, id = 1 }: ProductCardProps) {
   return (
     <section className="w-full h-full bg-[#FFFBF6] flex flex-col border-1 border-[#DEDEDE]">
-      <img src={image} alt={name} className="w-full" />
+      {/* Clickable image → product page */}
+      <Link to={`/product/${id}`} className="block overflow-hidden">
+        <img
+          src={image}
+          alt={name}
+          className="w-full hover:scale-105 transition-transform duration-300"
+        />
+      </Link>
 
       {/* Mobile Button (Edge to Edge, above body) */}
       <div className="block md:hidden w-full">
@@ -22,7 +31,11 @@ function ProductCard({ image, name, price }: ProductCardProps) {
       </div>
 
       <div className="flex flex-col p-4 gap-2 flex-grow">
-        <p className="raleway-bold text-sm md:text-base">{name}</p>
+        <Link to={`/product/${id}`}>
+          <p className="raleway-bold text-sm md:text-base hover:text-[#533113]/70 transition-colors">
+            {name}
+          </p>
+        </Link>
         <div className="w-full flex flex-col md:flex-row md:justify-between gap-2 md:gap-0">
           <p className="raleway-light text-sm">{price}</p>
           <div className="flex gap-2">
