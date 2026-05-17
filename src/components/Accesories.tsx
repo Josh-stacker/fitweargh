@@ -26,10 +26,10 @@ function Accesories({ products }: AccesoriesProps) {
             TO COMPLEMENT ALL YOUR CLOTHING AND SPORTS WEAR
           </p>
         </div>
-        <Link to="/accessories">
+        <Link to="/accessories" className="w-full md:w-auto shrink-0">
           <Button
             text="view all accessories"
-            width="w-full md:w-64 lg:w-[20%]"
+            width="w-full md:w-64"
             icon={<ArrowLineUpRightIcon size={24} />}
           />
         </Link>

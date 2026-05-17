@@ -24,10 +24,10 @@ function ShopByCategory({ products }: ShopByCategoryProps) {
             ALL CATEGORIES SUITABLE FOR YOU
           </p>
         </div>
-        <Link to="/clothing">
+        <Link to="/clothing" className="w-full md:w-auto shrink-0">
           <Button
             text="Shop Now"
-            width="w-full md:w-64 lg:w-[20%]"
+            width="w-full md:w-64"
             icon={<ArrowLineUpRightIcon size={24} />}
           />
         </Link>
