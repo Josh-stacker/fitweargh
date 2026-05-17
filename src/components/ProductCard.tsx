@@ -1,59 +1,101 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "./ui/Button";
-import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
+import { Toast } from "./ui/Toast";
+import { ArrowLineUpRightIcon, ImageIcon } from "@phosphor-icons/react";
+import { useCart } from "../context/CartContext";
 
 interface ProductCardProps {
-  image: string;
+  image?: string;
   name: string;
-  price: string;
-  id?: number;
+  price: string | number;
+  id?: string | number;
+  colors?: string[];
 }
 
-function ProductCard({ image, name, price, id = 1 }: ProductCardProps) {
+function ProductCard({ image, name, price, id = 1, colors }: ProductCardProps) {
+  const { addItem } = useCart();
+  const [toast, setToast] = useState(false);
+
+  const numericPrice = typeof price === "number" ? price : parseFloat(String(price)) || 0;
+  const priceStr = typeof price === "number" ? `gh₵ ${price.toFixed(2)}` : price;
+
+  const handleAddToCart = () => {
+    addItem({
+      id: String(id),
+      name,
+      price: numericPrice,
+      imageUrl: image ?? "",
+      size: "",
+      color: colors?.[0] ?? "",
+      quantity: 1,
+    });
+    setToast(true);
+  };
+
   return (
-    <section className="w-full h-full bg-[#FFFBF6] flex flex-col border-1 border-[#DEDEDE]">
-      {/* Clickable image → product page */}
-      <Link to={`/product/${id}`} className="block overflow-hidden">
-        <img
-          src={image}
-          alt={name}
-          className="w-full hover:scale-105 transition-transform duration-300"
-        />
+    <section className="w-full h-full bg-white flex flex-col border border-[#DEDEDE]">
+      {/* Image */}
+      <Link to={`/product/${id}`} className="block overflow-hidden bg-[#F5EDE0]">
+        {image ? (
+          <img
+            src={image}
+            alt={name}
+            className="w-full aspect-[3/4] object-cover hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full aspect-[3/4] flex items-center justify-center">
+            <ImageIcon size={36} className="text-[#533113]/20" />
+          </div>
+        )}
       </Link>
 
-      {/* Mobile Button (Edge to Edge, above body) */}
+      {/* Mobile add-to-cart button */}
       <div className="block md:hidden w-full">
         <Button
-          text="add to cart"
+          text="Add to cart"
           width="w-full"
           icon={<ArrowLineUpRightIcon size={14} />}
+          onClick={handleAddToCart}
         />
       </div>
 
-      <div className="flex flex-col p-4 gap-2 flex-grow">
+      <div className="flex flex-col p-3 md:p-4 gap-2 flex-grow">
         <Link to={`/product/${id}`}>
-          <p className="raleway-bold text-sm md:text-base hover:text-[#533113]/70 transition-colors">
+          <p className="raleway-bold text-sm md:text-base text-[#533113] hover:text-[#533113] transition-colors leading-snug">
             {name}
           </p>
         </Link>
-        <div className="w-full flex flex-col md:flex-row md:justify-between gap-2 md:gap-0">
-          <p className="raleway-light text-sm">{price}</p>
-          <div className="flex gap-2">
-            <span className="bg-red-500 rounded-full w-3 h-3"></span>
-            <span className="bg-[#00864A] rounded-full w-3 h-3"></span>
-            <span className="bg-[#000000] rounded-full w-3 h-3"></span>
-          </div>
+
+        <div className="flex justify-between items-center">
+          <p className="raleway-light text-sm text-[#533113]">{priceStr}</p>
+          {colors && colors.length > 0 && (
+            <div className="flex gap-1.5">
+              {colors.slice(0, 4).map((c) => (
+                <span
+                  key={c}
+                  style={{ backgroundColor: c }}
+                  className="w-3 h-3 rounded-full border border-[#DEDEDE]"
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Desktop Button (Inside padding, bottom) */}
-        <div className="hidden md:block w-full mt-auto">
+        {/* Desktop add-to-cart */}
+        <div className="hidden md:block w-full mt-auto pt-2">
           <Button
-            text="add to cart"
+            text="Add to cart"
             width="w-full"
             icon={<ArrowLineUpRightIcon size={14} />}
+            onClick={handleAddToCart}
           />
         </div>
       </div>
+
+      {toast && (
+        <Toast message={`${name} added to cart`} onDone={() => setToast(false)} />
+      )}
     </section>
   );
 }

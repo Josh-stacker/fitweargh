@@ -5,15 +5,17 @@ interface ButtonProps {
   icon?: React.ReactNode;
   width?: string;
   onClick?: () => void;
+  className?: string;
+  textSize?: string;
 }
 
-function Button({ text, icon, width, onClick }: ButtonProps) {
+function Button({ text, icon, width, onClick, className, textSize = "text-sm" }: ButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`bg-[#533113] text-white py-2 px-4 flex justify-between items-center ${width}`}
+      className={`bg-[#533113] text-white py-2 px-4 flex justify-between items-center ${width ?? ""} ${className ?? ""}`}
     >
-      <p className="raleway-light text-sm">{text}</p>
+      <p className={`raleway-light ${textSize}`}>{text}</p>
       {icon}
     </button>
   );
