@@ -6,6 +6,12 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+
+const COLOR_HEX: Record<string, string> = {
+  Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
+  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
+  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#a855f7",
+};
 import {
   MinusIcon,
   PlusIcon,
@@ -171,9 +177,10 @@ export default function CartPage() {
                         <span className="flex items-center gap-1">
                           Color:
                           <span
-                            style={{ backgroundColor: item.color }}
+                            style={{ backgroundColor: COLOR_HEX[item.color] ?? item.color }}
                             className="w-3 h-3 rounded-full border border-[#DEDEDE] inline-block"
                           />
+                          {item.color}
                         </span>
                       )}
                     </div>

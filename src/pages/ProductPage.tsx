@@ -2,6 +2,19 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
+
+interface SizeChartRow {
+  size: string;
+  [col: string]: string;
+}
+
+// Color name → hex for swatches (matches admin COLORS list)
+const COLOR_HEX: Record<string, string> = {
+  Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
+  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
+  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#a855f7",
+};
+
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Button from "../components/ui/Button";
@@ -24,13 +37,18 @@ interface FirestoreProduct {
   id: string;
   name: string;
   price: number;
+  discountPrice?: number | null;
   description: string;
   imageUrl: string;
   images?: string[];
   sizes: string[];
   colors: string[];
+  colorSizeStock?: Record<string, number>;
   category: string;
   stock: number;
+  sizeChartMode?: "standard" | "custom" | "none";
+  customSizeChartColumns?: string[];
+  customSizeChartRows?: SizeChartRow[];
 }
 
 // Fallback used when no Firestore product exists for the given ID
@@ -43,18 +61,19 @@ const FALLBACK: FirestoreProduct = {
   imageUrl: product1,
   images: [product1, heroBg, heroBg2, product1],
   sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-  colors: ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113"],
+  colors: ["Black", "White", "Red", "Green", "Brown"],
   category: "Women's",
   stock: 10,
 };
 
-const SIZE_CHART = [
-  { size: "XS", chest: "30–32", waist: "24–26", hips: "34–36" },
-  { size: "S",  chest: "32–34", waist: "26–28", hips: "36–38" },
-  { size: "M",  chest: "34–36", waist: "28–30", hips: "38–40" },
-  { size: "L",  chest: "36–38", waist: "30–32", hips: "40–42" },
-  { size: "XL", chest: "38–40", waist: "32–34", hips: "42–44" },
-  { size: "XXL",chest: "40–42", waist: "34–36", hips: "44–46" },
+const HARDCODED_CHART_COLS = ["Chest (in)", "Waist (in)", "Hips (in)"];
+const HARDCODED_CHART_ROWS: SizeChartRow[] = [
+  { size: "XS", "Chest (in)": "30–32", "Waist (in)": "24–26", "Hips (in)": "34–36" },
+  { size: "S",  "Chest (in)": "32–34", "Waist (in)": "26–28", "Hips (in)": "36–38" },
+  { size: "M",  "Chest (in)": "34–36", "Waist (in)": "28–30", "Hips (in)": "38–40" },
+  { size: "L",  "Chest (in)": "36–38", "Waist (in)": "30–32", "Hips (in)": "40–42" },
+  { size: "XL", "Chest (in)": "38–40", "Waist (in)": "32–34", "Hips (in)": "42–44" },
+  { size: "XXL","Chest (in)": "40–42", "Waist (in)": "34–36", "Hips (in)": "44–46" },
 ];
 
 function ProductPage() {
@@ -71,6 +90,9 @@ function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [descOpen, setDescOpen] = useState(true);
   const [chartOpen, setChartOpen] = useState(false);
+  const [chartCols, setChartCols] = useState<string[]>(HARDCODED_CHART_COLS);
+  const [chartRows, setChartRows] = useState<SizeChartRow[]>(HARDCODED_CHART_ROWS);
+  const [showChart, setShowChart] = useState(true);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -81,23 +103,55 @@ function ProductPage() {
       setQuantity(1);
       try {
         if (!id || !isNaN(Number(id))) {
-          // Numeric ID = fallback demo product
           setProduct(FALLBACK);
+          setChartCols(HARDCODED_CHART_COLS);
+          setChartRows(HARDCODED_CHART_ROWS);
+          setShowChart(true);
         } else {
-          const snap = await getDoc(doc(db, "products", id));
+          const [snap, globalChartSnap] = await Promise.all([
+            getDoc(doc(db, "products", id)),
+            getDoc(doc(db, "siteSettings", "sizeChart")),
+          ]);
+
           if (snap.exists()) {
             const data = { id: snap.id, ...snap.data() } as FirestoreProduct;
-            // Build images array: primary imageUrl + any additional images
             if (!data.images || data.images.length === 0) {
               data.images = [data.imageUrl];
             }
             setProduct(data);
+
+            const mode = data.sizeChartMode ?? "standard";
+
+            if (mode === "none") {
+              setShowChart(false);
+            } else if (mode === "custom" && data.customSizeChartColumns?.length) {
+              setShowChart(true);
+              setChartCols(data.customSizeChartColumns);
+              setChartRows(data.customSizeChartRows ?? []);
+            } else {
+              // "standard" — load from siteSettings/sizeChart
+              setShowChart(true);
+              if (globalChartSnap.exists()) {
+                const gc = globalChartSnap.data();
+                setChartCols(gc.columns ?? HARDCODED_CHART_COLS);
+                setChartRows(gc.rows ?? HARDCODED_CHART_ROWS);
+              } else {
+                setChartCols(HARDCODED_CHART_COLS);
+                setChartRows(HARDCODED_CHART_ROWS);
+              }
+            }
           } else {
             setProduct(FALLBACK);
+            setChartCols(HARDCODED_CHART_COLS);
+            setChartRows(HARDCODED_CHART_ROWS);
+            setShowChart(true);
           }
         }
       } catch {
         setProduct(FALLBACK);
+        setChartCols(HARDCODED_CHART_COLS);
+        setChartRows(HARDCODED_CHART_ROWS);
+        setShowChart(true);
       } finally {
         setLoading(false);
       }
@@ -120,6 +174,8 @@ function ProductPage() {
   const images = p.images && p.images.length > 0 ? p.images : [p.imageUrl];
   const inStock = p.stock > 0;
 
+  const displayPrice = p.discountPrice ?? p.price;
+
   const handleAddToCart = () => {
     if (p.sizes?.length > 0 && !selectedSize) {
       setToastMsg("Please select a size");
@@ -129,7 +185,7 @@ function ProductPage() {
     addItem({
       id: p.id,
       name: p.name,
-      price: p.price,
+      price: displayPrice,
       imageUrl: p.imageUrl,
       size: selectedSize,
       color: selectedColor || (p.colors?.[0] ?? ""),
@@ -208,11 +264,18 @@ function ProductPage() {
             </h1>
 
             {/* Price + stock */}
-            <div className="flex items-center justify-between">
-              <p className="raleway-bold text-xl md:text-2xl text-[#533113]">
-                gh₵ {p.price.toFixed(2)}
-              </p>
-              <span className={`raleway-light text-xs px-3 py-1 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-baseline gap-3">
+                <p className="raleway-bold text-2xl md:text-3xl text-[#533113]">
+                  gh₵ {displayPrice.toFixed(2)}
+                </p>
+                {p.discountPrice != null && (
+                  <p className="raleway-light text-base text-[#533113]/40 line-through">
+                    gh₵ {p.price.toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <span className={`raleway-light text-sm px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                 {inStock ? `In stock (${p.stock})` : "Out of stock"}
               </span>
             </div>
@@ -220,7 +283,7 @@ function ProductPage() {
             {/* Size selection */}
             {p.sizes?.length > 0 && (
               <div className="flex flex-col gap-3">
-                <p className="raleway-bold text-xs uppercase tracking-widest text-[#533113]">
+                <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
                   Select Size
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -228,7 +291,7 @@ function ProductPage() {
                     <button
                       key={s}
                       onClick={() => setSelectedSize(s)}
-                      className={`border px-4 py-2 raleway-light text-sm transition-all duration-150 ${
+                      className={`border px-5 py-2.5 raleway-bold text-base transition-all duration-150 ${
                         selectedSize === s
                           ? "bg-[#533113] text-white border-[#533113]"
                           : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -244,44 +307,58 @@ function ProductPage() {
             {/* Color selection */}
             {p.colors?.length > 0 && (
               <div className="flex flex-col gap-3">
-                <p className="raleway-bold text-xs uppercase tracking-widest text-[#533113]">
+                <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
                   Select Color
+                  {selectedColor && (
+                    <span className="ml-2 raleway-light normal-case tracking-normal text-[#533113]/60">
+                      — {selectedColor}
+                    </span>
+                  )}
                 </p>
-                <div className="flex gap-3 flex-wrap">
-                  {p.colors.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setSelectedColor(c)}
-                      style={{ backgroundColor: c }}
-                      className={`w-9 h-9 rounded-full transition-all duration-150 ${
-                        selectedColor === c
-                          ? "ring-2 ring-[#533113] ring-offset-2 scale-110"
-                          : "border border-[#DEDEDE] hover:scale-110"
-                      }`}
-                    />
-                  ))}
+                <div className="flex gap-2 flex-wrap">
+                  {p.colors.map((colorName) => {
+                    const hex = COLOR_HEX[colorName] ?? colorName;
+                    return (
+                      <button
+                        key={colorName}
+                        onClick={() => setSelectedColor(colorName)}
+                        className={`flex items-center gap-2 px-4 py-2.5 border raleway-light text-base transition-all duration-150 ${
+                          selectedColor === colorName
+                            ? "bg-[#533113] text-white border-[#533113]"
+                            : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                        }`}
+                      >
+                        <span
+                          className="w-4 h-4 rounded-full border border-black/15 shrink-0"
+                          style={{ backgroundColor: hex }}
+                        />
+                        {colorName}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
+
             {/* Quantity */}
             <div className="flex items-center gap-4">
-              <p className="raleway-bold text-xs uppercase tracking-widest text-[#533113]">Qty</p>
+              <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">Qty</p>
               <div className="flex items-stretch border border-[#533113]">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-2 text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                  className="px-4 py-2.5 text-[#533113] hover:bg-[#533113]/10 transition-colors"
                 >
-                  <MinusIcon size={16} />
+                  <MinusIcon size={18} />
                 </button>
-                <span className="raleway-bold text-sm w-10 flex items-center justify-center text-[#533113] border-l border-r border-[#533113]">
+                <span className="raleway-bold text-base w-12 flex items-center justify-center text-[#533113] border-l border-r border-[#533113]">
                   {quantity}
                 </span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="px-3 py-2 text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                  className="px-4 py-2.5 text-[#533113] hover:bg-[#533113]/10 transition-colors"
                 >
-                  <PlusIcon size={16} />
+                  <PlusIcon size={18} />
                 </button>
               </div>
             </div>
@@ -294,55 +371,58 @@ function ProductPage() {
                 onClick={() => setDescOpen(!descOpen)}
                 className="flex justify-between items-center py-3"
               >
-                <span className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
+                <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
                   Description
                 </span>
                 {descOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
               </button>
               <hr className="border-[#DEDEDE]" />
               {descOpen && (
-                <p className="raleway-light text-base text-[#533113]/80 leading-relaxed pt-4 pb-2">
+                <p className="raleway-light text-lg text-[#533113]/80 leading-relaxed pt-4 pb-2">
                   {p.description || "No description available."}
                 </p>
               )}
             </div>
 
             {/* Size chart accordion */}
-            <div className="flex flex-col">
-              <button
-                onClick={() => setChartOpen(!chartOpen)}
-                className="flex justify-between items-center py-3"
-              >
-                <span className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
-                  Size Chart
-                </span>
-                {chartOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
-              </button>
-              <hr className="border-[#DEDEDE]" />
-              {chartOpen && (
-                <div className="overflow-x-auto pt-4 pb-2">
-                  <table className="w-full text-sm raleway-light text-[#533113]">
-                    <thead>
-                      <tr className="border-b border-[#DEDEDE]">
-                        {["Size", "Chest (in)", "Waist (in)", "Hips (in)"].map((h) => (
-                          <th key={h} className="raleway-bold text-left pb-2 pr-4 text-[#533113]">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {SIZE_CHART.map((row) => (
-                        <tr key={row.size} className="border-b border-[#DEDEDE]/40">
-                          <td className="py-2 pr-4">{row.size}</td>
-                          <td className="py-2 pr-4">{row.chest}</td>
-                          <td className="py-2 pr-4">{row.waist}</td>
-                          <td className="py-2">{row.hips}</td>
+            {showChart && (
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setChartOpen(!chartOpen)}
+                  className="flex justify-between items-center py-3"
+                >
+                  <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
+                    Size Chart
+                  </span>
+                  {chartOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
+                </button>
+                <hr className="border-[#DEDEDE]" />
+                {chartOpen && (
+                  <div className="overflow-x-auto pt-4 pb-2">
+                    <table className="w-full text-base raleway-light text-[#533113]">
+                      <thead>
+                        <tr className="border-b border-[#DEDEDE]">
+                          <th className="raleway-bold text-left pb-2 pr-4 text-[#533113]">Size</th>
+                          {chartCols.map((col) => (
+                            <th key={col} className="raleway-bold text-left pb-2 pr-4 text-[#533113]">{col}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody>
+                        {chartRows.map((row, i) => (
+                          <tr key={i} className="border-b border-[#DEDEDE]/40">
+                            <td className="py-2 pr-4 raleway-bold">{row.size}</td>
+                            {chartCols.map((col) => (
+                              <td key={col} className="py-2 pr-4">{row[col] ?? "—"}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Add to cart */}
             <div className="pt-2 pb-8">

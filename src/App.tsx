@@ -21,6 +21,7 @@ import Orders from "./pages/admin/Orders";
 import Customers from "./pages/admin/Customers";
 import Categories from "./pages/admin/Categories";
 import HeroSlides from "./pages/admin/HeroSlides";
+import HomepageSettings from "./pages/admin/HomepageSettings";
 
 import "./index.css";
 
@@ -68,6 +69,7 @@ function App() {
               <Route path="customers" element={<Customers />} />
               <Route path="categories" element={<Categories />} />
               <Route path="hero-slides" element={<HeroSlides />} />
+              <Route path="homepage" element={<HomepageSettings />} />
             </Route>
           </Routes>
         </BrowserRouter>

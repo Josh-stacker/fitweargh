@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "./AuthContext";
 
 export interface CartItem {
   id: string;
@@ -24,7 +32,7 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const STORAGE_KEY = "fitweargh_cart";
 
-function load(): CartItem[] {
+function loadLocal(): CartItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -33,24 +41,76 @@ function load(): CartItem[] {
   }
 }
 
-function key(item: Pick<CartItem, "id" | "size" | "color">) {
+function itemKey(item: Pick<CartItem, "id" | "size" | "color">) {
   return `${item.id}__${item.size}__${item.color}`;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(load);
+  const { user } = useAuth();
+  const [items, setItems] = useState<CartItem[]>(loadLocal);
+  // Track whether we've loaded from Firestore for this user session
+  const loadedForUser = useRef<string | null>(null);
 
+  // When user logs in: load their Firestore cart and merge with any local guest items
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    if (!user || loadedForUser.current === user.uid) return;
+
+    const merge = async () => {
+      try {
+        const snap = await getDoc(doc(db, "carts", user.uid));
+        const remoteItems: CartItem[] = snap.exists() ? (snap.data().items ?? []) : [];
+        const localItems = loadLocal();
+
+        // Merge: local items take precedence for qty (guest added items win over stale remote)
+        const merged = [...remoteItems];
+        for (const local of localItems) {
+          const k = itemKey(local);
+          const idx = merged.findIndex((r) => itemKey(r) === k);
+          if (idx >= 0) {
+            merged[idx] = { ...merged[idx], quantity: merged[idx].quantity + local.quantity };
+          } else {
+            merged.push(local);
+          }
+        }
+
+        setItems(merged);
+        loadedForUser.current = user.uid;
+        // Clear local guest cart after merging
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Firestore unavailable — stay with local
+      }
+    };
+
+    merge();
+  }, [user]);
+
+  // Reset loaded flag on logout
+  useEffect(() => {
+    if (!user) {
+      loadedForUser.current = null;
+    }
+  }, [user]);
+
+  // Persist: Firestore for logged-in users, localStorage for guests
+  useEffect(() => {
+    if (user && loadedForUser.current === user.uid) {
+      setDoc(doc(db, "carts", user.uid), {
+        items,
+        updatedAt: serverTimestamp(),
+      }).catch(() => {});
+    } else if (!user) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+  }, [items, user]);
 
   const addItem = (incoming: CartItem) => {
     setItems((prev) => {
-      const k = key(incoming);
-      const existing = prev.find((i) => key(i) === k);
+      const k = itemKey(incoming);
+      const existing = prev.find((i) => itemKey(i) === k);
       if (existing) {
         return prev.map((i) =>
-          key(i) === k ? { ...i, quantity: i.quantity + incoming.quantity } : i
+          itemKey(i) === k ? { ...i, quantity: i.quantity + incoming.quantity } : i
         );
       }
       return [...prev, incoming];
@@ -58,22 +118,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeItem = (id: string, size: string, color: string) => {
-    const k = key({ id, size, color });
-    setItems((prev) => prev.filter((i) => key(i) !== k));
+    const k = itemKey({ id, size, color });
+    setItems((prev) => prev.filter((i) => itemKey(i) !== k));
   };
 
   const updateQty = (id: string, size: string, color: string, qty: number) => {
-    const k = key({ id, size, color });
+    const k = itemKey({ id, size, color });
     if (qty <= 0) {
-      setItems((prev) => prev.filter((i) => key(i) !== k));
+      setItems((prev) => prev.filter((i) => itemKey(i) !== k));
     } else {
       setItems((prev) =>
-        prev.map((i) => (key(i) === k ? { ...i, quantity: qty } : i))
+        prev.map((i) => (itemKey(i) === k ? { ...i, quantity: qty } : i))
       );
     }
   };
 
-  const clearCart = () => setItems([]);
+  const clearCart = () => {
+    setItems([]);
+    if (user) {
+      setDoc(doc(db, "carts", user.uid), { items: [], updatedAt: serverTimestamp() }).catch(() => {});
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
 
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import PageHero from "./PageHero";
 import herobg from "../assets/hero-bg2.webp";
@@ -14,35 +14,67 @@ interface Slide {
   image1Url: string;
   image2Url: string;
   bgPosition: string;
+  page: string;
 }
 
-function HeroSlider() {
+interface Props {
+  page?: string; // "Homepage" | "New Arrivals" | etc. — defaults to "Homepage"
+}
+
+function HeroSlider({ page = "Homepage" }: Props) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
+  const [heroMode, setHeroMode] = useState<"slider" | "still">("slider");
+  const [stillImageUrl, setStillImageUrl] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    getDocs(
-      query(
-        collection(db, "heroSlides"),
-        where("active", "==", true),
-        orderBy("order", "asc")
-      )
-    ).then((snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Slide));
-      setSlides(data);
-    }).catch(() => {
-      // Firestore may need an index; fall through to static fallback
-    });
-  }, []);
+    const load = async () => {
+      try {
+        // For the homepage, fetch the heroMode setting
+        if (page === "Homepage") {
+          const settingsSnap = await getDoc(doc(db, "siteSettings", "homepage"));
+          if (settingsSnap.exists()) {
+            const d = settingsSnap.data();
+            setHeroMode(d.heroMode ?? "slider");
+            setStillImageUrl(d.heroStillImageUrl ?? "");
+          }
+        }
 
-  // Auto-advance every 5 s when multiple slides
+        const slidesSnap = await getDocs(
+          query(
+            collection(db, "heroSlides"),
+            where("active", "==", true),
+            where("page", "==", page),
+            orderBy("order", "asc")
+          )
+        );
+        const data = slidesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Slide));
+        setSlides(data);
+      } catch {
+        // Firestore composite index may not exist yet — fall through to fallback
+      } finally {
+        setReady(true);
+      }
+    };
+    load();
+  }, [page]);
+
+  // Auto-advance every 5s when multiple slides
   useEffect(() => {
     if (slides.length <= 1) return;
     const t = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 5000);
     return () => clearInterval(t);
   }, [slides.length]);
 
-  // Fallback to static hero when no slides configured
+  if (!ready) return null;
+
+  // Homepage still-image mode
+  if (page === "Homepage" && heroMode === "still") {
+    return <PageHero bgImage={stillImageUrl || herobg} bgPosition="50% 40%" />;
+  }
+
+  // No slides — show static fallback
   if (slides.length === 0) {
     return <PageHero bgImage={herobg} bgPosition="50% 40%" />;
   }
@@ -62,7 +94,6 @@ function HeroSlider() {
         image2={s.image2Url || undefined}
       />
 
-      {/* Slide dots — only if multiple slides */}
       {slides.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
           {slides.map((_, i) => (

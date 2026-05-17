@@ -11,6 +11,7 @@ import {
   ListIcon,
   XIcon,
   ImagesIcon,
+  HouseIcon,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -20,6 +21,7 @@ const NAV = [
   { to: "/admin/customers", label: "Customers", icon: UsersIcon },
   { to: "/admin/categories", label: "Categories", icon: TagIcon },
   { to: "/admin/hero-slides", label: "Hero Slides", icon: ImagesIcon },
+  { to: "/admin/homepage", label: "Homepage", icon: HouseIcon },
 ];
 
 export default function AdminLayout() {

@@ -1,5 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+
+const COLOR_HEX: Record<string, string> = {
+  Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
+  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
+  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#a855f7",
+};
 import Button from "./ui/Button";
 import { Toast } from "./ui/Toast";
 import { ArrowLineUpRightIcon, ImageIcon } from "@phosphor-icons/react";
@@ -74,7 +80,8 @@ function ProductCard({ image, name, price, id = 1, colors }: ProductCardProps) {
               {colors.slice(0, 4).map((c) => (
                 <span
                   key={c}
-                  style={{ backgroundColor: c }}
+                  title={c}
+                  style={{ backgroundColor: COLOR_HEX[c] ?? c }}
                   className="w-3 h-3 rounded-full border border-[#DEDEDE]"
                 />
               ))}

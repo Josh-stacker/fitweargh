@@ -35,8 +35,17 @@ interface HeroSlide {
   bgPosition: string;
   order: number;
   active: boolean;
+  page: string;
   createdAt: unknown;
 }
+
+const PAGES = [
+  "Homepage",
+  "New Arrivals",
+  "Clothing",
+  "Body Shapers",
+  "Accessories",
+];
 
 const EMPTY_FORM = {
   title: "",
@@ -46,6 +55,7 @@ const EMPTY_FORM = {
   bgPosition: "50% 40%",
   order: 0,
   active: true,
+  page: "Homepage",
 };
 
 type SlideForm = typeof EMPTY_FORM;
@@ -99,6 +109,7 @@ export default function HeroSlides() {
       bgPosition: s.bgPosition ?? "50% 40%",
       order: s.order ?? 0,
       active: s.active ?? true,
+      page: s.page ?? "Homepage",
     });
     setBgFile(null); setBgPreview(s.bgImageUrl ?? "");
     setImg1File(null); setImg1Preview(s.image1Url ?? "");
@@ -141,6 +152,7 @@ export default function HeroSlides() {
         bgPosition: form.bgPosition,
         order: Number(form.order),
         active: form.active,
+        page: form.page,
         bgImageUrl: bg.url,
         bgImagePath: bg.path,
         image1Url: img1.url,
@@ -222,7 +234,7 @@ export default function HeroSlides() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#DEDEDE] bg-[#FFFBF6]">
-                {["Preview", "Title", "Badge", "CTA", "Order", "Status", "Actions"].map((h) => (
+                {["Preview", "Title", "Page", "Badge", "CTA", "Order", "Status", "Actions"].map((h) => (
                   <th key={h} className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest text-left px-5 py-3">
                     {h}
                   </th>
@@ -244,6 +256,11 @@ export default function HeroSlides() {
                   <td className="px-5 py-3 raleway-bold text-[#533113] max-w-[160px] truncate">
                     {s.title || <span className="text-[#533113]/30 italic">No title</span>}
                   </td>
+                  <td className="px-5 py-3">
+                    <span className="raleway-light text-xs px-2.5 py-1 bg-[#F5EDE1] text-[#533113]">
+                      {s.page || "Homepage"}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">{s.badge || "—"}</td>
                   <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">{s.ctaText || "—"}</td>
                   <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">{s.order ?? 0}</td>
@@ -260,9 +277,10 @@ export default function HeroSlides() {
                       <button
                         onClick={() => handleDelete(s)}
                         disabled={deleteId === s.id}
-                        className="p-2 hover:bg-red-50 transition-colors text-red-500 disabled:opacity-40"
+                        className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 transition-colors disabled:opacity-40"
                       >
-                        <TrashIcon size={15} />
+                        <TrashIcon size={14} weight="bold" />
+                        {deleteId === s.id ? "Deleting…" : "Delete"}
                       </button>
                     </div>
                   </td>
@@ -386,15 +404,18 @@ export default function HeroSlides() {
                 </Field>
               </div>
 
-              {/* BG Position + Order row */}
+              {/* Page + Order row */}
               <div className="grid grid-cols-2 gap-4">
-                <Field label="BG Position (CSS)">
-                  <input
-                    value={form.bgPosition}
-                    onChange={(e) => setForm((f) => ({ ...f, bgPosition: e.target.value }))}
-                    placeholder="50% 40%"
-                    className="input-base"
-                  />
+                <Field label="Page / Location">
+                  <select
+                    value={form.page}
+                    onChange={(e) => setForm((f) => ({ ...f, page: e.target.value }))}
+                    className="input-base cursor-pointer"
+                  >
+                    {PAGES.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Display Order">
                   <input
@@ -407,6 +428,16 @@ export default function HeroSlides() {
                   />
                 </Field>
               </div>
+
+              {/* BG Position */}
+              <Field label="BG Position (CSS)">
+                <input
+                  value={form.bgPosition}
+                  onChange={(e) => setForm((f) => ({ ...f, bgPosition: e.target.value }))}
+                  placeholder="50% 40%"
+                  className="input-base"
+                />
+              </Field>
 
               {/* Active toggle */}
               <div className="flex items-center gap-3">

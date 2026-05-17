@@ -1,22 +1,25 @@
 import { useRef } from "react";
 import DirectionButton from "./ui/DirectionButton";
 import ProductCard from "./ProductCard";
-import product1 from "../assets/prod-1.webp";
 
-function FastSelling() {
+interface Product {
+  id: string;
+  name: string;
+  imageUrl: string;
+  price: number;
+  discountPrice?: number | null;
+  colors?: string[];
+}
+
+interface FastSellingProps {
+  products: Product[];
+}
+
+function FastSelling({ products }: FastSellingProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -400, behavior: "smooth" });
-    }
-  };
-
-  const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 400, behavior: "smooth" });
-    }
-  };
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 400, behavior: "smooth" });
 
   return (
     <section className="bg-[#FDF1E1] flex flex-col md:flex-row justify-between items-start md:items-end py-6 md:py-0">
@@ -36,20 +39,18 @@ function FastSelling() {
           className="flex gap-4 md:gap-2 lg:gap-2 px-4 md:px-0 md:ml-6 overflow-x-auto snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          <style>{`
-            section::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          {[1, 2, 3, 4, 5, 6].map((item) => (
+          <style>{`section::-webkit-scrollbar { display: none; }`}</style>
+          {products.map((p) => (
             <div
-              key={item}
+              key={p.id}
               className="min-w-[calc(50%-0.5rem)] md:min-w-[calc(50%-0.25rem)] lg:min-w-[calc(33.333%-0.333rem)] snap-start"
             >
               <ProductCard
-                image={product1}
-                name="Women’s Sports Wear"
-                price="gh₵ 120.00"
+                id={p.id}
+                image={p.imageUrl}
+                name={p.name}
+                price={p.discountPrice ?? p.price}
+                colors={p.colors}
               />
             </div>
           ))}

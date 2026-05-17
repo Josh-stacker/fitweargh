@@ -26,19 +26,30 @@ import {
   MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
 
+interface SizeChartRow {
+  size: string;
+  [col: string]: string;
+}
+
 interface Product {
   id: string;
   name: string;
   price: number;
+  discountPrice: number | null;
   category: string;
+  categories: string[];
   sizes: string[];
   colors: string[];
   stock: number;
+  colorSizeStock: Record<string, number>;
   imageUrl: string;
   imagePath: string;
   images: string[];
   imagePaths: string[];
   description: string;
+  sizeChartMode: "standard" | "custom" | "none";
+  customSizeChartColumns: string[];
+  customSizeChartRows: SizeChartRow[];
   createdAt: unknown;
 }
 
@@ -50,18 +61,57 @@ interface ImageSlot {
   existingPath: string;  // original storage path (empty for new)
 }
 
-const CATEGORIES = ["Women's", "Men's", "Sports", "Body Shapers", "Accessories"];
+const CATEGORIES = [
+  "New Arrivals",
+  "Fast Selling",
+  "Shop By Category",
+  "Clothing",
+  "Body Shapers",
+  "Accessories",
+];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
-const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6", "#f97316", "#ec4899"];
+const COLORS: { name: string; hex: string }[] = [
+  { name: "Black",  hex: "#000000" },
+  { name: "White",  hex: "#FFFFFF" },
+  { name: "Red",    hex: "#ef4444" },
+  { name: "Green",  hex: "#00864A" },
+  { name: "Brown",  hex: "#533113" },
+  { name: "Blue",   hex: "#3b82f6" },
+  { name: "Orange", hex: "#f97316" },
+  { name: "Pink",   hex: "#ec4899" },
+  { name: "Navy",   hex: "#1e3a5f" },
+  { name: "Grey",   hex: "#6b7280" },
+  { name: "Yellow", hex: "#eab308" },
+  { name: "Purple", hex: "#a855f7" },
+];
+
+// Map color name → hex for rendering swatches
+const COLOR_HEX: Record<string, string> = Object.fromEntries(
+  COLORS.map((c) => [c.name, c.hex])
+);
+
+const DEFAULT_CHART_COLS = ["Chest (in)", "Waist (in)", "Hips (in)"];
+const DEFAULT_CHART_ROWS: SizeChartRow[] = [
+  { size: "XS", "Chest (in)": "30–32", "Waist (in)": "24–26", "Hips (in)": "34–36" },
+  { size: "S",  "Chest (in)": "32–34", "Waist (in)": "26–28", "Hips (in)": "36–38" },
+  { size: "M",  "Chest (in)": "34–36", "Waist (in)": "28–30", "Hips (in)": "38–40" },
+  { size: "L",  "Chest (in)": "36–38", "Waist (in)": "30–32", "Hips (in)": "40–42" },
+  { size: "XL", "Chest (in)": "38–40", "Waist (in)": "32–34", "Hips (in)": "42–44" },
+  { size: "XXL","Chest (in)": "40–42", "Waist (in)": "34–36", "Hips (in)": "44–46" },
+];
 
 const EMPTY_FORM = {
   name: "",
   price: "",
-  category: "Women's",
+  discountPrice: "",
+  categories: [] as string[],
   sizes: [] as string[],
-  colors: [] as string[],
-  stock: "",
+  colors: [] as string[],           // stored as color names e.g. ["Black", "White"]
+  colorSizeStock: {} as Record<string, number>,  // key: "ColorName_Size"
   description: "",
+  sizeChartMode: "standard" as "standard" | "custom" | "none",
+  customSizeChartColumns: DEFAULT_CHART_COLS as string[],
+  customSizeChartRows: DEFAULT_CHART_ROWS as SizeChartRow[],
 };
 
 export default function Products() {
@@ -111,11 +161,15 @@ export default function Products() {
     setForm({
       name: p.name,
       price: String(p.price),
-      category: p.category,
+      discountPrice: p.discountPrice != null ? String(p.discountPrice) : "",
+      categories: p.categories?.length ? p.categories : (p.category ? [p.category] : []),
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
-      stock: String(p.stock),
+      colorSizeStock: p.colorSizeStock ?? {},
       description: p.description ?? "",
+      sizeChartMode: p.sizeChartMode ?? "standard",
+      customSizeChartColumns: p.customSizeChartColumns?.length ? p.customSizeChartColumns : DEFAULT_CHART_COLS,
+      customSizeChartRows: p.customSizeChartRows?.length ? p.customSizeChartRows : DEFAULT_CHART_ROWS,
     });
     setImageSlots(buildSlots(p));
     setModalOpen(true);
@@ -156,16 +210,69 @@ export default function Products() {
     setImageSlots((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const toggleCategory = (cat: string) =>
+    setForm((f) => ({
+      ...f,
+      categories: f.categories.includes(cat)
+        ? f.categories.filter((x) => x !== cat)
+        : [...f.categories, cat],
+    }));
+
   const toggleSize = (s: string) =>
     setForm((f) => ({
       ...f,
       sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s],
     }));
 
-  const toggleColor = (c: string) =>
+  const toggleColor = (name: string) =>
     setForm((f) => ({
       ...f,
-      colors: f.colors.includes(c) ? f.colors.filter((x) => x !== c) : [...f.colors, c],
+      colors: f.colors.includes(name) ? f.colors.filter((x) => x !== name) : [...f.colors, name],
+    }));
+
+  const setColorSizeStock = (color: string, size: string, qty: number) => {
+    const key = `${color}_${size}`;
+    setForm((f) => ({
+      ...f,
+      colorSizeStock: { ...f.colorSizeStock, [key]: qty },
+    }));
+  };
+
+  const totalStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
+
+  // Custom size chart helpers
+  const [newChartCol, setNewChartCol] = useState("");
+
+  const addCustomCol = () => {
+    const name = newChartCol.trim();
+    if (!name || form.customSizeChartColumns.includes(name)) return;
+    setForm((f) => ({
+      ...f,
+      customSizeChartColumns: [...f.customSizeChartColumns, name],
+      customSizeChartRows: f.customSizeChartRows.map((r) => ({ ...r, [name]: "" })),
+    }));
+    setNewChartCol("");
+  };
+
+  const removeCustomCol = (col: string) => {
+    setForm((f) => ({
+      ...f,
+      customSizeChartColumns: f.customSizeChartColumns.filter((c) => c !== col),
+      customSizeChartRows: f.customSizeChartRows.map((r) => {
+        const { [col]: _, ...rest } = r; return rest as SizeChartRow;
+      }),
+    }));
+  };
+
+  const removeCustomRow = (i: number) =>
+    setForm((f) => ({ ...f, customSizeChartRows: f.customSizeChartRows.filter((_, idx) => idx !== i) }));
+
+  const updateCustomCell = (rowIdx: number, col: string, val: string) =>
+    setForm((f) => ({
+      ...f,
+      customSizeChartRows: f.customSizeChartRows.map((r, i) =>
+        i === rowIdx ? { ...r, [col]: val } : r
+      ),
     }));
 
   const uploadSlot = async (slot: ImageSlot, index: number): Promise<{ url: string; path: string }> => {
@@ -205,14 +312,22 @@ export default function Products() {
 
       const [primary, ...extras] = uploaded;
 
+      const computedStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
+
       const data = {
         name: form.name,
         price: Number(form.price),
-        category: form.category,
+        discountPrice: form.discountPrice !== "" ? Number(form.discountPrice) : null,
+        categories: form.categories,
+        category: form.categories[0] ?? "",
         sizes: form.sizes,
         colors: form.colors,
-        stock: Number(form.stock),
+        colorSizeStock: form.colorSizeStock,
+        stock: computedStock,
         description: form.description,
+        sizeChartMode: form.sizeChartMode,
+        customSizeChartColumns: form.sizeChartMode === "custom" ? form.customSizeChartColumns : [],
+        customSizeChartRows: form.sizeChartMode === "custom" ? form.customSizeChartRows : [],
         imageUrl: primary?.url ?? "",
         imagePath: primary?.path ?? "",
         images: extras.map((u) => u.url),
@@ -249,10 +364,14 @@ export default function Products() {
     }
   };
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products.filter((p) => {
+    const q = search.toLowerCase();
+    const cats = p.categories?.length ? p.categories : p.category ? [p.category] : [];
+    return (
+      p.name.toLowerCase().includes(q) ||
+      cats.some((c) => c.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -339,9 +458,24 @@ export default function Products() {
                   <td className="px-5 py-3 raleway-bold text-[#533113] max-w-[180px] truncate">
                     {p.name}
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70">{p.category}</td>
-                  <td className="px-5 py-3 raleway-bold text-[#533113]">
-                    gh₵ {Number(p.price).toFixed(2)}
+                  <td className="px-5 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(p.categories?.length ? p.categories : p.category ? [p.category] : []).map((cat) => (
+                        <span key={cat} className="raleway-light text-[10px] px-1.5 py-0.5 bg-[#F5EDE1] text-[#533113] border border-[#DEDEDE]">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    {p.discountPrice != null ? (
+                      <div className="flex flex-col">
+                        <span className="raleway-bold text-[#533113]">gh₵ {Number(p.discountPrice).toFixed(2)}</span>
+                        <span className="raleway-light text-xs text-[#533113]/40 line-through">gh₵ {Number(p.price).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="raleway-bold text-[#533113]">gh₵ {Number(p.price).toFixed(2)}</span>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <span
@@ -371,10 +505,10 @@ export default function Products() {
                       <button
                         onClick={() => handleDelete(p)}
                         disabled={deleteId === p.id}
-                        className="p-2 hover:bg-red-50 transition-colors text-red-500 disabled:opacity-40"
-                        title="Delete"
+                        className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 transition-colors disabled:opacity-40"
                       >
-                        <TrashIcon size={15} />
+                        <TrashIcon size={14} weight="bold" />
+                        {deleteId === p.id ? "Deleting…" : "Delete"}
                       </button>
                     </div>
                   </td>
@@ -484,7 +618,7 @@ export default function Products() {
                 />
               </Field>
 
-              {/* Price + Stock row */}
+              {/* Price + Discount row */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Price (gh₵)">
                   <input
@@ -498,31 +632,44 @@ export default function Products() {
                     className="input-base"
                   />
                 </Field>
-                <Field label="Stock Quantity">
+                <Field label="Discount Price (gh₵) — optional">
                   <input
-                    required
                     type="number"
                     min="0"
-                    value={form.stock}
-                    onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
-                    placeholder="50"
+                    step="0.01"
+                    value={form.discountPrice}
+                    onChange={(e) => setForm((f) => ({ ...f, discountPrice: e.target.value }))}
+                    placeholder="Leave blank for no discount"
                     className="input-base"
                   />
                 </Field>
               </div>
 
-              {/* Category */}
-              <Field label="Category">
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  className="input-base cursor-pointer"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+              {/* Categories */}
+              <div className="flex flex-col gap-2">
+                <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                  Categories <span className="raleway-light normal-case tracking-normal text-[#533113]/40">(select all that apply)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={`border px-3 py-1.5 raleway-light text-xs transition-colors ${
+                        form.categories.includes(cat)
+                          ? "bg-[#533113] text-white border-[#533113]"
+                          : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                      }`}
+                    >
+                      {cat}
+                    </button>
                   ))}
-                </select>
-              </Field>
+                </div>
+                {form.categories.length === 0 && (
+                  <p className="raleway-light text-xs text-red-400">Select at least one category.</p>
+                )}
+              </div>
 
               {/* Sizes */}
               <div className="flex flex-col gap-2">
@@ -552,22 +699,87 @@ export default function Products() {
                 <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
                   Available Colors
                 </label>
-                <div className="flex flex-wrap gap-3">
-                  {COLORS.map((c) => (
+                <div className="flex flex-wrap gap-2">
+                  {COLORS.map(({ name, hex }) => (
                     <button
-                      key={c}
+                      key={name}
                       type="button"
-                      onClick={() => toggleColor(c)}
-                      style={{ backgroundColor: c }}
-                      className={`w-7 h-7 rounded-full transition-all ${
-                        form.colors.includes(c)
-                          ? "ring-2 ring-[#533113] ring-offset-2 scale-110"
-                          : "border border-[#DEDEDE] hover:scale-110"
+                      onClick={() => toggleColor(name)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 border raleway-light text-xs transition-all ${
+                        form.colors.includes(name)
+                          ? "bg-[#533113] text-white border-[#533113]"
+                          : "text-[#533113] border-[#DEDEDE] hover:border-[#533113]"
                       }`}
-                    />
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
+                        style={{ backgroundColor: hex }}
+                      />
+                      {name}
+                    </button>
                   ))}
                 </div>
               </div>
+
+              {/* Stock by Color × Size */}
+              {form.colors.length > 0 && form.sizes.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                      Stock by Color &amp; Size
+                    </label>
+                    <span className="raleway-light text-xs text-[#533113]/50">
+                      Total: {totalStock} pcs
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto border border-[#DEDEDE]">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-[#FFFBF6] border-b border-[#DEDEDE]">
+                          <th className="raleway-bold text-[#533113]/60 text-left px-3 py-3 uppercase tracking-widest">
+                            Color
+                          </th>
+                          {form.sizes.map((s) => (
+                            <th key={s} className="raleway-bold text-[#533113]/60 px-3 py-3 uppercase tracking-widest text-center min-w-[80px]">
+                              {s}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {form.colors.map((colorName) => (
+                          <tr key={colorName} className="border-b border-[#DEDEDE]/60">
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-4 h-4 rounded-full border border-black/10 shrink-0"
+                                  style={{ backgroundColor: COLOR_HEX[colorName] ?? "#ccc" }}
+                                />
+                                <span className="raleway-bold text-sm text-[#533113]">{colorName}</span>
+                              </div>
+                            </td>
+                            {form.sizes.map((s) => {
+                              const key = `${colorName}_${s}`;
+                              return (
+                                <td key={s} className="px-2 py-2 text-center">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={form.colorSizeStock[key] ?? ""}
+                                    onChange={(e) => setColorSizeStock(colorName, s, Number(e.target.value))}
+                                    placeholder="0"
+                                    className="w-16 text-center border border-[#DEDEDE] raleway-light text-sm text-[#533113] py-2 px-2 outline-none focus:border-[#533113] bg-white"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <Field label="Description">
@@ -579,6 +791,150 @@ export default function Products() {
                   className="input-base resize-none"
                 />
               </Field>
+
+              {/* Size Chart */}
+              <div className="flex flex-col gap-3">
+                <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                  Size Chart
+                </label>
+                <div className="flex gap-2">
+                  {(["standard", "custom", "none"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, sizeChartMode: mode }))}
+                      className={`flex-1 py-2 raleway-bold text-xs uppercase tracking-widest border transition-colors ${
+                        form.sizeChartMode === mode
+                          ? "bg-[#533113] text-white border-[#533113]"
+                          : "text-[#533113] border-[#DEDEDE] hover:bg-[#533113]/5"
+                      }`}
+                    >
+                      {mode === "standard" ? "Standard" : mode === "custom" ? "Custom" : "None"}
+                    </button>
+                  ))}
+                </div>
+                <p className="raleway-light text-xs text-[#533113]/50">
+                  {form.sizeChartMode === "standard"
+                    ? "Uses the standard chart set in Homepage Settings."
+                    : form.sizeChartMode === "custom"
+                    ? "This product has its own size chart."
+                    : "No size chart shown on this product page."}
+                </p>
+
+                {form.sizeChartMode === "custom" && (
+                  <div className="flex flex-col gap-4 border border-[#DEDEDE] p-4">
+
+                    {/* Row sizes — toggle chips */}
+                    <div className="flex flex-col gap-2">
+                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Sizes (rows)</span>
+                      <div className="flex flex-wrap gap-2">
+                        {SIZES.map((s) => {
+                          const active = form.customSizeChartRows.some((r) => r.size === s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                if (active) {
+                                  removeCustomRow(form.customSizeChartRows.findIndex((r) => r.size === s));
+                                } else {
+                                  const blank: SizeChartRow = { size: s };
+                                  form.customSizeChartColumns.forEach((c) => { blank[c] = ""; });
+                                  setForm((f) => ({
+                                    ...f,
+                                    customSizeChartRows: [...f.customSizeChartRows, blank].sort(
+                                      (a, b) => SIZES.indexOf(a.size) - SIZES.indexOf(b.size)
+                                    ),
+                                  }));
+                                }
+                              }}
+                              className={`border px-3 py-1 raleway-light text-xs transition-colors ${
+                                active
+                                  ? "bg-[#533113] text-white border-[#533113]"
+                                  : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Columns — add/remove chips */}
+                    <div className="flex flex-col gap-2">
+                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Measurements (columns)</span>
+                      <div className="flex flex-wrap gap-2">
+                        {form.customSizeChartColumns.map((col) => (
+                          <span
+                            key={col}
+                            className="flex items-center gap-1.5 bg-[#533113] text-white raleway-light text-xs px-3 py-1 border border-[#533113]"
+                          >
+                            {col}
+                            <button type="button" onClick={() => removeCustomCol(col)} className="opacity-70 hover:opacity-100">
+                              <XIcon size={10} />
+                            </button>
+                          </span>
+                        ))}
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={newChartCol}
+                            onChange={(e) => setNewChartCol(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomCol())}
+                            placeholder="e.g. Chest (in)"
+                            className="border border-[#533113] raleway-light text-xs text-[#533113] px-2.5 py-1 outline-none focus:border-[#533113] w-36"
+                          />
+                          <button
+                            type="button"
+                            onClick={addCustomCol}
+                            className="border border-[#533113] text-[#533113] raleway-bold text-xs uppercase tracking-widest px-3 py-1 hover:bg-[#533113]/10 transition-colors"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Measurement table — only shown when both rows and columns exist */}
+                    {form.customSizeChartRows.length > 0 && form.customSizeChartColumns.length > 0 && (
+                      <div className="overflow-x-auto border border-[#DEDEDE]">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-[#FFFBF6] border-b border-[#DEDEDE]">
+                              <th className="raleway-bold text-[#533113]/60 text-left px-3 py-2 uppercase tracking-widest">Size</th>
+                              {form.customSizeChartColumns.map((col) => (
+                                <th key={col} className="raleway-bold text-[#533113]/60 px-3 py-2 text-left uppercase tracking-widest whitespace-nowrap">
+                                  {col}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {form.customSizeChartRows.map((row, i) => (
+                              <tr key={row.size} className="border-b border-[#DEDEDE]/60">
+                                <td className="px-3 py-2">
+                                  <span className="raleway-bold text-[#533113]">{row.size}</span>
+                                </td>
+                                {form.customSizeChartColumns.map((col) => (
+                                  <td key={col} className="px-2 py-1.5">
+                                    <input
+                                      value={row[col] ?? ""}
+                                      onChange={(e) => updateCustomCell(i, col, e.target.value)}
+                                      placeholder="—"
+                                      className="w-24 border border-[#DEDEDE] raleway-light text-[#533113] py-1 px-2 outline-none focus:border-[#533113] text-xs bg-white"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2 shrink-0">

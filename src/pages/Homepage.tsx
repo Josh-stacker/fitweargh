@@ -1,20 +1,143 @@
+import { useEffect, useState } from "react";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import HeroSlider from "../components/HeroSlider";
-import Button from "../components/ui/Button";
 import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
 import ProductCard from "../components/ProductCard";
-import product1 from "../assets/prod-1.webp";
 import FastSelling from "../components/FastSelling";
 import ShopByCategory from "../components/ShopByCategory";
 import Accesories from "../components/Accesories";
 import Footer from "../components/Footer";
+import product1 from "../assets/prod-1.webp";
+
+interface Product {
+  id: string;
+  name: string;
+  imageUrl: string;
+  price: number;
+  discountPrice?: number | null;
+  colors?: string[];
+  category: string;
+  categories?: string[];
+  createdAt: unknown;
+}
+
+interface HomepageSections {
+  newArrivals: string[];
+  fastSelling: string[];
+  shopByCategory: string[];
+  accessories: string[];
+}
+
+const MAX_PER_SECTION = 6;
+
+const STATIC_PRODUCTS: Product[] = [1, 2, 3, 4, 5, 6].map((i) => ({
+  id: `static-${i}`,
+  name: "Women's Sports Wear",
+  imageUrl: product1,
+  price: 120,
+  discountPrice: null,
+  colors: [],
+  category: "New Arrivals",
+  createdAt: null,
+}));
+
+function resolvePinned(ids: string[], allProducts: Product[]): Product[] {
+  const map = new Map(allProducts.map((p) => [p.id, p]));
+  return ids.map((id) => map.get(id)).filter(Boolean) as Product[];
+}
 
 function Homepage() {
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [sections, setSections] = useState<HomepageSections>({
+    newArrivals: [],
+    fastSelling: [],
+    shopByCategory: [],
+    accessories: [],
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [settingsSnap, productsSnap] = await Promise.all([
+          getDoc(doc(db, "siteSettings", "homepage")),
+          getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"))),
+        ]);
+
+        const products = productsSnap.docs.map(
+          (d) => ({ id: d.id, ...d.data() } as Product)
+        );
+        setAllProducts(products);
+
+        if (settingsSnap.exists()) {
+          const d = settingsSnap.data();
+          setSections({
+            newArrivals: d.sections?.newArrivals ?? [],
+            fastSelling: d.sections?.fastSelling ?? [],
+            shopByCategory: d.sections?.shopByCategory ?? [],
+            accessories: d.sections?.accessories ?? [],
+          });
+        }
+      } catch (err) {
+        console.error("Homepage load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const hasCategory = (p: Product, cat: string) =>
+    p.categories?.includes(cat) ?? p.category === cat;
+
+  // Resolve each section: pinned IDs → products, or fall back to auto-latest
+  const newArrivalsProducts =
+    sections.newArrivals.length > 0
+      ? resolvePinned(sections.newArrivals, allProducts)
+      : allProducts.filter((p) => hasCategory(p, "New Arrivals")).slice(0, MAX_PER_SECTION);
+
+  // Fall through to static defaults when the DB has no products yet
+  const hasProducts = allProducts.length > 0;
+
+  const fallbackNewArrivals = (() => {
+    if (!hasProducts) return STATIC_PRODUCTS;
+    if (newArrivalsProducts.length > 0) return newArrivalsProducts;
+    return allProducts.slice(0, MAX_PER_SECTION);
+  })();
+
+  const fastSellingProducts = (() => {
+    if (!hasProducts) return STATIC_PRODUCTS;
+    if (sections.fastSelling.length > 0) return resolvePinned(sections.fastSelling, allProducts);
+    return allProducts.slice(0, MAX_PER_SECTION);
+  })();
+
+  const shopByCategoryProducts = (() => {
+    if (!hasProducts) return STATIC_PRODUCTS;
+    if (sections.shopByCategory.length > 0) return resolvePinned(sections.shopByCategory, allProducts);
+    return allProducts.slice(0, MAX_PER_SECTION);
+  })();
+
+  const accessoriesProducts = (() => {
+    if (!hasProducts) return STATIC_PRODUCTS;
+    if (sections.accessories.length > 0) return resolvePinned(sections.accessories, allProducts);
+    return allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION);
+  })();
+
   return (
-    <div className="">
+    <div>
       <Navbar />
 
-      <HeroSlider />
+      <HeroSlider page="Homepage" />
 
       <main className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10">
         <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
@@ -24,44 +147,63 @@ function Homepage() {
               THE LATEST SPORTS, WOMEN'S AND MANY MORE ACCESORIES
             </p>
           </div>
-          <Button
-            text="Shop Now"
-            width="w-full md:w-64 lg:w-[20%]"
-            icon={<ArrowLineUpRightIcon size={24} />}
-          ></Button>
+          <Link
+            to="/new-arrivals"
+            className="bg-[#533113] text-white py-2 px-4 flex justify-between items-center w-full md:w-64 lg:w-48"
+          >
+            <span className="raleway-light text-sm">Shop Now</span>
+            <ArrowLineUpRightIcon size={24} />
+          </Link>
         </section>
       </main>
 
-      <section className="max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10">
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <div
-            key={item}
-            className={`${item === 3 ? "hidden md:block" : ""} ${
-              item === 4 ? "hidden lg:block" : ""
-            } ${item === 5 ? "hidden 2xl:block" : ""} ${
-              item === 6 ? "hidden min-[1920px]:block" : ""
-            }`}
-          >
-            <ProductCard
-              image={product1}
-              name="Women’s Sports Wear"
-              price="gh₵ 120.00"
-            />
-          </div>
-        ))}
-      </section>
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 border-2 border-[#533113] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* New Arrivals grid */}
+          <section className="max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10">
+            {fallbackNewArrivals.map((p, item) => (
+              <div
+                key={p.id}
+                className={`${item === 2 ? "hidden md:block" : ""} ${
+                  item === 3 ? "hidden lg:block" : ""
+                } ${item === 4 ? "hidden 2xl:block" : ""} ${
+                  item === 5 ? "hidden min-[1920px]:block" : ""
+                }`}
+              >
+                <ProductCard
+                  id={p.id}
+                  image={p.imageUrl}
+                  name={p.name}
+                  price={p.discountPrice ?? p.price}
+                  colors={p.colors}
+                />
+              </div>
+            ))}
+          </section>
 
-      <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-        <FastSelling />
-      </section>
+          {fastSellingProducts.length > 0 && (
+            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
+              <FastSelling products={fastSellingProducts} />
+            </section>
+          )}
 
-      <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-        <ShopByCategory />
-      </section>
+          {shopByCategoryProducts.length > 0 && (
+            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
+              <ShopByCategory products={shopByCategoryProducts} />
+            </section>
+          )}
 
-      <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-        <Accesories />
-      </section>
+          {accessoriesProducts.length > 0 && (
+            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
+              <Accesories products={accessoriesProducts} />
+            </section>
+          )}
+        </>
+      )}
 
       <Footer />
     </div>
