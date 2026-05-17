@@ -826,7 +826,7 @@ export default function Products() {
 
                     {/* Row sizes — toggle chips */}
                     <div className="flex flex-col gap-2">
-                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Sizes (rows)</span>
+                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Sizes (rows) — toggle to include</span>
                       <div className="flex flex-wrap gap-2">
                         {SIZES.map((s) => {
                           const active = form.customSizeChartRows.some((r) => r.size === s);
@@ -848,7 +848,7 @@ export default function Products() {
                                   }));
                                 }
                               }}
-                              className={`border px-3 py-1 raleway-light text-xs transition-colors ${
+                              className={`border px-5 py-2.5 raleway-bold text-sm transition-colors ${
                                 active
                                   ? "bg-[#533113] text-white border-[#533113]"
                                   : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -868,7 +868,7 @@ export default function Products() {
                         {form.customSizeChartColumns.map((col) => (
                           <span
                             key={col}
-                            className="flex items-center gap-1.5 bg-[#533113] text-white raleway-light text-xs px-3 py-1 border border-[#533113]"
+                            className="flex items-center gap-2 bg-[#533113] text-white raleway-light text-sm px-4 py-2.5 border border-[#533113]"
                           >
                             {col}
                             <button type="button" onClick={() => removeCustomCol(col)} className="opacity-70 hover:opacity-100">
@@ -883,12 +883,12 @@ export default function Products() {
                             onChange={(e) => setNewChartCol(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomCol())}
                             placeholder="e.g. Chest (in)"
-                            className="border border-[#533113] raleway-light text-xs text-[#533113] px-2.5 py-1 outline-none focus:border-[#533113] w-36"
+                            className="border border-[#533113] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] w-44"
                           />
                           <button
                             type="button"
                             onClick={addCustomCol}
-                            className="border border-[#533113] text-[#533113] raleway-bold text-xs uppercase tracking-widest px-3 py-1 hover:bg-[#533113]/10 transition-colors"
+                            className="border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest px-4 py-2.5 hover:bg-[#533113]/10 transition-colors"
                           >
                             + Add
                           </button>
@@ -899,12 +899,12 @@ export default function Products() {
                     {/* Measurement table — only shown when both rows and columns exist */}
                     {form.customSizeChartRows.length > 0 && form.customSizeChartColumns.length > 0 && (
                       <div className="overflow-x-auto border border-[#DEDEDE]">
-                        <table className="w-full text-xs">
+                        <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-[#FFFBF6] border-b border-[#DEDEDE]">
-                              <th className="raleway-bold text-[#533113]/60 text-left px-3 py-2 uppercase tracking-widest">Size</th>
+                              <th className="raleway-bold text-[#533113]/60 text-left px-5 py-3 uppercase tracking-widest">Size</th>
                               {form.customSizeChartColumns.map((col) => (
-                                <th key={col} className="raleway-bold text-[#533113]/60 px-3 py-2 text-left uppercase tracking-widest whitespace-nowrap">
+                                <th key={col} className="raleway-bold text-[#533113]/60 px-5 py-3 text-left uppercase tracking-widest whitespace-nowrap">
                                   {col}
                                 </th>
                               ))}
@@ -913,16 +913,16 @@ export default function Products() {
                           <tbody>
                             {form.customSizeChartRows.map((row, i) => (
                               <tr key={row.size} className="border-b border-[#DEDEDE]/60">
-                                <td className="px-3 py-2">
+                                <td className="px-5 py-3">
                                   <span className="raleway-bold text-[#533113]">{row.size}</span>
                                 </td>
                                 {form.customSizeChartColumns.map((col) => (
-                                  <td key={col} className="px-2 py-1.5">
+                                  <td key={col} className="px-3 py-2">
                                     <input
                                       value={row[col] ?? ""}
                                       onChange={(e) => updateCustomCell(i, col, e.target.value)}
                                       placeholder="—"
-                                      className="w-24 border border-[#DEDEDE] raleway-light text-[#533113] py-1 px-2 outline-none focus:border-[#533113] text-xs bg-white"
+                                      className="w-32 border border-[#DEDEDE] raleway-light text-[#533113] py-2 px-3 outline-none focus:border-[#533113] text-sm bg-white"
                                     />
                                   </td>
                                 ))}
