@@ -6,6 +6,9 @@ import RequireCustomerAuth from "./components/account/RequireCustomerAuth";
 
 import Homepage from "./pages/Homepage";
 import NewArrivals from "./pages/NewArrivals";
+import BodyShapers from "./pages/BodyShapers";
+import Clothing from "./pages/Clothing";
+import Accessories from "./pages/Accessories";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
 
@@ -34,6 +37,9 @@ function App() {
             {/* ── Storefront ── */}
             <Route path="/" element={<Homepage />} />
             <Route path="/new-arrivals" element={<NewArrivals />} />
+            <Route path="/body-shapers" element={<BodyShapers />} />
+            <Route path="/clothing" element={<Clothing />} />
+            <Route path="/accessories" element={<Accessories />} />
             <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
 

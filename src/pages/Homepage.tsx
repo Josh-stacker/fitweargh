@@ -106,32 +106,23 @@ function Homepage() {
       ? resolvePinned(sections.newArrivals, allProducts)
       : allProducts.filter((p) => hasCategory(p, "New Arrivals")).slice(0, MAX_PER_SECTION);
 
-  // Fall through to static defaults when the DB has no products yet
   const hasProducts = allProducts.length > 0;
 
-  const fallbackNewArrivals = (() => {
-    if (!hasProducts) return STATIC_PRODUCTS;
-    if (newArrivalsProducts.length > 0) return newArrivalsProducts;
-    return allProducts.slice(0, MAX_PER_SECTION);
-  })();
+  const fallbackNewArrivals = !hasProducts ? STATIC_PRODUCTS : newArrivalsProducts;
 
-  const fastSellingProducts = (() => {
-    if (!hasProducts) return STATIC_PRODUCTS;
-    if (sections.fastSelling.length > 0) return resolvePinned(sections.fastSelling, allProducts);
-    return allProducts.slice(0, MAX_PER_SECTION);
-  })();
+  const fastSellingProducts = sections.fastSelling.length > 0
+    ? resolvePinned(sections.fastSelling, allProducts)
+    : STATIC_PRODUCTS;
 
-  const shopByCategoryProducts = (() => {
-    if (!hasProducts) return STATIC_PRODUCTS;
-    if (sections.shopByCategory.length > 0) return resolvePinned(sections.shopByCategory, allProducts);
-    return allProducts.slice(0, MAX_PER_SECTION);
-  })();
+  const shopByCategoryProducts = sections.shopByCategory.length > 0
+    ? resolvePinned(sections.shopByCategory, allProducts)
+    : STATIC_PRODUCTS;
 
-  const accessoriesProducts = (() => {
-    if (!hasProducts) return STATIC_PRODUCTS;
-    if (sections.accessories.length > 0) return resolvePinned(sections.accessories, allProducts);
-    return allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION);
-  })();
+  const accessoriesProducts = sections.accessories.length > 0
+    ? resolvePinned(sections.accessories, allProducts)
+    : allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION).length > 0
+      ? allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION)
+      : STATIC_PRODUCTS;
 
   return (
     <div>

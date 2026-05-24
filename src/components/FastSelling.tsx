@@ -36,14 +36,14 @@ function FastSelling({ products }: FastSellingProps) {
       <main className="w-full overflow-hidden">
         <section
           ref={scrollRef}
-          className="flex gap-4 md:gap-2 lg:gap-2 px-4 md:px-0 md:ml-6 overflow-x-auto snap-x snap-mandatory"
+          className="flex gap-2 px-4 md:px-0 md:ml-6 overflow-x-auto snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           <style>{`section::-webkit-scrollbar { display: none; }`}</style>
           {products.map((p) => (
             <div
               key={p.id}
-              className="min-w-[calc(50%-0.5rem)] md:min-w-[calc(50%-0.25rem)] lg:min-w-[calc(33.333%-0.333rem)] snap-start"
+              className="flex-1 min-w-[calc(25%-0.375rem)] snap-start"
             >
               <ProductCard
                 id={p.id}
@@ -54,6 +54,10 @@ function FastSelling({ products }: FastSellingProps) {
               />
             </div>
           ))}
+          {products.length < 4 &&
+            Array.from({ length: 4 - products.length }).map((_, i) => (
+              <div key={`placeholder-${i}`} className="flex-1 min-w-[calc(25%-0.375rem)]" />
+            ))}
         </section>
       </main>
     </section>

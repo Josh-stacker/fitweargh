@@ -68,14 +68,14 @@ function PageHero({
           {/* Right — two portrait images */}
           {image1 && image2 && (
             <div className="hidden md:flex items-end gap-4 md:w-[45%] lg:w-[40%] h-full pt-8">
-              <div className="w-1/2 h-[80%] rounded-t-full overflow-hidden shadow-2xl border-2 border-white/20 self-end">
+              <div className="w-1/2 h-[80%] rounded-t-full overflow-hidden shadow-2xl self-end">
                 <img
                   src={image1}
                   alt="hero featured 1"
                   className="w-full h-full object-cover object-top"
                 />
               </div>
-              <div className="w-1/2 h-[65%] rounded-t-full overflow-hidden shadow-2xl border-2 border-white/20 self-end">
+              <div className="w-1/2 h-[65%] rounded-t-full overflow-hidden shadow-2xl self-end">
                 <img
                   src={image2}
                   alt="hero featured 2"
@@ -87,8 +87,7 @@ function PageHero({
         </div>
       )}
 
-      {/* Bottom fade into page background */}
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#FFFBF6] to-transparent" />
+
     </section>
   );
 }

@@ -13,7 +13,7 @@ function Button({ text, icon, width, onClick, className, textSize = "text-sm" }:
   return (
     <button
       onClick={onClick}
-      className={`bg-[#533113] text-white py-2 px-4 flex justify-between items-center ${width ?? ""} ${className ?? ""}`}
+      className={`bg-[#533113] text-white py-2 px-4 flex justify-between items-center h-full ${width ?? ""} ${className ?? ""}`}
     >
       <p className={`raleway-light ${textSize}`}>{text}</p>
       {icon}
