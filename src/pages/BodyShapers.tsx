@@ -9,7 +9,6 @@ import PageHero from "../components/PageHero";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
 import heroBg from "../assets/hero-bg.webp";
-import heroBg2 from "../assets/hero-bg2.webp";
 
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
@@ -90,8 +89,6 @@ function BodyShapers() {
         subtitle="Define your silhouette. Sculpting pieces designed to support, shape, and move with you."
         badge="FitwearGH Collection"
         ctaText="Shop Shapers"
-        image1={product1}
-        image2={heroBg2}
       />
 
       <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-8">

@@ -32,6 +32,7 @@ function Navbar() {
             { to: "/clothing", label: "Clothing" },
             { to: "/body-shapers", label: "Body Shapers" },
             { to: "/accessories", label: "Accessories" },
+            { to: "/sales", label: "Sales" },
           ].map(({ to, label }) => (
             <Link
               key={to}
@@ -129,6 +130,7 @@ function Navbar() {
               { to: "/clothing", label: "Clothing" },
               { to: "/body-shapers", label: "Body Shapers" },
               { to: "/accessories", label: "Accessories" },
+              { to: "/sales", label: "Sales" },
             ].map(({ to, label }) => (
               <Link
                 key={to}

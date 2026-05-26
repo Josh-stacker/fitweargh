@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
-
-interface SizeChartRow {
-  size: string;
-  [col: string]: string;
-}
+import ProductCard from "../components/ProductCard";
 
 // Color name → hex for swatches (matches admin COLORS list)
 const COLOR_HEX: Record<string, string> = {
@@ -41,15 +37,22 @@ interface FirestoreProduct {
   description: string;
   imageUrl: string;
   images?: string[];
+  displayImageIndex?: number;
   sizes: string[];
   colors: string[];
   colorSizeStock?: Record<string, number>;
   category: string;
   stock: number;
-  sizeChartMode?: "standard" | "custom" | "none";
-  customSizeChartColumns?: string[];
-  customSizeChartRows?: SizeChartRow[];
 }
+
+// Fixed UK size chart used sitewide
+const UK_SIZE_CHART = [
+  { size: "S",   uk: "8 – 10"  },
+  { size: "M",   uk: "10 – 12" },
+  { size: "L",   uk: "14 – 16" },
+  { size: "XL",  uk: "16 – 18" },
+  { size: "XXL", uk: "20"      },
+];
 
 // Fallback used when no Firestore product exists for the given ID
 const FALLBACK: FirestoreProduct = {
@@ -66,19 +69,10 @@ const FALLBACK: FirestoreProduct = {
   stock: 10,
 };
 
-const HARDCODED_CHART_COLS = ["Chest (in)", "Waist (in)", "Hips (in)"];
-const HARDCODED_CHART_ROWS: SizeChartRow[] = [
-  { size: "XS", "Chest (in)": "30–32", "Waist (in)": "24–26", "Hips (in)": "34–36" },
-  { size: "S",  "Chest (in)": "32–34", "Waist (in)": "26–28", "Hips (in)": "36–38" },
-  { size: "M",  "Chest (in)": "34–36", "Waist (in)": "28–30", "Hips (in)": "38–40" },
-  { size: "L",  "Chest (in)": "36–38", "Waist (in)": "30–32", "Hips (in)": "40–42" },
-  { size: "XL", "Chest (in)": "38–40", "Waist (in)": "32–34", "Hips (in)": "42–44" },
-  { size: "XXL","Chest (in)": "40–42", "Waist (in)": "34–36", "Hips (in)": "44–46" },
-];
-
 function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<FirestoreProduct | null>(null);
+  const [related, setRelated] = useState<FirestoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const [toast, setToast] = useState(false);
@@ -90,9 +84,6 @@ function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [descOpen, setDescOpen] = useState(true);
   const [chartOpen, setChartOpen] = useState(false);
-  const [chartCols, setChartCols] = useState<string[]>(HARDCODED_CHART_COLS);
-  const [chartRows, setChartRows] = useState<SizeChartRow[]>(HARDCODED_CHART_ROWS);
-  const [showChart, setShowChart] = useState(true);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -104,54 +95,37 @@ function ProductPage() {
       try {
         if (!id || !isNaN(Number(id))) {
           setProduct(FALLBACK);
-          setChartCols(HARDCODED_CHART_COLS);
-          setChartRows(HARDCODED_CHART_ROWS);
-          setShowChart(true);
+          setRelated([]);
         } else {
-          const [snap, globalChartSnap] = await Promise.all([
-            getDoc(doc(db, "products", id)),
-            getDoc(doc(db, "siteSettings", "sizeChart")),
-          ]);
-
+          const snap = await getDoc(doc(db, "products", id));
           if (snap.exists()) {
             const data = { id: snap.id, ...snap.data() } as FirestoreProduct;
+            // New schema: images[] = all slots. Legacy: images = slots[1..], prepend imageUrl.
             if (!data.images || data.images.length === 0) {
               data.images = [data.imageUrl];
+            } else if (data.displayImageIndex == null) {
+              data.images = [data.imageUrl, ...data.images];
             }
             setProduct(data);
+            setPrimaryIdx(data.displayImageIndex ?? 0);
 
-            const mode = data.sizeChartMode ?? "standard";
-
-            if (mode === "none") {
-              setShowChart(false);
-            } else if (mode === "custom" && data.customSizeChartColumns?.length) {
-              setShowChart(true);
-              setChartCols(data.customSizeChartColumns);
-              setChartRows(data.customSizeChartRows ?? []);
-            } else {
-              // "standard" — load from siteSettings/sizeChart
-              setShowChart(true);
-              if (globalChartSnap.exists()) {
-                const gc = globalChartSnap.data();
-                setChartCols(gc.columns ?? HARDCODED_CHART_COLS);
-                setChartRows(gc.rows ?? HARDCODED_CHART_ROWS);
-              } else {
-                setChartCols(HARDCODED_CHART_COLS);
-                setChartRows(HARDCODED_CHART_ROWS);
-              }
-            }
+            // Fetch related: same category, exclude current
+            const allSnap = await getDocs(
+              query(collection(db, "products"), orderBy("createdAt", "desc"))
+            );
+            const others = allSnap.docs
+              .map((d) => ({ id: d.id, ...d.data() } as FirestoreProduct))
+              .filter((p) => p.id !== id && p.category === data.category)
+              .slice(0, 4);
+            setRelated(others);
           } else {
             setProduct(FALLBACK);
-            setChartCols(HARDCODED_CHART_COLS);
-            setChartRows(HARDCODED_CHART_ROWS);
-            setShowChart(true);
+            setRelated([]);
           }
         }
       } catch {
         setProduct(FALLBACK);
-        setChartCols(HARDCODED_CHART_COLS);
-        setChartRows(HARDCODED_CHART_ROWS);
-        setShowChart(true);
+        setRelated([]);
       } finally {
         setLoading(false);
       }
@@ -385,44 +359,38 @@ function ProductPage() {
             </div>
 
             {/* Size chart accordion */}
-            {showChart && (
-              <div className="flex flex-col">
-                <button
-                  onClick={() => setChartOpen(!chartOpen)}
-                  className="flex justify-between items-center py-3"
-                >
-                  <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
-                    Size Chart
-                  </span>
-                  {chartOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
-                </button>
-                <hr className="border-[#DEDEDE]" />
-                {chartOpen && (
-                  <div className="overflow-x-auto pt-4 pb-2">
-                    <table className="w-full text-base raleway-light text-[#533113]">
-                      <thead>
-                        <tr className="border-b border-[#DEDEDE]">
-                          <th className="raleway-bold text-left pb-2 pr-4 text-[#533113]">Size</th>
-                          {chartCols.map((col) => (
-                            <th key={col} className="raleway-bold text-left pb-2 pr-4 text-[#533113]">{col}</th>
-                          ))}
+            <div className="flex flex-col">
+              <button
+                onClick={() => setChartOpen(!chartOpen)}
+                className="flex justify-between items-center py-3"
+              >
+                <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
+                  Size Guide
+                </span>
+                {chartOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
+              </button>
+              <hr className="border-[#DEDEDE]" />
+              {chartOpen && (
+                <div className="overflow-x-auto pt-4 pb-2">
+                  <table className="w-full text-base raleway-light text-[#533113]">
+                    <thead>
+                      <tr className="border-b border-[#DEDEDE]">
+                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">Size</th>
+                        <th className="raleway-bold text-left pb-2 text-[#533113]">UK Size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {UK_SIZE_CHART.map((row) => (
+                        <tr key={row.size} className="border-b border-[#DEDEDE]/40">
+                          <td className="py-2 pr-8 raleway-bold">{row.size}</td>
+                          <td className="py-2">{row.uk}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {chartRows.map((row, i) => (
-                          <tr key={i} className="border-b border-[#DEDEDE]/40">
-                            <td className="py-2 pr-4 raleway-bold">{row.size}</td>
-                            {chartCols.map((col) => (
-                              <td key={col} className="py-2 pr-4">{row[col] ?? "—"}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
             {/* Add to cart */}
             <div className="pt-2 pb-8">
@@ -438,6 +406,28 @@ function ProductPage() {
           </div>
         </div>
       </main>
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 py-12 border-t border-[#DEDEDE]">
+          <h2 className="raleway-bold text-xl text-[#533113] uppercase tracking-widest mb-6">
+            You May Also Like
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {related.map((rp) => (
+              <ProductCard
+                key={rp.id}
+                id={rp.id}
+                image={rp.imageUrl}
+                name={rp.name}
+                price={rp.price}
+                discountPrice={rp.discountPrice}
+                colors={rp.colors}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <Footer />
 

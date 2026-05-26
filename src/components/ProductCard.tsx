@@ -15,16 +15,18 @@ interface ProductCardProps {
   image?: string;
   name: string;
   price: string | number;
+  discountPrice?: number | null;
   id?: string | number;
   colors?: string[];
 }
 
-function ProductCard({ image, name, price, id = 1, colors }: ProductCardProps) {
+function ProductCard({ image, name, price, discountPrice, id = 1, colors }: ProductCardProps) {
   const { addItem } = useCart();
   const [toast, setToast] = useState(false);
 
   const numericPrice = typeof price === "number" ? price : parseFloat(String(price)) || 0;
   const priceStr = typeof price === "number" ? `gh₵ ${price.toFixed(2)}` : price;
+  const hasDiscount = discountPrice != null && discountPrice < numericPrice;
 
   const handleAddToCart = () => {
     addItem({
@@ -74,7 +76,16 @@ function ProductCard({ image, name, price, id = 1, colors }: ProductCardProps) {
         </Link>
 
         <div className="flex justify-between items-center">
-          <p className="raleway-light text-sm text-[#533113]">{priceStr}</p>
+          <div className="flex items-center gap-2">
+            {hasDiscount ? (
+              <>
+                <p className="raleway-bold text-sm text-red-600">gh₵ {discountPrice!.toFixed(2)}</p>
+                <p className="raleway-light text-xs text-[#533113]/40 line-through">{priceStr}</p>
+              </>
+            ) : (
+              <p className="raleway-light text-sm text-[#533113]">{priceStr}</p>
+            )}
+          </div>
           {colors && colors.length > 0 && (
             <div className="flex gap-1.5">
               {colors.slice(0, 4).map((c) => (

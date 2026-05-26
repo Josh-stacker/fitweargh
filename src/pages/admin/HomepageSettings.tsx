@@ -17,14 +17,7 @@ import {
   XIcon,
   MagnifyingGlassIcon,
   CheckIcon,
-  PlusIcon,
-  TrashIcon,
 } from "@phosphor-icons/react";
-
-interface SizeChartRow {
-  size: string;
-  [col: string]: string;
-}
 
 // Firestore doc: siteSettings/homepage
 interface HomepageDoc {
@@ -89,29 +82,14 @@ export default function HomepageSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Global size chart
-  const DEFAULT_CHART_COLS = ["Chest (in)", "Waist (in)", "Hips (in)"];
-  const DEFAULT_CHART_ROWS: SizeChartRow[] = [
-    { size: "XS", "Chest (in)": "30–32", "Waist (in)": "24–26", "Hips (in)": "34–36" },
-    { size: "S",  "Chest (in)": "32–34", "Waist (in)": "26–28", "Hips (in)": "36–38" },
-    { size: "M",  "Chest (in)": "34–36", "Waist (in)": "28–30", "Hips (in)": "38–40" },
-    { size: "L",  "Chest (in)": "36–38", "Waist (in)": "30–32", "Hips (in)": "40–42" },
-    { size: "XL", "Chest (in)": "38–40", "Waist (in)": "32–34", "Hips (in)": "42–44" },
-    { size: "XXL","Chest (in)": "40–42", "Waist (in)": "34–36", "Hips (in)": "44–46" },
-  ];
-  const [chartCols, setChartCols] = useState<string[]>(DEFAULT_CHART_COLS);
-  const [chartRows, setChartRows] = useState<SizeChartRow[]>(DEFAULT_CHART_ROWS);
-  const [newColName, setNewColName] = useState("");
-
   const stillRef = useRef<HTMLInputElement>(null);
 
   // Load existing settings, size chart, and all products
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [settingsSnap, chartSnap, productsSnap] = await Promise.all([
+      const [settingsSnap, productsSnap] = await Promise.all([
         getDoc(doc(db, "siteSettings", "homepage")),
-        getDoc(doc(db, "siteSettings", "sizeChart")),
         getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"))),
       ]);
 
@@ -127,12 +105,6 @@ export default function HomepageSettings() {
           shopByCategory: d.sections?.shopByCategory ?? [],
           accessories: d.sections?.accessories ?? [],
         });
-      }
-
-      if (chartSnap.exists()) {
-        const d = chartSnap.data();
-        if (d.columns) setChartCols(d.columns);
-        if (d.rows) setChartRows(d.rows);
       }
 
       setProducts(productsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product)));
@@ -182,55 +154,18 @@ export default function HomepageSettings() {
         setStillFile(null);
       }
 
-      await Promise.all([
-        setDoc(doc(db, "siteSettings", "homepage"), {
-          heroMode,
-          heroStillImageUrl: imageUrl,
-          heroStillImagePath: imagePath,
-          sections,
-          updatedAt: serverTimestamp(),
-        }),
-        setDoc(doc(db, "siteSettings", "sizeChart"), {
-          columns: chartCols,
-          rows: chartRows,
-          updatedAt: serverTimestamp(),
-        }),
-      ]);
+      await setDoc(doc(db, "siteSettings", "homepage"), {
+        heroMode,
+        heroStillImageUrl: imageUrl,
+        heroStillImagePath: imagePath,
+        sections,
+        updatedAt: serverTimestamp(),
+      });
     } catch (err) {
       console.error("Save error:", err);
     } finally {
       setSaving(false);
     }
-  };
-
-  // Size chart helpers
-  const addChartRow = () => {
-    const blank: SizeChartRow = { size: "" };
-    chartCols.forEach((c) => { blank[c] = ""; });
-    setChartRows((r) => [...r, blank]);
-  };
-
-  const removeChartRow = (i: number) =>
-    setChartRows((r) => r.filter((_, idx) => idx !== i));
-
-  const updateChartCell = (rowIdx: number, col: string, val: string) =>
-    setChartRows((rows) =>
-      rows.map((r, i) => i === rowIdx ? { ...r, [col]: val } : r)
-    );
-
-  const addChartCol = () => {
-    const name = newColName.trim();
-    if (!name || chartCols.includes(name)) return;
-    setChartCols((c) => [...c, name]);
-    setChartRows((rows) => rows.map((r) => ({ ...r, [name]: "" })));
-    setNewColName("");
-  };
-
-  const removeChartCol = (col: string) => {
-    setChartCols((c) => c.filter((x) => x !== col));
-    setChartRows((rows) =>
-      rows.map((r) => { const { [col]: _, ...rest } = r; return rest as SizeChartRow; })
-    );
   };
 
   const filteredProducts = products.filter(
@@ -338,106 +273,6 @@ export default function HomepageSettings() {
             )}
           </div>
         )}
-      </div>
-
-      {/* ── Global Size Chart ── */}
-      <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-5">
-        <div>
-          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#DEDEDE] pb-3">
-            Standard Size Chart
-          </h3>
-          <p className="raleway-light text-xs text-[#533113]/50 mt-2">
-            This chart is used on all product pages unless the product has its own custom chart.
-          </p>
-        </div>
-
-        {/* Add column */}
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={newColName}
-            onChange={(e) => setNewColName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addChartCol())}
-            placeholder="New column name (e.g. Shoulder (cm))"
-            className="flex-1 border border-[#DEDEDE] raleway-light text-xs text-[#533113] px-3 py-2 outline-none focus:border-[#533113]"
-          />
-          <button
-            type="button"
-            onClick={addChartCol}
-            className="flex items-center gap-1.5 bg-[#533113] text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 hover:bg-[#3d2409] transition-colors"
-          >
-            <PlusIcon size={13} weight="bold" /> Add Column
-          </button>
-        </div>
-
-        {/* Table editor */}
-        <div className="overflow-x-auto border border-[#DEDEDE]">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[#FFFBF6] border-b border-[#DEDEDE]">
-                <th className="raleway-bold text-[#533113]/60 text-left px-3 py-2 uppercase tracking-widest w-20">
-                  Size
-                </th>
-                {chartCols.map((col) => (
-                  <th key={col} className="raleway-bold text-[#533113]/60 px-3 py-2 uppercase tracking-widest text-left">
-                    <div className="flex items-center gap-2">
-                      <span>{col}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeChartCol(col)}
-                        className="text-red-400 hover:text-red-600"
-                      >
-                        <XIcon size={11} />
-                      </button>
-                    </div>
-                  </th>
-                ))}
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {chartRows.map((row, i) => (
-                <tr key={i} className="border-b border-[#DEDEDE]/60">
-                  <td className="px-2 py-1.5">
-                    <input
-                      value={row.size}
-                      onChange={(e) => updateChartCell(i, "size", e.target.value)}
-                      placeholder="S"
-                      className="w-14 text-center border border-[#DEDEDE] raleway-bold text-[#533113] py-1 px-1 outline-none focus:border-[#533113] text-xs"
-                    />
-                  </td>
-                  {chartCols.map((col) => (
-                    <td key={col} className="px-2 py-1.5">
-                      <input
-                        value={row[col] ?? ""}
-                        onChange={(e) => updateChartCell(i, col, e.target.value)}
-                        placeholder="—"
-                        className="w-24 border border-[#DEDEDE] raleway-light text-[#533113] py-1 px-2 outline-none focus:border-[#533113] text-xs"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-2 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() => removeChartRow(i)}
-                      className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white raleway-bold text-[10px] uppercase tracking-widest px-2 py-1 transition-colors"
-                    >
-                      <TrashIcon size={11} weight="bold" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <button
-          type="button"
-          onClick={addChartRow}
-          className="self-start flex items-center gap-1.5 border border-[#533113] text-[#533113] raleway-bold text-xs uppercase tracking-widest px-4 py-2 hover:bg-[#533113]/5 transition-colors"
-        >
-          <PlusIcon size={13} weight="bold" /> Add Row
-        </button>
       </div>
 
       {/* ── Section Product Manager ── */}

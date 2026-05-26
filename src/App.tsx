@@ -9,6 +9,7 @@ import NewArrivals from "./pages/NewArrivals";
 import BodyShapers from "./pages/BodyShapers";
 import Clothing from "./pages/Clothing";
 import Accessories from "./pages/Accessories";
+import Sales from "./pages/Sales";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
 
@@ -25,6 +26,7 @@ import Customers from "./pages/admin/Customers";
 import Categories from "./pages/admin/Categories";
 import HeroSlides from "./pages/admin/HeroSlides";
 import HomepageSettings from "./pages/admin/HomepageSettings";
+import PopupSettings from "./pages/admin/PopupSettings";
 
 import "./index.css";
 
@@ -40,6 +42,7 @@ function App() {
             <Route path="/body-shapers" element={<BodyShapers />} />
             <Route path="/clothing" element={<Clothing />} />
             <Route path="/accessories" element={<Accessories />} />
+            <Route path="/sales" element={<Sales />} />
             <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
 
@@ -76,6 +79,7 @@ function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="hero-slides" element={<HeroSlides />} />
               <Route path="homepage" element={<HomepageSettings />} />
+              <Route path="popup" element={<PopupSettings />} />
             </Route>
           </Routes>
         </BrowserRouter>

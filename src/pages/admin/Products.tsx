@@ -26,11 +26,6 @@ import {
   MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
 
-interface SizeChartRow {
-  size: string;
-  [col: string]: string;
-}
-
 interface Product {
   id: string;
   name: string;
@@ -46,10 +41,8 @@ interface Product {
   imagePath: string;
   images: string[];
   imagePaths: string[];
+  displayImageIndex: number;
   description: string;
-  sizeChartMode: "standard" | "custom" | "none";
-  customSizeChartColumns: string[];
-  customSizeChartRows: SizeChartRow[];
   createdAt: unknown;
 }
 
@@ -59,6 +52,38 @@ interface ImageSlot {
   file: File | null;     // null = unchanged existing image
   existingUrl: string;   // original url from Firestore (empty for new)
   existingPath: string;  // original storage path (empty for new)
+}
+
+// Compress an image File to a JPEG under ~1 MB using Canvas
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+        else { width = Math.round((width * maxDim) / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error("Canvas toBlob failed")); return; }
+          const compressed = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+          resolve(compressed);
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = reject;
+    img.src = objectUrl;
+  });
 }
 
 const CATEGORIES = [
@@ -90,28 +115,15 @@ const COLOR_HEX: Record<string, string> = Object.fromEntries(
   COLORS.map((c) => [c.name, c.hex])
 );
 
-const DEFAULT_CHART_COLS = ["Chest (in)", "Waist (in)", "Hips (in)"];
-const DEFAULT_CHART_ROWS: SizeChartRow[] = [
-  { size: "XS", "Chest (in)": "30–32", "Waist (in)": "24–26", "Hips (in)": "34–36" },
-  { size: "S",  "Chest (in)": "32–34", "Waist (in)": "26–28", "Hips (in)": "36–38" },
-  { size: "M",  "Chest (in)": "34–36", "Waist (in)": "28–30", "Hips (in)": "38–40" },
-  { size: "L",  "Chest (in)": "36–38", "Waist (in)": "30–32", "Hips (in)": "40–42" },
-  { size: "XL", "Chest (in)": "38–40", "Waist (in)": "32–34", "Hips (in)": "42–44" },
-  { size: "XXL","Chest (in)": "40–42", "Waist (in)": "34–36", "Hips (in)": "44–46" },
-];
-
 const EMPTY_FORM = {
   name: "",
   price: "",
   discountPrice: "",
   categories: [] as string[],
   sizes: [] as string[],
-  colors: [] as string[],           // stored as color names e.g. ["Black", "White"]
-  colorSizeStock: {} as Record<string, number>,  // key: "ColorName_Size"
+  colors: [] as string[],
+  colorSizeStock: {} as Record<string, number>,
   description: "",
-  sizeChartMode: "standard" as "standard" | "custom" | "none",
-  customSizeChartColumns: DEFAULT_CHART_COLS as string[],
-  customSizeChartRows: DEFAULT_CHART_ROWS as SizeChartRow[],
 };
 
 export default function Products() {
@@ -121,13 +133,15 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>([]);
+  const [displayIdx, setDisplayIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // We use a single hidden file input and track which slot index triggered it
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingSlotIdx = useRef<number | null>(null);
+  // Two hidden file inputs: one for adding new images (multiple), one for replacing a single slot
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const replaceSlotIdx = useRef<number | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -139,8 +153,14 @@ export default function Products() {
   useEffect(() => { fetchProducts(); }, []);
 
   const buildSlots = (p: Product): ImageSlot[] => {
-    const urls = [p.imageUrl, ...(p.images ?? [])].filter(Boolean);
-    const paths = [p.imagePath, ...(p.imagePaths ?? [])].filter(Boolean);
+    // New schema: images[] = all slots. Legacy schema (no displayImageIndex): images = slots[1..].
+    const isNewSchema = p.displayImageIndex != null;
+    const urls = isNewSchema
+      ? (p.images ?? []).filter(Boolean)
+      : [p.imageUrl, ...(p.images ?? [])].filter(Boolean);
+    const paths = isNewSchema
+      ? (p.imagePaths ?? []).filter(Boolean)
+      : [p.imagePath, ...(p.imagePaths ?? [])].filter(Boolean);
     return urls.map((url, i) => ({
       preview: url,
       file: null,
@@ -153,6 +173,7 @@ export default function Products() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setImageSlots([]);
+    setDisplayIdx(0);
     setModalOpen(true);
   };
 
@@ -167,47 +188,51 @@ export default function Products() {
       colors: p.colors ?? [],
       colorSizeStock: p.colorSizeStock ?? {},
       description: p.description ?? "",
-      sizeChartMode: p.sizeChartMode ?? "standard",
-      customSizeChartColumns: p.customSizeChartColumns?.length ? p.customSizeChartColumns : DEFAULT_CHART_COLS,
-      customSizeChartRows: p.customSizeChartRows?.length ? p.customSizeChartRows : DEFAULT_CHART_ROWS,
     });
     setImageSlots(buildSlots(p));
+    setDisplayIdx(p.displayImageIndex ?? 0);
     setModalOpen(true);
   };
 
-  // Click a slot or the add-new tile
-  const triggerFileInput = (slotIdx: number | null) => {
-    pendingSlotIdx.current = slotIdx;
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-      fileInputRef.current.click();
-    }
+  const triggerAdd = () => {
+    if (addInputRef.current) { addInputRef.current.value = ""; addInputRef.current.click(); }
   };
 
-  const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const preview = URL.createObjectURL(file);
-    const idx = pendingSlotIdx.current;
+  const triggerReplace = (slotIdx: number) => {
+    replaceSlotIdx.current = slotIdx;
+    if (replaceInputRef.current) { replaceInputRef.current.value = ""; replaceInputRef.current.click(); }
+  };
 
-    if (idx === null) {
-      // Add new slot
-      setImageSlots((prev) => [
-        ...prev,
-        { preview, file, existingUrl: "", existingPath: "" },
-      ]);
-    } else {
-      // Replace existing slot
-      setImageSlots((prev) =>
-        prev.map((s, i) =>
-          i === idx ? { ...s, preview, file } : s
-        )
-      );
-    }
+  // Add multiple new images
+  const handleAddFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const newSlots = await Promise.all(
+      files.map(async (raw) => {
+        const file = await compressImage(raw);
+        return { preview: URL.createObjectURL(file), file, existingUrl: "", existingPath: "" };
+      })
+    );
+    setImageSlots((prev) => [...prev, ...newSlots]);
+  };
+
+  // Replace a single existing slot
+  const handleReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0];
+    if (!raw) return;
+    const idx = replaceSlotIdx.current;
+    if (idx === null) return;
+    const file = await compressImage(raw);
+    const preview = URL.createObjectURL(file);
+    setImageSlots((prev) => prev.map((s, i) => i === idx ? { ...s, preview, file } : s));
   };
 
   const removeSlot = (idx: number) => {
-    setImageSlots((prev) => prev.filter((_, i) => i !== idx));
+    setImageSlots((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      setDisplayIdx((d) => Math.min(d, Math.max(0, next.length - 1)));
+      return next;
+    });
   };
 
   const toggleCategory = (cat: string) =>
@@ -239,41 +264,6 @@ export default function Products() {
   };
 
   const totalStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
-
-  // Custom size chart helpers
-  const [newChartCol, setNewChartCol] = useState("");
-
-  const addCustomCol = () => {
-    const name = newChartCol.trim();
-    if (!name || form.customSizeChartColumns.includes(name)) return;
-    setForm((f) => ({
-      ...f,
-      customSizeChartColumns: [...f.customSizeChartColumns, name],
-      customSizeChartRows: f.customSizeChartRows.map((r) => ({ ...r, [name]: "" })),
-    }));
-    setNewChartCol("");
-  };
-
-  const removeCustomCol = (col: string) => {
-    setForm((f) => ({
-      ...f,
-      customSizeChartColumns: f.customSizeChartColumns.filter((c) => c !== col),
-      customSizeChartRows: f.customSizeChartRows.map((r) => {
-        const { [col]: _, ...rest } = r; return rest as SizeChartRow;
-      }),
-    }));
-  };
-
-  const removeCustomRow = (i: number) =>
-    setForm((f) => ({ ...f, customSizeChartRows: f.customSizeChartRows.filter((_, idx) => idx !== i) }));
-
-  const updateCustomCell = (rowIdx: number, col: string, val: string) =>
-    setForm((f) => ({
-      ...f,
-      customSizeChartRows: f.customSizeChartRows.map((r, i) =>
-        i === rowIdx ? { ...r, [col]: val } : r
-      ),
-    }));
 
   const uploadSlot = async (slot: ImageSlot, index: number): Promise<{ url: string; path: string }> => {
     if (slot.file) {
@@ -310,7 +300,11 @@ export default function Products() {
         }
       }
 
-      const [primary, ...extras] = uploaded;
+      const safeDisplayIdx = Math.min(displayIdx, uploaded.length - 1);
+      // imageUrl = the chosen display image (used by product cards & product page first view)
+      // allUrls / allPaths preserve full ordered list so ProductPage can reconstruct the gallery
+      const allUrls = uploaded.map((u) => u.url);
+      const allPaths = uploaded.map((u) => u.path);
 
       const computedStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
 
@@ -325,13 +319,12 @@ export default function Products() {
         colorSizeStock: form.colorSizeStock,
         stock: computedStock,
         description: form.description,
-        sizeChartMode: form.sizeChartMode,
-        customSizeChartColumns: form.sizeChartMode === "custom" ? form.customSizeChartColumns : [],
-        customSizeChartRows: form.sizeChartMode === "custom" ? form.customSizeChartRows : [],
-        imageUrl: primary?.url ?? "",
-        imagePath: primary?.path ?? "",
-        images: extras.map((u) => u.url),
-        imagePaths: extras.map((u) => u.path),
+        displayImageIndex: safeDisplayIdx,
+        imageUrl: allUrls[safeDisplayIdx] ?? allUrls[0] ?? "",
+        imagePath: allPaths[0] ?? "",
+        // images / imagePaths store ALL slots (0..N) so ProductPage can rebuild the full gallery
+        images: allUrls,
+        imagePaths: allPaths,
         updatedAt: serverTimestamp(),
       };
 
@@ -519,14 +512,9 @@ export default function Products() {
         )}
       </div>
 
-      {/* Hidden file input shared by all image slots */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChosen}
-        className="hidden"
-      />
+      {/* Hidden inputs */}
+      <input ref={addInputRef} type="file" accept="image/*" multiple onChange={handleAddFiles} className="hidden" />
+      <input ref={replaceInputRef} type="file" accept="image/*" onChange={handleReplaceFile} className="hidden" />
 
       {/* Modal */}
       {modalOpen && (
@@ -546,64 +534,84 @@ export default function Products() {
             <form onSubmit={handleSave} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
 
               {/* Multi-image upload */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
                     Product Images
                   </label>
-                  <span className="raleway-light text-xs text-[#533113]/40">
-                    First image is the primary · drag to reorder
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  {/* Existing + new slots */}
-                  {imageSlots.map((slot, i) => (
-                    <div
-                      key={i}
-                      className="relative group w-24 h-28 border border-[#DEDEDE] overflow-hidden bg-[#F5EDE0] cursor-pointer"
-                      onClick={() => triggerFileInput(i)}
-                    >
-                      <img src={slot.preview} alt={`img ${i + 1}`} className="w-full h-full object-cover" />
-
-                      {/* Primary badge */}
-                      {i === 0 && (
-                        <span className="absolute top-1 left-1 bg-[#533113] text-white raleway-bold text-[9px] px-1.5 py-0.5 leading-tight">
-                          Primary
-                        </span>
-                      )}
-
-                      {/* Hover overlay */}
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="raleway-light text-white text-[10px]">Replace</span>
-                      </div>
-
-                      {/* Remove button */}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeSlot(i); }}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <XIcon size={10} />
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Add-new tile */}
                   <button
                     type="button"
-                    onClick={() => triggerFileInput(null)}
-                    className="w-24 h-28 border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors flex flex-col items-center justify-center gap-1.5 text-[#533113]/40 hover:text-[#533113]"
+                    onClick={triggerAdd}
+                    className="flex items-center gap-1.5 raleway-bold text-xs text-[#533113] border border-[#533113] px-3 py-1.5 hover:bg-[#533113]/10 transition-colors uppercase tracking-widest"
                   >
-                    <PlusIcon size={20} />
-                    <span className="raleway-light text-[10px]">Add image</span>
+                    <PlusIcon size={13} weight="bold" />
+                    Add Images
                   </button>
                 </div>
 
-                {imageSlots.length === 0 && (
-                  <p className="raleway-light text-xs text-[#533113]/40">
-                    No images yet — click "Add image" to upload.
-                  </p>
+                {imageSlots.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={triggerAdd}
+                    className="w-full h-32 border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors flex flex-col items-center justify-center gap-2 text-[#533113]/40 hover:text-[#533113]"
+                  >
+                    <ImageIcon size={28} />
+                    <span className="raleway-light text-xs">Click to upload images (you can select multiple)</span>
+                  </button>
+                ) : (
+                  <>
+                    <p className="raleway-light text-[11px] text-[#533113]/50">
+                      Click an image to set it as the <strong>display photo</strong> (shown first on the product page). Use the pencil to replace, × to remove.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {imageSlots.map((slot, i) => {
+                        const isDisplay = i === displayIdx;
+                        return (
+                          <div key={i} className="flex flex-col items-center gap-1.5">
+                            {/* Image tile */}
+                            <div
+                              onClick={() => setDisplayIdx(i)}
+                              className={`relative group w-24 h-28 overflow-hidden bg-[#F5EDE0] cursor-pointer border-2 transition-all ${
+                                isDisplay ? "border-[#533113] ring-2 ring-[#533113]/30" : "border-[#DEDEDE] hover:border-[#533113]/50"
+                              }`}
+                            >
+                              <img src={slot.preview} alt={`img ${i + 1}`} className="w-full h-full object-cover" />
+
+                              {/* Selected overlay */}
+                              {isDisplay && (
+                                <div className="absolute inset-0 bg-[#533113]/10 flex items-center justify-center">
+                                  <span className="text-white text-lg drop-shadow">★</span>
+                                </div>
+                              )}
+
+                              {/* Action buttons — always visible in top corners */}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); triggerReplace(i); }}
+                                className="absolute top-1 right-6 w-5 h-5 bg-white/80 hover:bg-white text-[#533113] flex items-center justify-center shadow-sm"
+                                title="Replace image"
+                              >
+                                <PencilSimpleIcon size={10} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeSlot(i); }}
+                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white flex items-center justify-center"
+                                title="Remove image"
+                              >
+                                <XIcon size={10} />
+                              </button>
+                            </div>
+
+                            {/* Label below */}
+                            <span className={`raleway-bold text-[9px] uppercase tracking-widest ${isDisplay ? "text-[#533113]" : "text-[#533113]/30"}`}>
+                              {isDisplay ? "★ Display" : `Photo ${i + 1}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -791,150 +799,6 @@ export default function Products() {
                   className="input-base resize-none"
                 />
               </Field>
-
-              {/* Size Chart */}
-              <div className="flex flex-col gap-3">
-                <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
-                  Size Chart
-                </label>
-                <div className="flex gap-2">
-                  {(["standard", "custom", "none"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, sizeChartMode: mode }))}
-                      className={`flex-1 py-2 raleway-bold text-xs uppercase tracking-widest border transition-colors ${
-                        form.sizeChartMode === mode
-                          ? "bg-[#533113] text-white border-[#533113]"
-                          : "text-[#533113] border-[#DEDEDE] hover:bg-[#533113]/5"
-                      }`}
-                    >
-                      {mode === "standard" ? "Standard" : mode === "custom" ? "Custom" : "None"}
-                    </button>
-                  ))}
-                </div>
-                <p className="raleway-light text-xs text-[#533113]/50">
-                  {form.sizeChartMode === "standard"
-                    ? "Uses the standard chart set in Homepage Settings."
-                    : form.sizeChartMode === "custom"
-                    ? "This product has its own size chart."
-                    : "No size chart shown on this product page."}
-                </p>
-
-                {form.sizeChartMode === "custom" && (
-                  <div className="flex flex-col gap-4 border border-[#DEDEDE] p-4">
-
-                    {/* Row sizes — toggle chips */}
-                    <div className="flex flex-col gap-2">
-                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Sizes (rows) — toggle to include</span>
-                      <div className="flex flex-wrap gap-2">
-                        {SIZES.map((s) => {
-                          const active = form.customSizeChartRows.some((r) => r.size === s);
-                          return (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => {
-                                if (active) {
-                                  removeCustomRow(form.customSizeChartRows.findIndex((r) => r.size === s));
-                                } else {
-                                  const blank: SizeChartRow = { size: s };
-                                  form.customSizeChartColumns.forEach((c) => { blank[c] = ""; });
-                                  setForm((f) => ({
-                                    ...f,
-                                    customSizeChartRows: [...f.customSizeChartRows, blank].sort(
-                                      (a, b) => SIZES.indexOf(a.size) - SIZES.indexOf(b.size)
-                                    ),
-                                  }));
-                                }
-                              }}
-                              className={`border px-5 py-2.5 raleway-bold text-sm transition-colors ${
-                                active
-                                  ? "bg-[#533113] text-white border-[#533113]"
-                                  : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Columns — add/remove chips */}
-                    <div className="flex flex-col gap-2">
-                      <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Measurements (columns)</span>
-                      <div className="flex flex-wrap gap-2">
-                        {form.customSizeChartColumns.map((col) => (
-                          <span
-                            key={col}
-                            className="flex items-center gap-2 bg-[#533113] text-white raleway-light text-sm px-4 py-2.5 border border-[#533113]"
-                          >
-                            {col}
-                            <button type="button" onClick={() => removeCustomCol(col)} className="opacity-70 hover:opacity-100">
-                              <XIcon size={10} />
-                            </button>
-                          </span>
-                        ))}
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={newChartCol}
-                            onChange={(e) => setNewChartCol(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomCol())}
-                            placeholder="e.g. Chest (in)"
-                            className="border border-[#533113] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] w-44"
-                          />
-                          <button
-                            type="button"
-                            onClick={addCustomCol}
-                            className="border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest px-4 py-2.5 hover:bg-[#533113]/10 transition-colors"
-                          >
-                            + Add
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Measurement table — only shown when both rows and columns exist */}
-                    {form.customSizeChartRows.length > 0 && form.customSizeChartColumns.length > 0 && (
-                      <div className="overflow-x-auto border border-[#DEDEDE]">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-[#FFFBF6] border-b border-[#DEDEDE]">
-                              <th className="raleway-bold text-[#533113]/60 text-left px-5 py-3 uppercase tracking-widest">Size</th>
-                              {form.customSizeChartColumns.map((col) => (
-                                <th key={col} className="raleway-bold text-[#533113]/60 px-5 py-3 text-left uppercase tracking-widest whitespace-nowrap">
-                                  {col}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {form.customSizeChartRows.map((row, i) => (
-                              <tr key={row.size} className="border-b border-[#DEDEDE]/60">
-                                <td className="px-5 py-3">
-                                  <span className="raleway-bold text-[#533113]">{row.size}</span>
-                                </td>
-                                {form.customSizeChartColumns.map((col) => (
-                                  <td key={col} className="px-3 py-2">
-                                    <input
-                                      value={row[col] ?? ""}
-                                      onChange={(e) => updateCustomCell(i, col, e.target.value)}
-                                      placeholder="—"
-                                      className="w-32 border border-[#DEDEDE] raleway-light text-[#533113] py-2 px-3 outline-none focus:border-[#533113] text-sm bg-white"
-                                    />
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2 shrink-0">

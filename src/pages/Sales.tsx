@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -8,19 +8,17 @@ import Button from "../components/ui/Button";
 import PageHero from "../components/PageHero";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
-import heroBg2 from "../assets/hero-bg2.webp";
+import heroBg from "../assets/hero-bg.webp";
 
-const SUBCATEGORIES = ["All", "Women's", "Men's", "Sports"];
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6"];
-
-const CLOTHING_CATS = ["Women's", "Men's", "Sports"];
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  discountPrice?: number | null;
   category: string;
   imageUrl?: string;
   colors?: string[];
@@ -28,16 +26,16 @@ interface Product {
 
 const FALLBACK: Product[] = Array.from({ length: 12 }, (_, i) => ({
   id: String(i + 1),
-  name: i % 3 === 0 ? "Women's Sports Wear" : i % 3 === 1 ? "Men's Activewear" : "Sports Tee",
-  price: 100 + i * 15,
-  category: CLOTHING_CATS[i % 3],
+  name: "Sale Item",
+  price: 200 - i * 5,
+  discountPrice: 120 - i * 3,
+  category: i % 2 === 0 ? "Women's" : "Men's",
   imageUrl: product1,
 }));
 
-function Clothing() {
+function Sales() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("All");
   const [activeSort, setActiveSort] = useState("Newest First");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -52,8 +50,10 @@ function Clothing() {
           query(collection(db, "products"), orderBy("createdAt", "desc"))
         );
         const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
-        const clothing = all.filter((p) => CLOTHING_CATS.includes(p.category));
-        setProducts(clothing.length > 0 ? clothing : FALLBACK);
+        const onSale = all.filter(
+          (p) => p.discountPrice != null && p.discountPrice < p.price
+        );
+        setProducts(onSale.length > 0 ? onSale : FALLBACK);
       } catch {
         setProducts(FALLBACK);
       } finally {
@@ -66,14 +66,15 @@ function Clothing() {
   const display = loading ? FALLBACK : products;
 
   const filtered = display.filter((p) => {
-    if (activeFilter !== "All" && p.category !== activeFilter) return false;
-    if (p.price < priceMin || p.price > priceMax) return false;
-    return true;
+    const effectivePrice = p.discountPrice ?? p.price;
+    return effectivePrice >= priceMin && effectivePrice <= priceMax;
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    if (activeSort === "Price: Low to High") return a.price - b.price;
-    if (activeSort === "Price: High to Low") return b.price - a.price;
+    const ap = a.discountPrice ?? a.price;
+    const bp = b.discountPrice ?? b.price;
+    if (activeSort === "Price: Low to High") return ap - bp;
+    if (activeSort === "Price: High to Low") return bp - ap;
     return 0;
   });
 
@@ -88,12 +89,12 @@ function Clothing() {
       <Navbar />
 
       <PageHero
-        bgImage={heroBg2}
-        bgPosition="50% 30%"
-        title={"CLOTHING"}
-        subtitle="Women's, men's and sports — stylish, breathable fits for every lifestyle."
-        badge="FitwearGH Collection"
-        ctaText="Shop Clothing"
+        bgImage={heroBg}
+        bgPosition="50% 40%"
+        title={"SALES &\nOFFERS"}
+        subtitle="Limited-time deals on your favourite pieces — shop before they're gone."
+        badge="FitwearGH Sale"
+        ctaText="Shop the Sale"
       />
 
       <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-8">
@@ -116,26 +117,10 @@ function Clothing() {
           </button>
         </div>
 
-        {/* Desktop: category pills + sort */}
+        {/* Desktop: sort + filter */}
         <div className="hidden md:flex flex-col gap-4">
-          <div className="flex items-center gap-3 overflow-x-auto pb-1">
-            {SUBCATEGORIES.map((f) => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`whitespace-nowrap raleway-light text-sm px-5 py-2 border transition-all duration-200 ${
-                  activeFilter === f
-                    ? "bg-[#533113] text-white border-[#533113]"
-                    : "bg-white text-[#533113] border-[#533113] hover:bg-[#533113]/10"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex justify-between items-center border-t border-[#DEDEDE] pt-4">
-            <p className="raleway-light text-sm text-[#533113]/70">{sorted.length} items</p>
+          <div className="flex justify-between items-center border-b border-[#DEDEDE] pb-4">
+            <p className="raleway-light text-sm text-[#533113]/70">{sorted.length} items on sale</p>
             <div className="flex items-center gap-3">
               <select
                 value={activeSort}
@@ -157,27 +142,7 @@ function Clothing() {
 
         {/* Filter panel */}
         {filterPanelOpen && (
-          <div className="border border-[#DEDEDE] bg-white p-5 md:p-6 mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            {/* Category (mobile only) */}
-            <div className="flex flex-col gap-3 md:hidden">
-              <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Category</p>
-              <div className="flex flex-wrap gap-2">
-                {SUBCATEGORIES.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setActiveFilter(f)}
-                    className={`raleway-light text-xs px-3 py-1.5 border transition-all ${
-                      activeFilter === f
-                        ? "bg-[#533113] text-white border-[#533113]"
-                        : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="border border-[#DEDEDE] bg-white p-5 md:p-6 mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
             {/* Size */}
             <div className="flex flex-col gap-3">
               <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Size</p>
@@ -218,7 +183,7 @@ function Clothing() {
             </div>
 
             {/* Price range */}
-            <div className="flex flex-col gap-4 sm:col-span-2 md:col-span-1">
+            <div className="flex flex-col gap-4">
               <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Price Range</p>
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between">
@@ -259,7 +224,7 @@ function Clothing() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-20">
-            <p className="raleway-light text-base text-[#533113]/50">No clothing items match your filters.</p>
+            <p className="raleway-light text-base text-[#533113]/50">No sale items right now. Check back soon.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
@@ -270,6 +235,7 @@ function Clothing() {
                 image={product.imageUrl}
                 name={product.name}
                 price={product.price}
+                discountPrice={product.discountPrice}
                 colors={product.colors}
               />
             ))}
@@ -286,4 +252,4 @@ function Clothing() {
   );
 }
 
-export default Clothing;
+export default Sales;
