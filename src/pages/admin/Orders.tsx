@@ -4,6 +4,7 @@ import {
   getDocs,
   updateDoc,
   doc,
+  setDoc,
   query,
   orderBy,
   type Timestamp,
@@ -15,10 +16,15 @@ import {
   CaretDownIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import { orderStatusHtml } from "../../emails/orderStatusEmail";
+import { shippingEmailHtml } from "../../emails/shippingEmail";
+import { cancellationEmailHtml } from "../../emails/cancellationEmail";
 
-interface OrderItem {
+interface LineItem {
   name: string;
-  qty: number;
+  size?: string;
+  color?: string;
+  quantity: number;
   price: number;
 }
 
@@ -26,12 +32,13 @@ interface Order {
   id: string;
   customerName: string;
   customerEmail: string;
-  phone: string;
+  customerPhone: string;
   address: string;
+  city: string;
   total: number;
   status: string;
-  items: OrderItem[];
-  itemCount: number;
+  lineItems: LineItem[];
+  items: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -72,6 +79,57 @@ export default function Orders() {
       );
       if (selectedOrder?.id === orderId) {
         setSelectedOrder((prev) => prev ? { ...prev, status } : prev);
+      }
+
+      const order = orders.find((o) => o.id === orderId);
+      if (!order?.customerEmail) return;
+
+      const lineItems = order.lineItems ?? [];
+
+      if (status === "shipped") {
+        await setDoc(doc(db, "mail", `shipped_${orderId}`), {
+          to: order.customerEmail,
+          message: {
+            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has shipped!`,
+            html: shippingEmailHtml({
+              orderId,
+              customerName: order.customerName,
+              customerEmail: order.customerEmail,
+              address: order.address,
+              city: order.city,
+              total: order.total,
+              lineItems,
+            }),
+          },
+        });
+      } else if (status === "cancelled") {
+        await setDoc(doc(db, "mail", `cancelled_${orderId}`), {
+          to: order.customerEmail,
+          message: {
+            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has been cancelled`,
+            html: cancellationEmailHtml({
+              orderId,
+              customerName: order.customerName,
+              customerEmail: order.customerEmail,
+              lineItems,
+              total: order.total,
+            }),
+          },
+        });
+      } else if (status === "processing" || status === "delivered") {
+        await setDoc(doc(db, "mail", `status_${orderId}_${status}`), {
+          to: order.customerEmail,
+          message: {
+            subject: `FitwearGH — Order #${orderId.slice(0, 8).toUpperCase()} update: ${status}`,
+            html: orderStatusHtml({
+              orderId,
+              customerName: order.customerName,
+              customerEmail: order.customerEmail,
+              status: status as "processing" | "delivered",
+              total: order.total,
+            }),
+          },
+        });
       }
     } finally {
       setUpdatingId(null);
@@ -173,7 +231,7 @@ export default function Orders() {
                     <p className="raleway-light text-xs text-[#533113]/50">{order.customerEmail ?? ""}</p>
                   </td>
                   <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">
-                    {order.itemCount ?? order.items?.length ?? "—"}
+                    {order.items ?? order.lineItems?.length ?? "—"}
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{fmt(order.total ?? 0)}</td>
                   <td className="px-5 py-3">
@@ -230,26 +288,30 @@ export default function Orders() {
                 <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest mb-1">Customer</p>
                 <p className="raleway-bold text-sm text-[#533113]">{selectedOrder.customerName ?? "—"}</p>
                 <p className="raleway-light text-sm text-[#533113]/70">{selectedOrder.customerEmail ?? "—"}</p>
-                <p className="raleway-light text-sm text-[#533113]/70">{selectedOrder.phone ?? "—"}</p>
+                <p className="raleway-light text-sm text-[#533113]/70">{selectedOrder.customerPhone ?? "—"}</p>
                 <p className="raleway-light text-xs text-[#533113]/50 mt-1">{selectedOrder.address ?? "—"}</p>
               </div>
 
               {/* Items */}
               <div className="flex flex-col gap-2">
                 <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest">Items</p>
-                {selectedOrder.items?.length > 0 ? (
+                {selectedOrder.lineItems?.length > 0 ? (
                   <div className="flex flex-col gap-2">
-                    {selectedOrder.items.map((item, i) => (
+                    {selectedOrder.lineItems.map((item, i) => (
                       <div
                         key={i}
                         className="flex items-center justify-between px-4 py-3 border border-[#DEDEDE] bg-white"
                       >
                         <div>
                           <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
-                          <p className="raleway-light text-xs text-[#533113]/50">Qty: {item.qty}</p>
+                          <p className="raleway-light text-xs text-[#533113]/50">
+                            {item.size && `${item.size} · `}
+                            {item.color && `${item.color} · `}
+                            Qty: {item.quantity}
+                          </p>
                         </div>
                         <p className="raleway-bold text-sm text-[#533113]">
-                          {fmt(item.price * item.qty)}
+                          {fmt(item.price * item.quantity)}
                         </p>
                       </div>
                     ))}

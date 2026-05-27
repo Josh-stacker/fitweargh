@@ -45,13 +45,12 @@ interface FirestoreProduct {
   stock: number;
 }
 
-// Fixed UK size chart used sitewide
 const UK_SIZE_CHART = [
-  { size: "S",   uk: "8 – 10"  },
-  { size: "M",   uk: "10 – 12" },
-  { size: "L",   uk: "14 – 16" },
-  { size: "XL",  uk: "16 – 18" },
-  { size: "XXL", uk: "20"      },
+  { size: "S",   label: "UK Small",       uk: "8 – 10"  },
+  { size: "M",   label: "UK Medium",      uk: "10 – 12" },
+  { size: "L",   label: "UK Large",       uk: "14 – 16" },
+  { size: "XL",  label: "UK Extra Large", uk: "16 – 18" },
+  { size: "XXL", label: "UK XXL",         uk: "20"      },
 ];
 
 // Fallback used when no Firestore product exists for the given ID
@@ -250,7 +249,7 @@ function ProductPage() {
                 )}
               </div>
               <span className={`raleway-light text-sm px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                {inStock ? `In stock (${p.stock})` : "Out of stock"}
+                {inStock ? "In Stock" : "Out of Stock"}
               </span>
             </div>
 
@@ -261,19 +260,27 @@ function ProductPage() {
                   Select Size
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {p.sizes.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSelectedSize(s)}
-                      className={`border px-5 py-2.5 raleway-bold text-base transition-all duration-150 ${
-                        selectedSize === s
-                          ? "bg-[#533113] text-white border-[#533113]"
-                          : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  {p.sizes.map((s) => {
+                    const chart = UK_SIZE_CHART.find((r) => r.size === s);
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedSize(s)}
+                        className={`flex flex-col items-center border px-4 py-2 raleway-bold text-sm transition-all duration-150 ${
+                          selectedSize === s
+                            ? "bg-[#533113] text-white border-[#533113]"
+                            : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                        }`}
+                      >
+                        <span className="text-base">{s}</span>
+                        {chart && (
+                          <span className={`raleway-light text-[10px] leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}>
+                            {chart.uk}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -376,13 +383,15 @@ function ProductPage() {
                     <thead>
                       <tr className="border-b border-[#DEDEDE]">
                         <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">Size</th>
-                        <th className="raleway-bold text-left pb-2 text-[#533113]">UK Size</th>
+                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">UK Label</th>
+                        <th className="raleway-bold text-left pb-2 text-[#533113]">UK Dress Size</th>
                       </tr>
                     </thead>
                     <tbody>
                       {UK_SIZE_CHART.map((row) => (
                         <tr key={row.size} className="border-b border-[#DEDEDE]/40">
                           <td className="py-2 pr-8 raleway-bold">{row.size}</td>
+                          <td className="py-2 pr-8">{row.label}</td>
                           <td className="py-2">{row.uk}</td>
                         </tr>
                       ))}

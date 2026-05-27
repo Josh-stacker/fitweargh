@@ -13,6 +13,8 @@ import {
   ImagesIcon,
   HouseIcon,
   SpeakerHighIcon,
+  ShieldCheckIcon,
+  TruckIcon,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -24,6 +26,8 @@ const NAV = [
   { to: "/admin/hero-slides", label: "Hero Slides", icon: ImagesIcon },
   { to: "/admin/homepage", label: "Homepage", icon: HouseIcon },
   { to: "/admin/popup", label: "Sale Popup", icon: SpeakerHighIcon },
+  { to: "/admin/shipping", label: "Shipping", icon: TruckIcon },
+  { to: "/admin/admins", label: "Admin Users", icon: ShieldCheckIcon },
 ];
 
 export default function AdminLayout() {

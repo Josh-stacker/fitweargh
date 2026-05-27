@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase";
+import { orderConfirmHtml } from "../emails/orderConfirmEmail";
+import { orderAdminHtml } from "../emails/orderAdminEmail";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
@@ -22,8 +24,6 @@ import {
   ImageIcon,
 } from "@phosphor-icons/react";
 
-const DELIVERY_FEE = 15;
-
 const EMPTY_FORM = {
   name: "",
   phone: "",
@@ -34,6 +34,14 @@ const EMPTY_FORM = {
 };
 
 type FormData = typeof EMPTY_FORM;
+
+interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  enabled: boolean;
+}
 
 export default function CartPage() {
   const { items, count, total, removeItem, updateQty, clearCart } = useCart();
@@ -49,7 +57,22 @@ export default function CartPage() {
   const [placing, setPlacing] = useState(false);
   const [orderId, setOrderId] = useState("");
 
-  const grandTotal = total + DELIVERY_FEE;
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
+
+  useEffect(() => {
+    getDocs(query(collection(db, "shippingMethods"), where("enabled", "==", true))).then((snap) => {
+      const methods = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShippingMethod));
+      // Sort by price ascending
+      methods.sort((a, b) => a.price - b.price);
+      setShippingMethods(methods);
+      if (methods.length > 0) setSelectedShipping(methods[0]);
+    });
+  }, []);
+
+  // Fall back to GH₵15 if no shipping methods are configured yet
+  const deliveryFee = selectedShipping?.price ?? 15;
+  const grandTotal = total + deliveryFee;
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -75,13 +98,33 @@ export default function CartPage() {
           imageUrl: i.imageUrl,
         })),
         subtotal: total,
-        deliveryFee: DELIVERY_FEE,
+        deliveryFee,
+        shippingMethod: selectedShipping?.name ?? "Standard Delivery",
         total: grandTotal,
         status: "pending",
         items: count,
         createdAt: serverTimestamp(),
       });
       setOrderId(ref.id);
+
+      // Order confirmation to customer
+      await setDoc(doc(db, "mail", `order_confirm_${ref.id}`), {
+        to: form.email,
+        message: {
+          subject: `FitwearGH — Order Confirmed #${ref.id.slice(0, 8).toUpperCase()}`,
+          html: orderConfirmHtml({ orderId: ref.id, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
+        },
+      });
+
+      // New order alert to admin
+      await setDoc(doc(db, "mail", `order_admin_${ref.id}`), {
+        to: "nerdosey@gmail.com",
+        message: {
+          subject: `New Order #${ref.id.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
+          html: orderAdminHtml({ orderId: ref.id, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
+        },
+      });
+
       clearCart();
       setStep("success");
     } catch (err) {
@@ -231,10 +274,38 @@ export default function CartPage() {
                     <span>Subtotal ({count} items)</span>
                     <span>{fmt(total)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Delivery</span>
-                    <span>{fmt(DELIVERY_FEE)}</span>
-                  </div>
+
+                  {shippingMethods.length > 1 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[#533113]/60">Delivery</span>
+                      <div className="flex flex-col gap-1">
+                        {shippingMethods.map((m) => (
+                          <label key={m.id} className="flex items-center justify-between cursor-pointer gap-2 px-3 py-2 border border-[#DEDEDE] hover:border-[#533113]/40 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="shipping"
+                                checked={selectedShipping?.id === m.id}
+                                onChange={() => setSelectedShipping(m)}
+                                className="accent-[#533113]"
+                              />
+                              <span>
+                                <span className="raleway-bold text-xs">{m.name}</span>
+                                {m.description && <span className="block raleway-light text-xs text-[#533113]/50">{m.description}</span>}
+                              </span>
+                            </span>
+                            <span className="raleway-bold text-xs shrink-0">{fmt(m.price)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span>{selectedShipping?.name ?? "Delivery"}</span>
+                      <span>{fmt(deliveryFee)}</span>
+                    </div>
+                  )}
+
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-base">
                     <span>Total</span>
@@ -403,8 +474,8 @@ export default function CartPage() {
                     <span>{fmt(total)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Delivery</span>
-                    <span>{fmt(DELIVERY_FEE)}</span>
+                    <span>{selectedShipping?.name ?? "Delivery"}</span>
+                    <span>{fmt(deliveryFee)}</span>
                   </div>
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-base">
@@ -431,3 +502,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+

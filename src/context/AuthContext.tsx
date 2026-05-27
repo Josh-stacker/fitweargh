@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { welcomeEmailHtml } from "../emails/welcomeEmail";
 
 interface AuthContextType {
   user: User | null;
@@ -69,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (name: string, email: string, password: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: name });
-    // Create customer document
     await setDoc(doc(db, "customers", cred.user.uid), {
       name,
       email,
@@ -77,6 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       orderCount: 0,
       totalSpent: 0,
       createdAt: serverTimestamp(),
+    });
+    // Welcome email
+    await setDoc(doc(db, "mail", `welcome_${cred.user.uid}`), {
+      to: email,
+      message: {
+        subject: "Welcome to FitwearGH!",
+        html: welcomeEmailHtml(name),
+      },
     });
     setUser({ ...cred.user, displayName: name });
     setIsAdmin(false);
@@ -99,3 +107,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx as AuthContextType & { loginAdmin: (email: string, password: string) => Promise<void> };
 }
+

@@ -52,9 +52,9 @@ function Navbar() {
               <>
                 <button
                   onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                  className="flex items-center gap-2 raleway-light text-base text-[#533113] hover:text-[#533113] transition-colors"
+                  className="flex items-center gap-2 raleway-light text-base text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
                 >
-                  <UserCircle size={24} weight="regular" />
+                  <UserCircle size={24} weight="fill" />
                   <span className="max-w-[120px] truncate">{user.displayName ?? "Account"}</span>
                 </button>
                 {accountMenuOpen && (
@@ -85,7 +85,7 @@ function Navbar() {
             ) : (
               <Link
                 to="/account/login"
-                className="flex items-center gap-2 raleway-light text-base text-[#533113] hover:text-[#533113] transition-colors"
+                className="flex items-center gap-2 raleway-light text-base text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
               >
                 <UserCircle size={24} weight="regular" />
                 Account
@@ -151,7 +151,7 @@ function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-3 raleway-regular text-xl text-[#533113]"
                 >
-                  <UserCircle size={24} />
+                  <UserCircle size={24} weight="fill" />
                   {user.displayName ?? "My Account"}
                 </Link>
                 <button

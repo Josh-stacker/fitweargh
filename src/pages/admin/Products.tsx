@@ -95,6 +95,9 @@ const CATEGORIES = [
   "Accessories",
 ];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const UK_SIZE_LABELS: Record<string, string> = {
+  S: "8–10", M: "10–12", L: "14–16", XL: "16–18", XXL: "20",
+};
 const COLORS: { name: string; hex: string }[] = [
   { name: "Black",  hex: "#000000" },
   { name: "White",  hex: "#FFFFFF" },
@@ -684,6 +687,14 @@ export default function Products() {
                 <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
                   Available Sizes
                 </label>
+                <div className="flex flex-wrap gap-1.5 bg-[#FFFBF6] border border-[#DEDEDE] px-3 py-2 text-[10px] raleway-light text-[#533113]/60">
+                  <span className="raleway-bold text-[10px] text-[#533113]/80 mr-1">UK Guide:</span>
+                  <span>S = 8–10</span><span className="text-[#DEDEDE]">|</span>
+                  <span>M = 10–12</span><span className="text-[#DEDEDE]">|</span>
+                  <span>L = 14–16</span><span className="text-[#DEDEDE]">|</span>
+                  <span>XL = 16–18</span><span className="text-[#DEDEDE]">|</span>
+                  <span>XXL = 20</span>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {SIZES.map((s) => (
                     <button
@@ -749,7 +760,12 @@ export default function Products() {
                           </th>
                           {form.sizes.map((s) => (
                             <th key={s} className="raleway-bold text-[#533113]/60 px-3 py-3 uppercase tracking-widest text-center min-w-[80px]">
-                              {s}
+                              <span className="block">{s}</span>
+                              {UK_SIZE_LABELS[s] && (
+                                <span className="block raleway-light normal-case tracking-normal text-[8px] text-[#533113]/40 mt-0.5">
+                                  UK {UK_SIZE_LABELS[s]}
+                                </span>
+                              )}
                             </th>
                           ))}
                         </tr>

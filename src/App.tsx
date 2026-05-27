@@ -27,6 +27,8 @@ import Categories from "./pages/admin/Categories";
 import HeroSlides from "./pages/admin/HeroSlides";
 import HomepageSettings from "./pages/admin/HomepageSettings";
 import PopupSettings from "./pages/admin/PopupSettings";
+import AdminUsers from "./pages/admin/AdminUsers";
+import ShippingMethods from "./pages/admin/ShippingMethods";
 
 import "./index.css";
 
@@ -80,6 +82,8 @@ function App() {
               <Route path="hero-slides" element={<HeroSlides />} />
               <Route path="homepage" element={<HomepageSettings />} />
               <Route path="popup" element={<PopupSettings />} />
+              <Route path="admins" element={<AdminUsers />} />
+              <Route path="shipping" element={<ShippingMethods />} />
             </Route>
           </Routes>
         </BrowserRouter>
