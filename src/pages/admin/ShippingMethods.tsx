@@ -9,7 +9,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase";
-import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
+import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon } from "@phosphor-icons/react";
 
 interface ShippingMethod {
   id: string;
