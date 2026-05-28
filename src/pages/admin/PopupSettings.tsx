@@ -69,7 +69,7 @@ export default function PopupSettings() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Sale Popup</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">
             Control the promotional popup shown to storefront visitors
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function PopupSettings() {
         <div className="flex items-center justify-between pb-5 border-b border-[#DEDEDE]">
           <div>
             <p className="raleway-bold text-sm text-[#533113]">Popup Enabled</p>
-            <p className="raleway-light text-xs text-[#533113]/50 mt-0.5">
+            <p className="raleway-regular text-sm text-[#533113]/50 mt-0.5">
               When on, the popup appears once per session for every visitor
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function PopupSettings() {
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Big Sale — Up to 50% Off!"
-            className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
+            className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
           />
         </div>
 
@@ -129,7 +129,7 @@ export default function PopupSettings() {
             onChange={(e) => set("body", e.target.value)}
             rows={3}
             placeholder="Short promotional message shown under the title…"
-            className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] resize-none"
+            className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] resize-none"
           />
         </div>
 
@@ -144,7 +144,7 @@ export default function PopupSettings() {
               value={form.ctaText}
               onChange={(e) => set("ctaText", e.target.value)}
               placeholder="e.g. Shop the Sale"
-              className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
+              className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -156,7 +156,7 @@ export default function PopupSettings() {
               value={form.ctaLink}
               onChange={(e) => set("ctaLink", e.target.value)}
               placeholder="e.g. /sales"
-              className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
+              className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113]"
             />
           </div>
         </div>
@@ -165,24 +165,24 @@ export default function PopupSettings() {
         <div className="flex flex-col gap-2 pt-2 border-t border-[#DEDEDE]">
           <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Preview</p>
           <div className="border border-[#DEDEDE] bg-[#FFFBF6] p-6 flex flex-col gap-4 max-w-sm">
-            <span className="raleway-light text-xs tracking-[0.3em] uppercase text-[#533113]/50">
+            <span className="raleway-regular text-sm tracking-[0.3em] uppercase text-[#533113]/50">
               FitwearGH Sale
             </span>
             <p className="raleway-black text-2xl text-[#533113] leading-tight">
               {form.title || "Popup title"}
             </p>
             {form.body && (
-              <p className="raleway-light text-xs text-[#533113]/70 leading-relaxed">
+              <p className="raleway-regular text-sm text-[#533113]/70 leading-relaxed">
                 {form.body}
               </p>
             )}
             {form.ctaText && (
               <div className="bg-[#533113] text-white flex items-center justify-between px-4 py-2.5">
-                <span className="raleway-light text-xs">{form.ctaText}</span>
+                <span className="raleway-regular text-sm">{form.ctaText}</span>
                 <span className="text-white text-xs">↗</span>
               </div>
             )}
-            <span className="raleway-light text-[10px] text-[#533113]/30 underline">No thanks</span>
+            <span className="raleway-regular text-xs text-[#533113]/30 underline">No thanks</span>
           </div>
         </div>
       </div>

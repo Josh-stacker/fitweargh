@@ -132,7 +132,7 @@ export default function AdminUsers() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Admin Users</h2>
-        <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+        <p className="raleway-regular text-base text-[#533113]/50 mt-1">
           Manage who has access to this admin panel.
         </p>
       </div>
@@ -142,7 +142,7 @@ export default function AdminUsers() {
         <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
           Add Admin
         </h3>
-        <p className="raleway-light text-sm text-[#533113]/60">
+        <p className="raleway-regular text-base text-[#533113]/60">
           The user must already have a customer account. Enter their email address below.
         </p>
         <form onSubmit={handleAdd} className="flex gap-3">
@@ -152,7 +152,7 @@ export default function AdminUsers() {
             placeholder="customer@email.com"
             value={emailInput}
             onChange={(e) => { setEmailInput(e.target.value); setError(""); setSuccess(""); }}
-            className="flex-1 border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-4 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
+            className="flex-1 border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-4 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
           />
           <button
             type="submit"
@@ -169,13 +169,13 @@ export default function AdminUsers() {
         </form>
 
         {error && (
-          <div className="flex items-start gap-2 text-red-600 raleway-light text-sm">
+          <div className="flex items-start gap-2 text-red-600 raleway-regular text-base">
             <WarningIcon size={16} className="mt-0.5 shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <p className="text-green-700 raleway-light text-sm">{success}</p>
+          <p className="text-green-700 raleway-regular text-base">{success}</p>
         )}
       </div>
 
@@ -188,7 +188,7 @@ export default function AdminUsers() {
         ) : admins.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 gap-3">
             <ShieldCheckIcon size={40} className="text-[#533113]/20" />
-            <p className="raleway-light text-sm text-[#533113]/40">No admins found.</p>
+            <p className="raleway-regular text-base text-[#533113]/40">No admins found.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -212,14 +212,14 @@ export default function AdminUsers() {
                 >
                   <td className="px-5 py-3">
                     <p className="raleway-bold text-sm text-[#533113]">{a.name}</p>
-                    <p className="raleway-light text-xs text-[#533113]/50">{a.email}</p>
+                    <p className="raleway-regular text-sm text-[#533113]/50">{a.email}</p>
                   </td>
-                  <td className="px-5 py-3 font-mono raleway-light text-xs text-[#533113]/40 max-w-[140px] truncate">
+                  <td className="px-5 py-3 font-mono raleway-regular text-sm text-[#533113]/40 max-w-[140px] truncate">
                     {a.uid}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {a.uid === user?.uid ? (
-                      <span className="raleway-light text-xs text-[#533113]/30 italic">you</span>
+                      <span className="raleway-regular text-sm text-[#533113]/30 italic">you</span>
                     ) : (
                       <button
                         onClick={() => handleRemove(a.uid)}

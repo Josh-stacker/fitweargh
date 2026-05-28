@@ -37,7 +37,7 @@ function Navbar() {
             <Link
               key={to}
               to={to}
-              className="raleway-light text-base text-[#533113] hover:text-[#533113] transition-colors"
+              className="raleway-regular text-lg text-[#533113] hover:text-[#533113] transition-colors"
             >
               {label}
             </Link>
@@ -52,7 +52,7 @@ function Navbar() {
               <>
                 <button
                   onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                  className="flex items-center gap-2 raleway-light text-base text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
+                  className="flex items-center gap-2 raleway-regular text-lg text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
                 >
                   <UserCircle size={24} weight="fill" />
                   <span className="max-w-[120px] truncate">{user.displayName ?? "Account"}</span>
@@ -67,13 +67,13 @@ function Navbar() {
                       <Link
                         to="/account"
                         onClick={() => setAccountMenuOpen(false)}
-                        className="raleway-light text-sm text-[#533113] px-4 py-3 hover:bg-[#FFFBF6] transition-colors"
+                        className="raleway-regular text-base text-[#533113] px-4 py-3 hover:bg-[#FFFBF6] transition-colors"
                       >
                         My Dashboard
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 raleway-light text-sm text-red-600 px-4 py-3 hover:bg-red-50 transition-colors text-left"
+                        className="flex items-center gap-2 raleway-regular text-base text-red-600 px-4 py-3 hover:bg-red-50 transition-colors text-left"
                       >
                         <SignOut size={15} />
                         Sign out
@@ -85,7 +85,7 @@ function Navbar() {
             ) : (
               <Link
                 to="/account/login"
-                className="flex items-center gap-2 raleway-light text-base text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
+                className="flex items-center gap-2 raleway-regular text-lg text-[#533113] cursor-pointer transition-all duration-200 hover:underline"
               >
                 <UserCircle size={24} weight="regular" />
                 Account
@@ -102,7 +102,7 @@ function Navbar() {
             onClick={() => setIsMenuOpen(true)}
           >
             <List size={26} color="#533113" />
-            <span className="raleway-light text-sm text-[#533113]">Menu</span>
+            <span className="raleway-regular text-base text-[#533113]">Menu</span>
           </button>
           <CartButton />
         </div>
@@ -119,7 +119,7 @@ function Navbar() {
               className="flex items-center gap-2 bg-[#E5D8C7] px-4 py-2 rounded-full"
             >
               <X size={22} color="#533113" />
-              <span className="raleway-light text-sm text-[#533113]">Close</span>
+              <span className="raleway-regular text-base text-[#533113]">Close</span>
             </button>
           </div>
 
@@ -149,14 +149,14 @@ function Navbar() {
                 <Link
                   to="/account"
                   onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-3 raleway-regular text-xl text-[#533113]"
+                  className="flex items-center gap-3 raleway-regular text-2xl text-[#533113]"
                 >
                   <UserCircle size={24} weight="fill" />
                   {user.displayName ?? "My Account"}
                 </Link>
                 <button
                   onClick={() => { setIsMenuOpen(false); handleLogout(); }}
-                  className="flex items-center gap-3 raleway-regular text-xl text-red-600 text-left"
+                  className="flex items-center gap-3 raleway-regular text-2xl text-red-600 text-left"
                 >
                   <SignOut size={22} />
                   Sign out
@@ -167,14 +167,14 @@ function Navbar() {
                 <Link
                   to="/account/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="raleway-regular text-xl text-[#533113]"
+                  className="raleway-regular text-2xl text-[#533113]"
                 >
                   Sign in
                 </Link>
                 <Link
                   to="/account/register"
                   onClick={() => setIsMenuOpen(false)}
-                  className="raleway-regular text-xl text-[#533113]"
+                  className="raleway-regular text-2xl text-[#533113]"
                 >
                   Create account
                 </Link>
@@ -182,7 +182,7 @@ function Navbar() {
             )}
 
             <hr className="border-[#DEDEDE] my-2" />
-            <p className="raleway-light text-sm text-[#533113]/50">© 2026 Fitweargh. All rights reserved.</p>
+            <p className="raleway-regular text-base text-[#533113]/50">© 2026 Fitweargh. All rights reserved.</p>
           </div>
         </div>
       )}

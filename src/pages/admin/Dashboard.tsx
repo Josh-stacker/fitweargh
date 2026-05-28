@@ -42,9 +42,9 @@ function StatCard({ label, value, sub, icon: Icon, color }: StatCard) {
         <Icon size={22} className="text-white" />
       </div>
       <div>
-        <p className="raleway-light text-xs text-[#533113]/50 uppercase tracking-widest">{label}</p>
+        <p className="raleway-regular text-sm text-[#533113]/50 uppercase tracking-widest">{label}</p>
         <p className="raleway-bold text-2xl text-[#533113] mt-1">{value}</p>
-        <p className="raleway-light text-xs text-[#533113]/60 mt-0.5">{sub}</p>
+        <p className="raleway-regular text-sm text-[#533113]/60 mt-0.5">{sub}</p>
       </div>
     </div>
   );
@@ -165,7 +165,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Overview</h2>
-        <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+        <p className="raleway-regular text-base text-[#533113]/50 mt-1">
           Welcome back. Here's what's happening today.
         </p>
       </div>
@@ -185,14 +185,14 @@ export default function Dashboard() {
           </h3>
           <div className="flex items-center gap-1.5 text-[#533113]/50">
             <ClockIcon size={14} />
-            <span className="raleway-light text-xs">Latest 8</span>
+            <span className="raleway-regular text-sm">Latest 8</span>
           </div>
         </div>
 
         {recentOrders.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <ShoppingCartIcon size={36} className="text-[#533113]/20 mx-auto mb-3" />
-            <p className="raleway-light text-sm text-[#533113]/40">No orders yet</p>
+            <p className="raleway-regular text-base text-[#533113]/40">No orders yet</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -215,13 +215,13 @@ export default function Dashboard() {
                     key={order.id}
                     className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors"
                   >
-                    <td className="px-5 py-3 raleway-light text-[#533113] font-mono text-xs">
+                    <td className="px-5 py-3 raleway-regular text-[#533113] font-mono text-sm">
                       #{order.id.slice(0, 8)}
                     </td>
-                    <td className="px-5 py-3 raleway-light text-[#533113]">
+                    <td className="px-5 py-3 raleway-regular text-[#533113]">
                       {order.customerName ?? "—"}
                     </td>
-                    <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">
+                    <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
                       {order.items ?? "—"}
                     </td>
                     <td className="px-5 py-3 raleway-bold text-[#533113]">
@@ -229,14 +229,14 @@ export default function Dashboard() {
                     </td>
                     <td className="px-5 py-3">
                       <span
-                        className={`raleway-light text-xs px-2.5 py-1 capitalize ${
+                        className={`raleway-regular text-sm px-2.5 py-1 capitalize ${
                           STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"
                         }`}
                       >
                         {order.status ?? "unknown"}
                       </span>
                     </td>
-                    <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">
+                    <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                       {fmtDate(order.createdAt)}
                     </td>
                   </tr>
@@ -255,7 +255,7 @@ export default function Dashboard() {
         >
           <div>
             <p className="raleway-bold text-sm uppercase tracking-widest">Add New Product</p>
-            <p className="raleway-light text-xs mt-1 opacity-70">Upload images & set details</p>
+            <p className="raleway-regular text-sm mt-1 opacity-70">Upload images & set details</p>
           </div>
           <ArrowUpIcon
             size={20}
@@ -268,7 +268,7 @@ export default function Dashboard() {
         >
           <div>
             <p className="raleway-bold text-sm uppercase tracking-widest">Manage Orders</p>
-            <p className="raleway-light text-xs mt-1 opacity-60">Update statuses & track deliveries</p>
+            <p className="raleway-regular text-sm mt-1 opacity-60">Update statuses & track deliveries</p>
           </div>
           <ArrowUpIcon
             size={20}

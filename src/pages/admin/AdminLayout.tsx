@@ -47,7 +47,7 @@ export default function AdminLayout() {
         <h1 className="raleway-bold text-lg text-[#533113] tracking-widest uppercase">
           FitwearGH
         </h1>
-        <p className="raleway-light text-xs text-[#533113]/50 mt-0.5 tracking-widest uppercase">
+        <p className="raleway-regular text-sm text-[#533113]/50 mt-0.5 tracking-widest uppercase">
           Admin
         </p>
       </div>
@@ -61,7 +61,7 @@ export default function AdminLayout() {
             end={end}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 raleway-light text-sm transition-colors ${
+              `flex items-center gap-3 px-4 py-2.5 raleway-regular text-base transition-colors ${
                 isActive
                   ? "bg-[#533113] text-white"
                   : "text-[#533113] hover:bg-[#533113]/10"
@@ -76,12 +76,12 @@ export default function AdminLayout() {
 
       {/* User + logout */}
       <div className="px-4 py-4 border-t border-[#DEDEDE]">
-        <p className="raleway-light text-xs text-[#533113]/50 truncate px-2 mb-2">
+        <p className="raleway-regular text-sm text-[#533113]/50 truncate px-2 mb-2">
           {user?.email}
         </p>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-2.5 raleway-light text-sm text-[#533113] hover:bg-red-50 hover:text-red-600 transition-colors"
+          className="flex items-center gap-3 w-full px-4 py-2.5 raleway-regular text-base text-[#533113] hover:bg-red-50 hover:text-red-600 transition-colors"
         >
           <SignOutIcon size={18} />
           Sign out

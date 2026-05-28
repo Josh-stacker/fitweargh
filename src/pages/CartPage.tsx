@@ -143,10 +143,10 @@ export default function CartPage() {
             <ShoppingCartIcon size={32} className="text-green-600" weight="fill" />
           </div>
           <h1 className="raleway-bold text-3xl text-[#533113]">Order Placed!</h1>
-          <p className="raleway-light text-[#533113]/70 text-base">
+          <p className="raleway-regular text-[#533113]/70 text-lg">
             Thank you for your order. We'll contact you shortly to confirm delivery.
           </p>
-          <p className="raleway-light text-xs text-[#533113]/40 font-mono">
+          <p className="raleway-regular text-sm text-[#533113]/40 font-mono">
             Order #{orderId.slice(0, 10).toUpperCase()}
           </p>
           <button
@@ -167,7 +167,7 @@ export default function CartPage() {
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-6 md:py-10">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 raleway-light text-sm text-[#533113]/60 mb-6">
+        <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60 mb-6">
           <Link to="/" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
             <ArrowLeftIcon size={14} />
             Home
@@ -185,7 +185,7 @@ export default function CartPage() {
         {items.length === 0 && step === "cart" ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <ShoppingCartIcon size={56} className="text-[#533113]/20" />
-            <p className="raleway-light text-[#533113]/50">Your cart is empty.</p>
+            <p className="raleway-regular text-[#533113]/50">Your cart is empty.</p>
             <Link
               to="/new-arrivals"
               className="flex items-center gap-2 bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#3d2409] transition-colors"
@@ -214,7 +214,7 @@ export default function CartPage() {
 
                   <div className="flex flex-1 flex-col gap-1.5">
                     <p className="raleway-bold text-sm text-[#533113] leading-snug">{item.name}</p>
-                    <div className="flex items-center gap-3 raleway-light text-xs text-[#533113]/60">
+                    <div className="flex items-center gap-3 raleway-regular text-sm text-[#533113]/60">
                       {item.size && <span>Size: {item.size}</span>}
                       {item.color && (
                         <span className="flex items-center gap-1">
@@ -269,7 +269,7 @@ export default function CartPage() {
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Order Summary
                 </h2>
-                <div className="flex flex-col gap-2 raleway-light text-sm text-[#533113]">
+                <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal ({count} items)</span>
                     <span>{fmt(total)}</span>
@@ -291,7 +291,7 @@ export default function CartPage() {
                               />
                               <span>
                                 <span className="raleway-bold text-xs">{m.name}</span>
-                                {m.description && <span className="block raleway-light text-xs text-[#533113]/50">{m.description}</span>}
+                                {m.description && <span className="block raleway-regular text-sm text-[#533113]/50">{m.description}</span>}
                               </span>
                             </span>
                             <span className="raleway-bold text-xs shrink-0">{fmt(m.price)}</span>
@@ -321,7 +321,7 @@ export default function CartPage() {
                 </button>
                 <Link
                   to="/new-arrivals"
-                  className="text-center raleway-light text-xs text-[#533113]/60 hover:text-[#533113] transition-colors"
+                  className="text-center raleway-regular text-sm text-[#533113]/60 hover:text-[#533113] transition-colors"
                 >
                   Continue Shopping
                 </Link>
@@ -404,7 +404,7 @@ export default function CartPage() {
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest mb-3">
                   Payment
                 </h2>
-                <p className="raleway-light text-sm text-[#533113]/70">
+                <p className="raleway-regular text-base text-[#533113]/70">
                   Pay on delivery — our team will contact you to confirm and arrange payment.
                 </p>
               </div>
@@ -413,7 +413,7 @@ export default function CartPage() {
                 <button
                   type="button"
                   onClick={() => setStep("cart")}
-                  className="raleway-light text-sm text-[#533113] px-5 py-3 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+                  className="raleway-regular text-base text-[#533113] px-5 py-3 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
                 >
                   Back to Cart
                 </button>
@@ -457,7 +457,7 @@ export default function CartPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="raleway-bold text-xs text-[#533113] truncate">{item.name}</p>
-                        <p className="raleway-light text-xs text-[#533113]/60">
+                        <p className="raleway-regular text-sm text-[#533113]/60">
                           {item.size && `${item.size} · `}×{item.quantity}
                         </p>
                       </div>
@@ -468,7 +468,7 @@ export default function CartPage() {
                   ))}
                 </div>
                 <hr className="border-[#DEDEDE]" />
-                <div className="flex flex-col gap-2 raleway-light text-sm text-[#533113]">
+                <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>{fmt(total)}</span>

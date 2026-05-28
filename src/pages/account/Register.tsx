@@ -51,13 +51,13 @@ export default function Register() {
         <div className="w-full max-w-md">
           <div className="mb-8">
             <h1 className="raleway-bold text-3xl text-[#533113]">Create account</h1>
-            <p className="raleway-light text-base text-[#533113]/70 mt-2">
+            <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
               Join FitwearGH for a better shopping experience
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 raleway-light text-sm px-4 py-3 mb-6">
+            <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3 mb-6">
               {error}
             </div>
           )}
@@ -123,7 +123,7 @@ export default function Register() {
             </button>
           </form>
 
-          <p className="raleway-light text-sm text-[#533113]/70 text-center mt-6">
+          <p className="raleway-regular text-base text-[#533113]/70 text-center mt-6">
             Already have an account?{" "}
             <Link to="/account/login" className="raleway-bold text-[#533113] underline underline-offset-2">
               Sign in

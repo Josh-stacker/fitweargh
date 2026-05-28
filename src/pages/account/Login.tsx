@@ -43,13 +43,13 @@ export default function Login() {
         <div className="w-full max-w-md">
           <div className="mb-8">
             <h1 className="raleway-bold text-3xl text-[#533113]">Sign in</h1>
-            <p className="raleway-light text-base text-[#533113]/70 mt-2">
+            <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
               Welcome back to FitwearGH
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 raleway-light text-sm px-4 py-3 mb-6">
+            <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3 mb-6">
               {error}
             </div>
           )}
@@ -89,7 +89,7 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="raleway-light text-sm text-[#533113]/70 text-center mt-6">
+          <p className="raleway-regular text-base text-[#533113]/70 text-center mt-6">
             Don't have an account?{" "}
             <Link to="/account/register" className="raleway-bold text-[#533113] underline underline-offset-2">
               Create one

@@ -206,7 +206,7 @@ export default function HeroSlides() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Hero Slides</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">
             Manage homepage hero banners
           </p>
         </div>
@@ -228,7 +228,7 @@ export default function HeroSlides() {
         ) : slides.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <ImageIcon size={48} className="text-[#533113]/20" />
-            <p className="raleway-light text-sm text-[#533113]/40">No hero slides yet. Add your first one!</p>
+            <p className="raleway-regular text-base text-[#533113]/40">No hero slides yet. Add your first one!</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -257,15 +257,15 @@ export default function HeroSlides() {
                     {s.title || <span className="text-[#533113]/30 italic">No title</span>}
                   </td>
                   <td className="px-5 py-3">
-                    <span className="raleway-light text-xs px-2.5 py-1 bg-[#F5EDE1] text-[#533113]">
+                    <span className="raleway-regular text-sm px-2.5 py-1 bg-[#F5EDE1] text-[#533113]">
                       {s.page || "Homepage"}
                     </span>
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">{s.badge || "—"}</td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">{s.ctaText || "—"}</td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">{s.order ?? 0}</td>
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">{s.badge || "—"}</td>
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">{s.ctaText || "—"}</td>
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">{s.order ?? 0}</td>
                   <td className="px-5 py-3">
-                    <span className={`raleway-light text-xs px-2.5 py-1 ${s.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                    <span className={`raleway-regular text-sm px-2.5 py-1 ${s.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {s.active ? "Active" : "Inactive"}
                     </span>
                   </td>
@@ -319,7 +319,7 @@ export default function HeroSlides() {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-[#533113]/40">
                       <ImageIcon size={32} />
-                      <span className="raleway-light text-xs">Click to upload background</span>
+                      <span className="raleway-regular text-sm">Click to upload background</span>
                     </div>
                   )}
                 </div>
@@ -339,7 +339,7 @@ export default function HeroSlides() {
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#533113]/40">
                         <ImageIcon size={24} />
-                        <span className="raleway-light text-[10px]">Upload</span>
+                        <span className="raleway-regular text-xs">Upload</span>
                       </div>
                     )}
                   </div>
@@ -356,7 +356,7 @@ export default function HeroSlides() {
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#533113]/40">
                         <ImageIcon size={24} />
-                        <span className="raleway-light text-[10px]">Upload</span>
+                        <span className="raleway-regular text-xs">Upload</span>
                       </div>
                     )}
                   </div>
@@ -454,7 +454,7 @@ export default function HeroSlides() {
                     }`}
                   />
                 </button>
-                <span className="raleway-light text-sm text-[#533113]">
+                <span className="raleway-regular text-base text-[#533113]">
                   {form.active ? "Active — visible on homepage" : "Inactive — hidden from homepage"}
                 </span>
               </div>
@@ -464,7 +464,7 @@ export default function HeroSlides() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="raleway-light text-sm text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+                  className="raleway-regular text-base text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
                 >
                   Cancel
                 </button>

@@ -174,7 +174,7 @@ function ProductPage() {
 
       {/* Breadcrumb */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-3 md:py-4">
-        <div className="flex items-center gap-2 raleway-light text-sm text-[#533113]/60">
+        <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60">
           <Link to="/new-arrivals" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
             <ArrowLeftIcon size={14} />
             New Arrivals
@@ -227,12 +227,12 @@ function ProductPage() {
           <div className="w-full md:w-[55%] px-4 md:pl-16 md:pr-10 py-6 md:py-10 flex flex-col gap-5 md:gap-6">
 
             {/* Category tag */}
-            <span className="raleway-light text-xs text-[#533113]/60 uppercase tracking-widest self-start border border-[#DEDEDE] px-3 py-1">
+            <span className="raleway-regular text-sm text-[#533113]/60 uppercase tracking-widest self-start border border-[#DEDEDE] px-3 py-1">
               {p.category}
             </span>
 
             {/* Name */}
-            <h1 className="raleway-light text-3xl md:text-4xl lg:text-5xl text-[#533113] leading-tight">
+            <h1 className="raleway-regular text-4xl md:text-5xl lg:text-6xl text-[#533113] leading-tight">
               {p.name}
             </h1>
 
@@ -243,12 +243,12 @@ function ProductPage() {
                   gh₵ {displayPrice.toFixed(2)}
                 </p>
                 {p.discountPrice != null && (
-                  <p className="raleway-light text-base text-[#533113]/40 line-through">
+                  <p className="raleway-regular text-lg text-[#533113]/40 line-through">
                     gh₵ {p.price.toFixed(2)}
                   </p>
                 )}
               </div>
-              <span className={`raleway-light text-sm px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              <span className={`raleway-regular text-base px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                 {inStock ? "In Stock" : "Out of Stock"}
               </span>
             </div>
@@ -274,7 +274,7 @@ function ProductPage() {
                       >
                         <span className="text-base">{s}</span>
                         {chart && (
-                          <span className={`raleway-light text-[10px] leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}>
+                          <span className={`raleway-regular text-xs leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}>
                             {chart.uk}
                           </span>
                         )}
@@ -291,7 +291,7 @@ function ProductPage() {
                 <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
                   Select Color
                   {selectedColor && (
-                    <span className="ml-2 raleway-light normal-case tracking-normal text-[#533113]/60">
+                    <span className="ml-2 raleway-regular normal-case tracking-normal text-[#533113]/60">
                       — {selectedColor}
                     </span>
                   )}
@@ -303,7 +303,7 @@ function ProductPage() {
                       <button
                         key={colorName}
                         onClick={() => setSelectedColor(colorName)}
-                        className={`flex items-center gap-2 px-4 py-2.5 border raleway-light text-base transition-all duration-150 ${
+                        className={`flex items-center gap-2 px-4 py-2.5 border raleway-regular text-lg transition-all duration-150 ${
                           selectedColor === colorName
                             ? "bg-[#533113] text-white border-[#533113]"
                             : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -359,7 +359,7 @@ function ProductPage() {
               </button>
               <hr className="border-[#DEDEDE]" />
               {descOpen && (
-                <p className="raleway-light text-lg text-[#533113]/80 leading-relaxed pt-4 pb-2">
+                <p className="raleway-regular text-xl text-[#533113]/80 leading-relaxed pt-4 pb-2">
                   {p.description || "No description available."}
                 </p>
               )}
@@ -379,7 +379,7 @@ function ProductPage() {
               <hr className="border-[#DEDEDE]" />
               {chartOpen && (
                 <div className="overflow-x-auto pt-4 pb-2">
-                  <table className="w-full text-base raleway-light text-[#533113]">
+                  <table className="w-full text-lg raleway-regular text-[#533113]">
                     <thead>
                       <tr className="border-b border-[#DEDEDE]">
                         <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">Size</th>

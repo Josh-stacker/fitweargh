@@ -120,7 +120,7 @@ export default function ShippingMethods() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Shipping Methods</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">
             Configure delivery options shown to customers at checkout.
           </p>
         </div>
@@ -149,7 +149,7 @@ export default function ShippingMethods() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Standard Delivery"
-                className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
+                className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -162,7 +162,7 @@ export default function ShippingMethods() {
                 value={form.price}
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                 placeholder="15.00"
-                className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
+                className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
               />
             </div>
           </div>
@@ -173,7 +173,7 @@ export default function ShippingMethods() {
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="Delivered within 2–4 business days"
-              className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
+              className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
             />
           </div>
 
@@ -184,10 +184,10 @@ export default function ShippingMethods() {
               onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
               className="accent-[#533113]"
             />
-            <span className="raleway-light text-sm text-[#533113]">Enabled (visible to customers)</span>
+            <span className="raleway-regular text-base text-[#533113]">Enabled (visible to customers)</span>
           </label>
 
-          {error && <p className="raleway-light text-sm text-red-600">{error}</p>}
+          {error && <p className="raleway-regular text-base text-red-600">{error}</p>}
 
           <div className="flex gap-3">
             <button
@@ -201,7 +201,7 @@ export default function ShippingMethods() {
             <button
               type="button"
               onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setError(""); }}
-              className="raleway-light text-sm text-[#533113] px-4 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+              className="raleway-regular text-base text-[#533113] px-4 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
             >
               Cancel
             </button>
@@ -216,7 +216,7 @@ export default function ShippingMethods() {
             <div className="w-8 h-8 border-2 border-[#533113] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : methods.length === 0 ? (
-          <div className="py-14 text-center raleway-light text-sm text-[#533113]/40">
+          <div className="py-14 text-center raleway-regular text-base text-[#533113]/40">
             No shipping methods yet. Add one above.
           </div>
         ) : (
@@ -229,7 +229,7 @@ export default function ShippingMethods() {
                       <input
                         value={editForm.name}
                         onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                        className="border border-[#533113] raleway-light text-sm text-[#533113] px-3 py-2 outline-none bg-white"
+                        className="border border-[#533113] raleway-regular text-base text-[#533113] px-3 py-2 outline-none bg-white"
                       />
                       <input
                         type="number"
@@ -237,13 +237,13 @@ export default function ShippingMethods() {
                         step="0.01"
                         value={editForm.price}
                         onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
-                        className="border border-[#533113] raleway-light text-sm text-[#533113] px-3 py-2 outline-none bg-white"
+                        className="border border-[#533113] raleway-regular text-base text-[#533113] px-3 py-2 outline-none bg-white"
                       />
                     </div>
                     <input
                       value={editForm.description}
                       onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                      className="border border-[#533113] raleway-light text-sm text-[#533113] px-3 py-2 outline-none bg-white"
+                      className="border border-[#533113] raleway-regular text-base text-[#533113] px-3 py-2 outline-none bg-white"
                     />
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
@@ -252,7 +252,7 @@ export default function ShippingMethods() {
                         onChange={(e) => setEditForm((f) => ({ ...f, enabled: e.target.checked }))}
                         className="accent-[#533113]"
                       />
-                      <span className="raleway-light text-sm text-[#533113]">Enabled</span>
+                      <span className="raleway-regular text-base text-[#533113]">Enabled</span>
                     </label>
                     <div className="flex gap-2">
                       <button
@@ -264,7 +264,7 @@ export default function ShippingMethods() {
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
-                        className="raleway-light text-xs text-[#533113] px-3 py-2 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+                        className="raleway-regular text-sm text-[#533113] px-3 py-2 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
                       >
                         Cancel
                       </button>
@@ -287,7 +287,7 @@ export default function ShippingMethods() {
                           {m.name}
                         </p>
                         {m.description && (
-                          <p className="raleway-light text-xs text-[#533113]/50 truncate">{m.description}</p>
+                          <p className="raleway-regular text-sm text-[#533113]/50 truncate">{m.description}</p>
                         )}
                       </div>
                     </div>
@@ -321,7 +321,7 @@ export default function ShippingMethods() {
         )}
       </div>
 
-      <p className="raleway-light text-xs text-[#533113]/40">
+      <p className="raleway-regular text-sm text-[#533113]/40">
         Only enabled methods appear at checkout. Disable rather than delete to preserve order history.
       </p>
     </div>

@@ -126,13 +126,13 @@ export default function AccountDashboard() {
             <h1 className="raleway-bold text-2xl md:text-3xl text-[#533113]">
               My Account
             </h1>
-            <p className="raleway-light text-base text-[#533113]/70 mt-1">
+            <p className="raleway-regular text-lg text-[#533113]/70 mt-1">
               {user?.displayName ?? user?.email}
             </p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 raleway-light text-sm text-[#533113] border border-[#533113] px-4 py-2.5 hover:bg-[#533113] hover:text-white transition-colors self-start sm:self-auto"
+            className="flex items-center gap-2 raleway-regular text-base text-[#533113] border border-[#533113] px-4 py-2.5 hover:bg-[#533113] hover:text-white transition-colors self-start sm:self-auto"
           >
             <SignOutIcon size={16} />
             Sign out
@@ -186,7 +186,7 @@ export default function AccountDashboard() {
             ) : orders.length === 0 ? (
               <div className="flex flex-col items-center py-20 gap-4">
                 <ShoppingCartIcon size={48} className="text-[#533113]/20" />
-                <p className="raleway-light text-base text-[#533113]/50">No orders yet.</p>
+                <p className="raleway-regular text-lg text-[#533113]/50">No orders yet.</p>
                 <Link
                   to="/new-arrivals"
                   className="raleway-bold text-sm text-white bg-[#533113] px-6 py-3 uppercase tracking-widest hover:bg-[#3d2409] transition-colors"
@@ -203,11 +203,11 @@ export default function AccountDashboard() {
                     className="w-full flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-2 text-left hover:bg-[#FFFBF6] transition-colors"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <span className="font-mono raleway-light text-xs text-[#533113]/60">
+                      <span className="font-mono raleway-regular text-sm text-[#533113]/60">
                         #{order.id.slice(0, 8)}
                       </span>
                       <span
-                        className={`raleway-light text-xs px-2.5 py-1 capitalize self-start ${
+                        className={`raleway-regular text-sm px-2.5 py-1 capitalize self-start ${
                           STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"
                         }`}
                       >
@@ -215,7 +215,7 @@ export default function AccountDashboard() {
                       </span>
                     </div>
                     <div className="flex items-center gap-6">
-                      <span className="raleway-light text-sm text-[#533113]/60">
+                      <span className="raleway-regular text-base text-[#533113]/60">
                         {fmtDate(order.createdAt)}
                       </span>
                       <span className="raleway-bold text-base text-[#533113]">
@@ -232,7 +232,7 @@ export default function AccountDashboard() {
                           <div key={i} className="flex justify-between items-center">
                             <div>
                               <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
-                              <p className="raleway-light text-xs text-[#533113]/50">Qty: {item.qty}</p>
+                              <p className="raleway-regular text-sm text-[#533113]/50">Qty: {item.qty}</p>
                             </div>
                             <p className="raleway-bold text-sm text-[#533113]">
                               {fmt(item.price * item.qty)}
@@ -240,7 +240,7 @@ export default function AccountDashboard() {
                           </div>
                         ))
                       ) : (
-                        <p className="raleway-light text-sm text-[#533113]/40">No item details available.</p>
+                        <p className="raleway-regular text-base text-[#533113]/40">No item details available.</p>
                       )}
                     </div>
                   )}
@@ -259,12 +259,12 @@ export default function AccountDashboard() {
               </div>
               <div>
                 <p className="raleway-bold text-base text-[#533113]">{name || user?.displayName || "—"}</p>
-                <p className="raleway-light text-sm text-[#533113]/60">{user?.email}</p>
+                <p className="raleway-regular text-base text-[#533113]/60">{user?.email}</p>
               </div>
             </div>
 
             {profileSaved && (
-              <div className="bg-green-50 border border-green-200 text-green-700 raleway-light text-sm px-4 py-3">
+              <div className="bg-green-50 border border-green-200 text-green-700 raleway-regular text-base px-4 py-3">
                 Profile updated successfully.
               </div>
             )}
@@ -353,7 +353,7 @@ function SummaryCard({
     <div className={`bg-white border border-[#DEDEDE] px-5 py-4 flex flex-col gap-1 ${className}`}>
       <div className="flex items-center gap-2 text-[#533113]/50 mb-1">
         <Icon size={16} />
-        <span className="raleway-light text-xs uppercase tracking-widest">{label}</span>
+        <span className="raleway-regular text-sm uppercase tracking-widest">{label}</span>
       </div>
       <p className="raleway-bold text-xl text-[#533113] break-all">{value}</p>
     </div>

@@ -188,7 +188,7 @@ export default function HomepageSettings() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Homepage Settings</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">
             Control the hero, sections, and which products appear where
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function HomepageSettings() {
               </button>
             ))}
           </div>
-          <p className="raleway-light text-xs text-[#533113]/50">
+          <p className="raleway-regular text-sm text-[#533113]/50">
             {heroMode === "slider"
               ? "Uses slides configured in Hero Slides. Falls back to static image if none are active."
               : "Shows a single static image — no slides."}
@@ -251,7 +251,7 @@ export default function HomepageSettings() {
               ) : (
                 <div className="flex flex-col items-center gap-2 text-[#533113]/40">
                   <ImageIcon size={32} />
-                  <span className="raleway-light text-xs">Click to upload hero image</span>
+                  <span className="raleway-regular text-sm">Click to upload hero image</span>
                 </div>
               )}
             </div>
@@ -266,7 +266,7 @@ export default function HomepageSettings() {
               <button
                 type="button"
                 onClick={() => { setStillPreview(""); setStillFile(null); setStillImageUrl(""); }}
-                className="self-start flex items-center gap-1.5 text-red-500 raleway-light text-xs hover:text-red-700"
+                className="self-start flex items-center gap-1.5 text-red-500 raleway-regular text-sm hover:text-red-700"
               >
                 <XIcon size={12} /> Remove image
               </button>
@@ -281,7 +281,7 @@ export default function HomepageSettings() {
           <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#DEDEDE] pb-3">
             Homepage Sections
           </h3>
-          <p className="raleway-light text-xs text-[#533113]/50 mt-2">
+          <p className="raleway-regular text-sm text-[#533113]/50 mt-2">
             Pin specific products to each section. Leave a section empty to auto-populate from Firestore.
           </p>
         </div>
@@ -324,7 +324,7 @@ export default function HomepageSettings() {
                   {pinned.length > 0 && (
                     <button
                       onClick={() => clearSection(key)}
-                      className="raleway-light text-xs text-red-500 hover:text-red-700"
+                      className="raleway-regular text-sm text-red-500 hover:text-red-700"
                     >
                       Clear all
                     </button>
@@ -332,7 +332,7 @@ export default function HomepageSettings() {
                 </div>
 
                 {pinned.length === 0 ? (
-                  <p className="raleway-light text-xs text-[#533113]/40 italic">
+                  <p className="raleway-regular text-sm text-[#533113]/40 italic">
                     {SECTION_HINTS[key]}
                   </p>
                 ) : (
@@ -345,7 +345,7 @@ export default function HomepageSettings() {
                         {p.imageUrl && (
                           <img src={p.imageUrl} alt={p.name} className="w-6 h-7 object-cover" />
                         )}
-                        <span className="raleway-light text-xs text-[#533113] max-w-[100px] truncate">
+                        <span className="raleway-regular text-sm text-[#533113] max-w-[100px] truncate">
                           {p.name}
                         </span>
                         <button
@@ -390,7 +390,7 @@ export default function HomepageSettings() {
                 placeholder="Search products…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 border border-[#DEDEDE] raleway-light text-xs text-[#533113] outline-none focus:border-[#533113]"
+                className="w-full pl-8 pr-3 py-2 border border-[#DEDEDE] raleway-regular text-sm text-[#533113] outline-none focus:border-[#533113]"
               />
             </div>
 
@@ -420,7 +420,7 @@ export default function HomepageSettings() {
                     </div>
                     <div className="p-2">
                       <p className="raleway-bold text-[10px] text-[#533113] leading-tight truncate">{p.name}</p>
-                      <p className="raleway-light text-[10px] text-[#533113]/50">{p.category}</p>
+                      <p className="raleway-regular text-xs text-[#533113]/50">{p.category}</p>
                     </div>
                     {selected && (
                       <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-[#533113] flex items-center justify-center">
@@ -431,13 +431,13 @@ export default function HomepageSettings() {
                 );
               })}
               {filteredProducts.length === 0 && (
-                <p className="col-span-full raleway-light text-xs text-[#533113]/40 text-center py-6">
+                <p className="col-span-full raleway-regular text-sm text-[#533113]/40 text-center py-6">
                   No products found.
                 </p>
               )}
             </div>
 
-            <p className="raleway-light text-xs text-[#533113]/50">
+            <p className="raleway-regular text-sm text-[#533113]/50">
               {sections[activeSection].length} product{sections[activeSection].length !== 1 ? "s" : ""} pinned to {SECTION_LABELS[activeSection]}
             </p>
           </div>

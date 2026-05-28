@@ -136,7 +136,7 @@ function Homepage() {
         <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
           <div className="flex flex-col gap-2 w-full md:w-[70%] lg:w-full">
             <h3 className="text-2xl font-bold raleway-bold">NEW ARRIVALS</h3>
-            <p className="text-sm raleway-light w-full md:w-[80%] lg:w-[60%]">
+            <p className="text-base raleway-regular w-full md:w-[80%] lg:w-[60%]">
               THE LATEST SPORTS, WOMEN'S AND MANY MORE ACCESORIES
             </p>
           </div>
@@ -144,7 +144,7 @@ function Homepage() {
             to="/new-arrivals"
             className="bg-[#533113] text-white py-2 px-4 flex justify-between items-center w-full md:w-64 lg:w-48"
           >
-            <span className="raleway-light text-sm">Shop Now</span>
+            <span className="raleway-regular text-base">Shop Now</span>
             <ArrowLineUpRightIcon size={24} />
           </Link>
         </section>

@@ -7,7 +7,7 @@ function CartButton() {
 
   return (
     <Link to="/cart" className="flex items-center gap-2 relative cursor-pointer transition-all duration-200 hover:underline">
-      <p className="raleway-light text-sm hidden lg:block">Cart</p>
+      <p className="raleway-regular text-base hidden lg:block">Cart</p>
       <div className="relative">
         <BasketIcon size={24} />
         {count > 0 && (

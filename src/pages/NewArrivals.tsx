@@ -104,13 +104,13 @@ function NewArrivals() {
           <select
             value={activeSort}
             onChange={(e) => setActiveSort(e.target.value)}
-            className="raleway-light text-sm border border-[#DEDEDE] text-[#533113] bg-white px-3 py-2.5 outline-none cursor-pointer flex-1 focus:border-[#533113]"
+            className="raleway-regular text-base border border-[#DEDEDE] text-[#533113] bg-white px-3 py-2.5 outline-none cursor-pointer flex-1 focus:border-[#533113]"
           >
             {SORT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
           <button
             onClick={() => setFilterPanelOpen(!filterPanelOpen)}
-            className="flex items-center gap-2 bg-[#533113] text-white px-4 py-2.5 raleway-light text-sm shrink-0"
+            className="flex items-center gap-2 bg-[#533113] text-white px-4 py-2.5 raleway-regular text-base shrink-0"
           >
             {filterPanelOpen ? <XIcon size={16} /> : <FunnelIcon size={16} />}
             Filters
@@ -124,7 +124,7 @@ function NewArrivals() {
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
-                className={`whitespace-nowrap raleway-light text-sm px-5 py-2 border transition-all duration-200 ${
+                className={`whitespace-nowrap raleway-regular text-base px-5 py-2 border transition-all duration-200 ${
                   activeFilter === f
                     ? "bg-[#533113] text-white border-[#533113]"
                     : "bg-white text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -136,18 +136,18 @@ function NewArrivals() {
           </div>
 
           <div className="flex justify-between items-center border-t border-[#DEDEDE] pt-4">
-            <p className="raleway-light text-sm text-[#533113]/70">{sorted.length} items</p>
+            <p className="raleway-regular text-base text-[#533113]/70">{sorted.length} items</p>
             <div className="flex items-center gap-3">
               <select
                 value={activeSort}
                 onChange={(e) => setActiveSort(e.target.value)}
-                className="raleway-light text-sm border border-[#533113] text-[#533113] bg-white px-3 py-2 outline-none cursor-pointer focus:border-[#533113]"
+                className="raleway-regular text-base border border-[#533113] text-[#533113] bg-white px-3 py-2 outline-none cursor-pointer focus:border-[#533113]"
               >
                 {SORT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
               <button
                 onClick={() => setFilterPanelOpen(!filterPanelOpen)}
-                className="flex items-center gap-2 bg-[#533113] text-white px-4 py-2 raleway-light text-sm hover:bg-[#3d2409] transition-colors"
+                className="flex items-center gap-2 bg-[#533113] text-white px-4 py-2 raleway-regular text-base hover:bg-[#3d2409] transition-colors"
               >
                 {filterPanelOpen ? <XIcon size={16} /> : <FunnelIcon size={16} />}
                 {filterPanelOpen ? "Close" : "Filters"}
@@ -167,7 +167,7 @@ function NewArrivals() {
                   <button
                     key={f}
                     onClick={() => setActiveFilter(f)}
-                    className={`raleway-light text-xs px-3 py-1.5 border transition-all ${
+                    className={`raleway-regular text-sm px-3 py-1.5 border transition-all ${
                       activeFilter === f
                         ? "bg-[#533113] text-white border-[#533113]"
                         : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -187,7 +187,7 @@ function NewArrivals() {
                   <button
                     key={s}
                     onClick={() => toggleSize(s)}
-                    className={`border px-3 py-1.5 raleway-light text-xs transition-all ${
+                    className={`border px-3 py-1.5 raleway-regular text-sm transition-all ${
                       selectedSizes.includes(s)
                         ? "bg-[#533113] text-white border-[#533113]"
                         : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -223,7 +223,7 @@ function NewArrivals() {
               <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Price Range</p>
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between">
-                  <span className="raleway-light text-xs text-[#533113]/60">Min</span>
+                  <span className="raleway-regular text-sm text-[#533113]/60">Min</span>
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMin}</span>
                 </div>
                 <input
@@ -234,7 +234,7 @@ function NewArrivals() {
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between">
-                  <span className="raleway-light text-xs text-[#533113]/60">Max</span>
+                  <span className="raleway-regular text-sm text-[#533113]/60">Max</span>
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMax}</span>
                 </div>
                 <input
@@ -243,7 +243,7 @@ function NewArrivals() {
                   className="w-full accent-[#533113] cursor-pointer"
                 />
               </div>
-              <p className="raleway-light text-xs text-[#533113]/70">gh₵ {priceMin} — gh₵ {priceMax}</p>
+              <p className="raleway-regular text-sm text-[#533113]/70">gh₵ {priceMin} — gh₵ {priceMax}</p>
               <Button text="Apply" width="w-full" icon={<ArrowLineUpRightIcon size={14} />} />
             </div>
           </div>
@@ -260,7 +260,7 @@ function NewArrivals() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-20">
-            <p className="raleway-light text-base text-[#533113]/50">No products match your filters.</p>
+            <p className="raleway-regular text-lg text-[#533113]/50">No products match your filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">

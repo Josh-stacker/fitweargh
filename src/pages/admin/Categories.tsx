@@ -91,7 +91,7 @@ export default function Categories() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Categories</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">{cats.length} categories</p>
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">{cats.length} categories</p>
         </div>
         <button
           onClick={openCreate}
@@ -110,7 +110,7 @@ export default function Categories() {
         ) : cats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <TagIcon size={40} className="text-[#533113]/20" />
-            <p className="raleway-light text-sm text-[#533113]/40">No categories yet.</p>
+            <p className="raleway-regular text-base text-[#533113]/40">No categories yet.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -130,13 +130,13 @@ export default function Categories() {
               {cats.map((c) => (
                 <tr key={c.id} className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors">
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{c.name}</td>
-                  <td className="px-5 py-3 font-mono raleway-light text-xs text-[#533113]/60">
+                  <td className="px-5 py-3 font-mono raleway-regular text-sm text-[#533113]/60">
                     {c.slug}
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70 max-w-[200px] truncate">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 max-w-[200px] truncate">
                     {c.description || "—"}
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
                     {c.productCount ?? 0}
                   </td>
                   <td className="px-5 py-3">
@@ -189,7 +189,7 @@ export default function Categories() {
                   className="input-base"
                 />
                 {form.name && (
-                  <p className="raleway-light text-xs text-[#533113]/50">
+                  <p className="raleway-regular text-sm text-[#533113]/50">
                     Slug: <span className="font-mono">{toSlug(form.name)}</span>
                   </p>
                 )}
@@ -212,7 +212,7 @@ export default function Categories() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="raleway-light text-sm text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+                  className="raleway-regular text-base text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
                 >
                   Cancel
                 </button>

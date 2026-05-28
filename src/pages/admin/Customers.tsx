@@ -58,7 +58,7 @@ export default function Customers() {
       {/* Header */}
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Customers</h2>
-        <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+        <p className="raleway-regular text-base text-[#533113]/50 mt-1">
           {customers.length} registered customers
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function Customers() {
           placeholder="Search by name, email, or phone…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-80 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-light text-sm text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
+          className="w-full sm:w-80 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
         />
       </div>
 
@@ -87,7 +87,7 @@ export default function Customers() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <UserIcon size={40} className="text-[#533113]/20" />
-            <p className="raleway-light text-sm text-[#533113]/40">
+            <p className="raleway-regular text-base text-[#533113]/40">
               {search ? "No customers match your search." : "No customers yet."}
             </p>
           </div>
@@ -123,25 +123,25 @@ export default function Customers() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 raleway-light text-xs text-[#533113]/70">
+                      <div className="flex items-center gap-1.5 raleway-regular text-sm text-[#533113]/70">
                         <EnvelopeIcon size={12} />
                         {c.email ?? "—"}
                       </div>
                       {c.phone && (
-                        <div className="flex items-center gap-1.5 raleway-light text-xs text-[#533113]/50">
+                        <div className="flex items-center gap-1.5 raleway-regular text-sm text-[#533113]/50">
                           <PhoneIcon size={12} />
                           {c.phone}
                         </div>
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
                     {c.orderCount ?? 0}
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">
                     {fmt(c.totalSpent ?? 0)}
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                     {fmtDate(c.createdAt)}
                   </td>
                 </tr>

@@ -24,7 +24,7 @@ export function Toast({ message, onDone }: ToastProps) {
       }`}
     >
       <CheckCircleIcon size={18} weight="fill" />
-      <span className="raleway-light text-sm">{message}</span>
+      <span className="raleway-regular text-base">{message}</span>
       <button onClick={() => { setVisible(false); setTimeout(onDone, 300); }}>
         <XIcon size={16} />
       </button>

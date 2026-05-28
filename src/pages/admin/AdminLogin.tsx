@@ -34,7 +34,7 @@ export default function AdminLogin() {
           <h1 className="raleway-bold text-3xl text-[#533113] tracking-widest uppercase">
             FitwearGH
           </h1>
-          <p className="raleway-light text-sm text-[#533113]/60 mt-1 tracking-widest uppercase">
+          <p className="raleway-regular text-base text-[#533113]/60 mt-1 tracking-widest uppercase">
             Admin Dashboard
           </p>
         </div>
@@ -43,7 +43,7 @@ export default function AdminLogin() {
           <h2 className="raleway-bold text-xl text-[#533113] mb-6">Sign in</h2>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 raleway-light text-sm px-4 py-3 mb-5">
+            <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3 mb-5">
               {error}
             </div>
           )}
@@ -59,7 +59,7 @@ export default function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@fitweargh.com"
-                className="border border-[#DEDEDE] px-4 py-3 raleway-light text-sm text-[#533113] outline-none focus:border-[#533113] transition-colors bg-transparent"
+                className="border border-[#DEDEDE] px-4 py-3 raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] transition-colors bg-transparent"
               />
             </div>
 
@@ -71,7 +71,7 @@ export default function AdminLogin() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="border border-[#DEDEDE] px-4 py-3 raleway-light text-sm text-[#533113] outline-none focus:border-[#533113] transition-colors bg-transparent w-full"
+                className="border border-[#DEDEDE] px-4 py-3 raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] transition-colors bg-transparent w-full"
               />
             </div>
 
@@ -85,7 +85,7 @@ export default function AdminLogin() {
           </form>
         </div>
 
-        <p className="text-center raleway-light text-xs text-[#533113]/40 mt-6">
+        <p className="text-center raleway-regular text-sm text-[#533113]/40 mt-6">
           FitwearGH Admin — Authorised access only
         </p>
       </div>

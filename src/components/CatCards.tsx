@@ -16,7 +16,7 @@ function CatCards({ image, name, id }: CatCardsProps) {
       </div>
 
       <div className="w-full flex-1 flex items-center justify-between bg-[#533113] text-white px-4 py-4">
-        <span className="raleway-light text-sm">{name}</span>
+        <span className="raleway-regular text-base">{name}</span>
         <ArrowLineUpRightIcon size={18} />
       </div>
     </section>

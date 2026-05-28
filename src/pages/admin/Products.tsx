@@ -375,7 +375,7 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="raleway-bold text-2xl text-[#533113]">Products</h2>
-          <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+          <p className="raleway-regular text-base text-[#533113]/50 mt-1">
             {products.length} total listings
           </p>
         </div>
@@ -396,7 +396,7 @@ export default function Products() {
           placeholder="Search products…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-72 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-light text-sm text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
+          className="w-full sm:w-72 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
         />
       </div>
 
@@ -409,7 +409,7 @@ export default function Products() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <PackageEmpty />
-            <p className="raleway-light text-sm text-[#533113]/40">
+            <p className="raleway-regular text-base text-[#533113]/40">
               {search ? "No products match your search." : "No products yet. Add your first one!"}
             </p>
           </div>
@@ -457,7 +457,7 @@ export default function Products() {
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-1">
                       {(p.categories?.length ? p.categories : p.category ? [p.category] : []).map((cat) => (
-                        <span key={cat} className="raleway-light text-[10px] px-1.5 py-0.5 bg-[#F5EDE1] text-[#533113] border border-[#DEDEDE]">
+                        <span key={cat} className="raleway-regular text-xs px-1.5 py-0.5 bg-[#F5EDE1] text-[#533113] border border-[#DEDEDE]">
                           {cat}
                         </span>
                       ))}
@@ -467,7 +467,7 @@ export default function Products() {
                     {p.discountPrice != null ? (
                       <div className="flex flex-col">
                         <span className="raleway-bold text-[#533113]">gh₵ {Number(p.discountPrice).toFixed(2)}</span>
-                        <span className="raleway-light text-xs text-[#533113]/40 line-through">gh₵ {Number(p.price).toFixed(2)}</span>
+                        <span className="raleway-regular text-sm text-[#533113]/40 line-through">gh₵ {Number(p.price).toFixed(2)}</span>
                       </div>
                     ) : (
                       <span className="raleway-bold text-[#533113]">gh₵ {Number(p.price).toFixed(2)}</span>
@@ -475,7 +475,7 @@ export default function Products() {
                   </td>
                   <td className="px-5 py-3">
                     <span
-                      className={`raleway-light text-xs px-2.5 py-1 ${
+                      className={`raleway-regular text-sm px-2.5 py-1 ${
                         p.stock > 10
                           ? "bg-green-100 text-green-700"
                           : p.stock > 0
@@ -486,7 +486,7 @@ export default function Products() {
                       {p.stock ?? 0}
                     </span>
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                     {p.sizes?.join(", ") || "—"}
                   </td>
                   <td className="px-5 py-3">
@@ -559,11 +559,11 @@ export default function Products() {
                     className="w-full h-32 border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors flex flex-col items-center justify-center gap-2 text-[#533113]/40 hover:text-[#533113]"
                   >
                     <ImageIcon size={28} />
-                    <span className="raleway-light text-xs">Click to upload images (you can select multiple)</span>
+                    <span className="raleway-regular text-sm">Click to upload images (you can select multiple)</span>
                   </button>
                 ) : (
                   <>
-                    <p className="raleway-light text-[11px] text-[#533113]/50">
+                    <p className="raleway-regular text-xs text-[#533113]/50">
                       Click an image to set it as the <strong>display photo</strong> (shown first on the product page). Use the pencil to replace, × to remove.
                     </p>
                     <div className="flex flex-wrap gap-3">
@@ -659,7 +659,7 @@ export default function Products() {
               {/* Categories */}
               <div className="flex flex-col gap-2">
                 <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
-                  Categories <span className="raleway-light normal-case tracking-normal text-[#533113]/40">(select all that apply)</span>
+                  Categories <span className="raleway-regular normal-case tracking-normal text-[#533113]/40">(select all that apply)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map((cat) => (
@@ -667,7 +667,7 @@ export default function Products() {
                       key={cat}
                       type="button"
                       onClick={() => toggleCategory(cat)}
-                      className={`border px-3 py-1.5 raleway-light text-xs transition-colors ${
+                      className={`border px-3 py-1.5 raleway-regular text-sm transition-colors ${
                         form.categories.includes(cat)
                           ? "bg-[#533113] text-white border-[#533113]"
                           : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -678,7 +678,7 @@ export default function Products() {
                   ))}
                 </div>
                 {form.categories.length === 0 && (
-                  <p className="raleway-light text-xs text-red-400">Select at least one category.</p>
+                  <p className="raleway-regular text-sm text-red-400">Select at least one category.</p>
                 )}
               </div>
 
@@ -687,7 +687,7 @@ export default function Products() {
                 <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
                   Available Sizes
                 </label>
-                <div className="flex flex-wrap gap-1.5 bg-[#FFFBF6] border border-[#DEDEDE] px-3 py-2 text-[10px] raleway-light text-[#533113]/60">
+                <div className="flex flex-wrap gap-1.5 bg-[#FFFBF6] border border-[#DEDEDE] px-3 py-2 text-xs raleway-regular text-[#533113]/60">
                   <span className="raleway-bold text-[10px] text-[#533113]/80 mr-1">UK Guide:</span>
                   <span>S = 8–10</span><span className="text-[#DEDEDE]">|</span>
                   <span>M = 10–12</span><span className="text-[#DEDEDE]">|</span>
@@ -701,7 +701,7 @@ export default function Products() {
                       key={s}
                       type="button"
                       onClick={() => toggleSize(s)}
-                      className={`border px-3 py-1 raleway-light text-xs transition-colors ${
+                      className={`border px-3 py-1 raleway-regular text-sm transition-colors ${
                         form.sizes.includes(s)
                           ? "bg-[#533113] text-white border-[#533113]"
                           : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
@@ -724,7 +724,7 @@ export default function Products() {
                       key={name}
                       type="button"
                       onClick={() => toggleColor(name)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 border raleway-light text-xs transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 border raleway-regular text-sm transition-all ${
                         form.colors.includes(name)
                           ? "bg-[#533113] text-white border-[#533113]"
                           : "text-[#533113] border-[#DEDEDE] hover:border-[#533113]"
@@ -747,7 +747,7 @@ export default function Products() {
                     <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
                       Stock by Color &amp; Size
                     </label>
-                    <span className="raleway-light text-xs text-[#533113]/50">
+                    <span className="raleway-regular text-sm text-[#533113]/50">
                       Total: {totalStock} pcs
                     </span>
                   </div>
@@ -762,7 +762,7 @@ export default function Products() {
                             <th key={s} className="raleway-bold text-[#533113]/60 px-3 py-3 uppercase tracking-widest text-center min-w-[80px]">
                               <span className="block">{s}</span>
                               {UK_SIZE_LABELS[s] && (
-                                <span className="block raleway-light normal-case tracking-normal text-[8px] text-[#533113]/40 mt-0.5">
+                                <span className="block raleway-regular normal-case tracking-normal text-[10px] text-[#533113]/40 mt-0.5">
                                   UK {UK_SIZE_LABELS[s]}
                                 </span>
                               )}
@@ -792,7 +792,7 @@ export default function Products() {
                                     value={form.colorSizeStock[key] ?? ""}
                                     onChange={(e) => setColorSizeStock(colorName, s, Number(e.target.value))}
                                     placeholder="0"
-                                    className="w-16 text-center border border-[#DEDEDE] raleway-light text-sm text-[#533113] py-2 px-2 outline-none focus:border-[#533113] bg-white"
+                                    className="w-16 text-center border border-[#DEDEDE] raleway-regular text-base text-[#533113] py-2 px-2 outline-none focus:border-[#533113] bg-white"
                                   />
                                 </td>
                               );
@@ -821,7 +821,7 @@ export default function Products() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="raleway-light text-sm text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
+                  className="raleway-regular text-base text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors"
                 >
                   Cancel
                 </button>

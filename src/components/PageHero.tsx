@@ -44,7 +44,7 @@ function PageHero({
           {/* Left — text */}
           <div className="flex flex-col gap-4 md:gap-6 text-white pt-10 md:pt-0 md:w-1/2">
             {badge && (
-              <span className="raleway-light text-xs tracking-[0.3em] uppercase opacity-70">
+              <span className="raleway-regular text-sm tracking-[0.3em] uppercase opacity-70">
                 {badge}
               </span>
             )}
@@ -52,7 +52,7 @@ function PageHero({
               {title}
             </h1>
             {subtitle && (
-              <p className="raleway-light text-sm md:text-base opacity-80 max-w-sm">
+              <p className="raleway-regular text-base md:text-lg opacity-80 max-w-sm">
                 {subtitle}
               </p>
             )}

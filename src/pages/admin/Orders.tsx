@@ -160,7 +160,7 @@ export default function Orders() {
       {/* Header */}
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Orders</h2>
-        <p className="raleway-light text-sm text-[#533113]/50 mt-1">
+        <p className="raleway-regular text-base text-[#533113]/50 mt-1">
           {orders.length} total orders
         </p>
       </div>
@@ -174,7 +174,7 @@ export default function Orders() {
             placeholder="Search by name, email, or ID…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-80 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-light text-sm text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
+            className="w-full sm:w-80 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
           />
         </div>
 
@@ -183,7 +183,7 @@ export default function Orders() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-[#DEDEDE] raleway-light text-sm text-[#533113] px-3 py-2.5 outline-none bg-white cursor-pointer focus:border-[#533113] transition-colors"
+            className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none bg-white cursor-pointer focus:border-[#533113] transition-colors"
           >
             <option value="all">All statuses</option>
             {STATUSES.map((s) => (
@@ -200,7 +200,7 @@ export default function Orders() {
             <div className="w-8 h-8 border-2 border-[#533113] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-16 text-center raleway-light text-sm text-[#533113]/40">
+          <div className="py-16 text-center raleway-regular text-base text-[#533113]/40">
             No orders found.
           </div>
         ) : (
@@ -223,14 +223,14 @@ export default function Orders() {
                   key={order.id}
                   className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors"
                 >
-                  <td className="px-5 py-3 font-mono raleway-light text-xs text-[#533113]">
+                  <td className="px-5 py-3 font-mono raleway-regular text-sm text-[#533113]">
                     #{order.id.slice(0, 8)}
                   </td>
                   <td className="px-5 py-3">
                     <p className="raleway-bold text-[#533113] text-sm">{order.customerName ?? "—"}</p>
-                    <p className="raleway-light text-xs text-[#533113]/50">{order.customerEmail ?? ""}</p>
+                    <p className="raleway-regular text-sm text-[#533113]/50">{order.customerEmail ?? ""}</p>
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/70 text-center">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
                     {order.items ?? order.lineItems?.length ?? "—"}
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{fmt(order.total ?? 0)}</td>
@@ -241,13 +241,13 @@ export default function Orders() {
                       loading={updatingId === order.id}
                     />
                   </td>
-                  <td className="px-5 py-3 raleway-light text-[#533113]/60 text-xs">
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                     {fmtDate(order.createdAt)}
                   </td>
                   <td className="px-5 py-3">
                     <button
                       onClick={() => setSelectedOrder(order)}
-                      className="raleway-light text-xs text-[#533113] underline underline-offset-2 hover:text-[#533113]/70 transition-colors"
+                      className="raleway-regular text-sm text-[#533113] underline underline-offset-2 hover:text-[#533113]/70 transition-colors"
                     >
                       View
                     </button>
@@ -287,9 +287,9 @@ export default function Orders() {
               <div className="flex flex-col gap-1.5 bg-[#FFFBF6] px-4 py-4 border border-[#DEDEDE]">
                 <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest mb-1">Customer</p>
                 <p className="raleway-bold text-sm text-[#533113]">{selectedOrder.customerName ?? "—"}</p>
-                <p className="raleway-light text-sm text-[#533113]/70">{selectedOrder.customerEmail ?? "—"}</p>
-                <p className="raleway-light text-sm text-[#533113]/70">{selectedOrder.customerPhone ?? "—"}</p>
-                <p className="raleway-light text-xs text-[#533113]/50 mt-1">{selectedOrder.address ?? "—"}</p>
+                <p className="raleway-regular text-base text-[#533113]/70">{selectedOrder.customerEmail ?? "—"}</p>
+                <p className="raleway-regular text-base text-[#533113]/70">{selectedOrder.customerPhone ?? "—"}</p>
+                <p className="raleway-regular text-sm text-[#533113]/50 mt-1">{selectedOrder.address ?? "—"}</p>
               </div>
 
               {/* Items */}
@@ -304,7 +304,7 @@ export default function Orders() {
                       >
                         <div>
                           <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
-                          <p className="raleway-light text-xs text-[#533113]/50">
+                          <p className="raleway-regular text-sm text-[#533113]/50">
                             {item.size && `${item.size} · `}
                             {item.color && `${item.color} · `}
                             Qty: {item.quantity}
@@ -317,7 +317,7 @@ export default function Orders() {
                     ))}
                   </div>
                 ) : (
-                  <p className="raleway-light text-sm text-[#533113]/40">No item details available.</p>
+                  <p className="raleway-regular text-base text-[#533113]/40">No item details available.</p>
                 )}
               </div>
 
@@ -328,7 +328,7 @@ export default function Orders() {
               </div>
 
               {/* Date */}
-              <p className="raleway-light text-xs text-[#533113]/40">
+              <p className="raleway-regular text-sm text-[#533113]/40">
                 Placed on {fmtDate(selectedOrder.createdAt)}
               </p>
             </div>
@@ -354,7 +354,7 @@ function StatusSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={loading}
-        className={`appearance-none raleway-light text-xs px-2.5 py-1 pr-6 border capitalize cursor-pointer outline-none transition-colors ${
+        className={`appearance-none raleway-regular text-sm px-2.5 py-1 pr-6 border capitalize cursor-pointer outline-none transition-colors ${
           STATUS_COLORS[value] ?? "bg-gray-100 text-gray-600 border-gray-200"
         } disabled:opacity-50`}
       >

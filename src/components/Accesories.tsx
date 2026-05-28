@@ -22,7 +22,7 @@ function Accesories({ products }: AccesoriesProps) {
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
         <div className="flex flex-col gap-2 w-full md:w-[70%] lg:w-full">
           <h3 className="text-2xl font-bold raleway-bold">ACCESORIES</h3>
-          <p className="text-sm raleway-light w-full md:w-[80%] lg:w-[60%]">
+          <p className="text-base raleway-regular w-full md:w-[80%] lg:w-[60%]">
             TO COMPLEMENT ALL YOUR CLOTHING AND SPORTS WEAR
           </p>
         </div>

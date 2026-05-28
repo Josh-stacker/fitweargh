@@ -80,10 +80,10 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
             {hasDiscount ? (
               <>
                 <p className="raleway-bold text-sm text-red-600">gh₵ {discountPrice!.toFixed(2)}</p>
-                <p className="raleway-light text-xs text-[#533113]/40 line-through">{priceStr}</p>
+                <p className="raleway-regular text-sm text-[#533113]/40 line-through">{priceStr}</p>
               </>
             ) : (
-              <p className="raleway-light text-sm text-[#533113]">{priceStr}</p>
+              <p className="raleway-regular text-base text-[#533113]">{priceStr}</p>
             )}
           </div>
           {colors && colors.length > 0 && (

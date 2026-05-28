@@ -61,7 +61,7 @@ function SalePopup() {
         </button>
 
         {/* Badge */}
-        <span className="raleway-light text-xs tracking-[0.3em] uppercase text-[#533113]/50">
+        <span className="raleway-regular text-sm tracking-[0.3em] uppercase text-[#533113]/50">
           FitwearGH Sale
         </span>
 
@@ -72,7 +72,7 @@ function SalePopup() {
 
         {/* Body */}
         {popup.body && (
-          <p className="raleway-light text-sm text-[#533113]/70 leading-relaxed">
+          <p className="raleway-regular text-base text-[#533113]/70 leading-relaxed">
             {popup.body}
           </p>
         )}
@@ -84,7 +84,7 @@ function SalePopup() {
             onClick={dismiss}
             className="bg-[#533113] text-white flex items-center justify-between px-5 py-3 hover:bg-[#3d2409] transition-colors"
           >
-            <span className="raleway-light text-sm">{popup.ctaText}</span>
+            <span className="raleway-regular text-base">{popup.ctaText}</span>
             <ArrowLineUpRightIcon size={16} />
           </Link>
         )}
@@ -92,7 +92,7 @@ function SalePopup() {
         {/* Dismiss link */}
         <button
           onClick={dismiss}
-          className="raleway-light text-xs text-[#533113]/40 hover:text-[#533113]/60 underline underline-offset-2 self-start transition-colors"
+          className="raleway-regular text-sm text-[#533113]/40 hover:text-[#533113]/60 underline underline-offset-2 self-start transition-colors"
         >
           No thanks
         </button>
