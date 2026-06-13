@@ -58,10 +58,10 @@ function FastSelling({
             />
           ))}
         </div>
-        <div className="mt-5">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
             to={viewAllHref}
-            className="w-full flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
+            className="w-full flex justify-center py-3 px-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest text-center hover:bg-[#875A33] hover:text-white transition-colors"
           >
             {viewAllLabel}
           </Link>
@@ -114,14 +114,6 @@ function FastSelling({
               ))}
           </section>
         </main>
-      </div>
-      <div className="hidden md:block px-6 lg:px-10 pb-6 lg:pb-10">
-        <Link
-          to={viewAllHref}
-          className="w-full flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
-        >
-          {viewAllLabel}
-        </Link>
       </div>
     </section>
   );

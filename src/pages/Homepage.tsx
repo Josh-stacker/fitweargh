@@ -348,10 +348,10 @@ function Homepage() {
                 />
               ))}
             </div>
-            <div className="mt-6">
+            <div className="mt-6 grid grid-cols-2 gap-4">
               <Link
                 to={SECTION_LINKS[activeTab!] ?? `/${activeTab!.toLowerCase().replace(/\s+/g, '-')}`}
-                className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+                className="w-full flex justify-center py-3 px-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest text-center hover:bg-[#533113] hover:text-white transition-colors"
               >
                 View All {activeTab}
               </Link>
@@ -401,10 +401,10 @@ function Homepage() {
               />
             ))}
           </section>
-          <div className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mb-8 ${activeTab !== null ? "hidden md:block" : ""}`}>
+          <div className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mb-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 ${activeTab !== null ? "hidden md:grid" : ""}`}>
             <Link
               to="/new-arrivals"
-              className="w-full flex items-center justify-center gap-2 border border-[#533113] text-[#533113] py-3 px-4 raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 border border-[#533113] text-[#533113] py-3 px-3 raleway-bold text-sm uppercase tracking-widest text-center hover:bg-[#533113] hover:text-white transition-colors"
             >
               <span>View All New Arrivals</span>
               <ArrowLineUpRightIcon size={22} />
