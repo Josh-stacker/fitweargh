@@ -51,7 +51,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const merge = async () => {
       try {
-        const { data } = await supabase.from("carts").select("items").eq("id", user.uid).single();
+        const { data } = await supabase.from("carts").select("items").eq("id", user.uid).maybeSingle();
         const remoteItems: CartItem[] = data ? (data.items ?? []) : [];
         const localItems = loadLocal();
 
