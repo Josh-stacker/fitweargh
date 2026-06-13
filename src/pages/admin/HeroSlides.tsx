@@ -36,6 +36,7 @@ const PAGES = [
   "Clothing",
   "Body Shapers",
   "Accessories",
+  "Sales",
 ];
 
 const EMPTY_FORM = {

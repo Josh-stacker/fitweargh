@@ -4,10 +4,10 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import Button from "../components/ui/Button";
-import PageHero from "../components/PageHero";
+import HeroSlider from "../components/HeroSlider";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
-import heroBg from "../assets/hero-bg.webp";
+
 
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
 const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6", "#f97316", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
@@ -69,14 +69,7 @@ function Accessories() {
     <div className="min-h-screen bg-[#FFFBF6]">
       <Navbar />
 
-      <PageHero
-        bgImage={heroBg}
-        bgPosition="50% 45%"
-        title={"ACCESSORIES"}
-        subtitle="Complete your look. Bags, belts, headwear and more — the finishing touch to every outfit."
-        badge="FitwearGH Collection"
-        ctaText="Shop Accessories"
-      />
+      <HeroSlider page="Accessories" />
 
       <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-8">
 

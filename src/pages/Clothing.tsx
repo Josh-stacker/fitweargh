@@ -4,10 +4,10 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import Button from "../components/ui/Button";
-import PageHero from "../components/PageHero";
+import HeroSlider from "../components/HeroSlider";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
-import heroBg2 from "../assets/hero-bg2.webp";
+
 
 const SUBCATEGORIES = ["All", "Women's", "Men's", "Sports"];
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
@@ -83,14 +83,7 @@ function Clothing() {
     <div className="min-h-screen bg-[#FFFBF6]">
       <Navbar />
 
-      <PageHero
-        bgImage={heroBg2}
-        bgPosition="50% 30%"
-        title={"CLOTHING"}
-        subtitle="Women's, men's and sports — stylish, breathable fits for every lifestyle."
-        badge="FitwearGH Collection"
-        ctaText="Shop Clothing"
-      />
+      <HeroSlider page="Clothing" />
 
       <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-8">
 

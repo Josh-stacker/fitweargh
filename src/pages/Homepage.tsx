@@ -59,7 +59,7 @@ interface HomepageSections {
   mobileTabs?: string[];
 }
 
-const MAX_PER_SECTION = 6;
+const MAX_PER_SECTION = 8;
 
 const STATIC_PRODUCTS: Product[] = [1, 2, 3, 4, 5, 6].map((i) => ({
   id: `static-${i}`,
@@ -89,11 +89,11 @@ function Homepage() {
   const [loading, setLoading] = useState(true);
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [naLimit, setNaLimit] = useState(4);
-  const [dynamicLimit, setDynamicLimit] = useState(6);
+  const [naLimit, setNaLimit] = useState(8);
+  const [dynamicLimit, setDynamicLimit] = useState(8);
 
   useEffect(() => {
-    setDynamicLimit(6);
+    setDynamicLimit(8);
   }, [activeTab]);
 
   useEffect(() => {
@@ -328,7 +328,7 @@ function Homepage() {
             >
               <FastSelling
                 products={fastSellingProducts}
-                mobileLimit={4}
+                mobileLimit={8}
               />
             </section>
           )}
@@ -348,7 +348,7 @@ function Homepage() {
             <section
               className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
             >
-              <Accesories products={accessoriesProducts} mobileLimit={4} />
+              <Accesories products={accessoriesProducts} mobileLimit={8} />
             </section>
           )}
         </>
