@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase, type AppUser } from "../supabase";
 import { welcomeEmailHtml } from "../emails/welcomeEmail";
 
@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    supabase.auth.getSession().then(({ data }) => {
-      void syncSession(data.session?.user ?? null);
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      void syncSession(sessionData.session?.user ?? null);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       void syncSession(session?.user ?? null);
     });
 
