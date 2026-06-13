@@ -1,16 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import { PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, TagIcon } from "@phosphor-icons/react";
 
 interface Category {
@@ -35,8 +24,10 @@ export default function Categories() {
 
   const fetchCats = async () => {
     setLoading(true);
-    const snap = await getDocs(query(collection(db, "categories"), orderBy("name")));
-    setCats(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Category)));
+    const { data } = await supabase.from("categories").select("*").order("name", { ascending: true });
+    if (data) {
+      setCats(data as Category[]);
+    }
     setLoading(false);
   };
 
@@ -62,12 +53,12 @@ export default function Categories() {
         name: form.name,
         slug: toSlug(form.name),
         description: form.description,
-        updatedAt: serverTimestamp(),
+        updated_at: new Date().toISOString(),
       };
       if (editing) {
-        await updateDoc(doc(db, "categories", editing.id), data);
+        await supabase.from("categories").update(data).eq("id", editing.id);
       } else {
-        await addDoc(collection(db, "categories"), { ...data, productCount: 0, createdAt: serverTimestamp() });
+        await supabase.from("categories").insert({ ...data, product_count: 0 });
       }
       setModalOpen(false);
       fetchCats();
@@ -79,7 +70,7 @@ export default function Categories() {
   const handleDelete = async (id: string) => {
     setDeleteId(id);
     try {
-      await deleteDoc(doc(db, "categories", id));
+      await supabase.from("categories").delete().eq("id", id);
       setCats((prev) => prev.filter((c) => c.id !== id));
     } finally {
       setDeleteId(null);
@@ -137,7 +128,7 @@ export default function Categories() {
                     {c.description || "—"}
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
-                    {c.productCount ?? 0}
+                    {c.productCount ?? (c as any).product_count ?? 0}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">

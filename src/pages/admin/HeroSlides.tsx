@@ -1,42 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "../../firebase";
-import {
-  PlusIcon,
-  PencilSimpleIcon,
-  TrashIcon,
-  XIcon,
-  ImageIcon,
-} from "@phosphor-icons/react";
+import { supabase } from "../../supabase";
+import { PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, ImageIcon } from "@phosphor-icons/react";
 
 interface HeroSlide {
   id: string;
   title: string;
   subtitle: string;
   badge: string;
-  ctaText: string;
-  bgImageUrl: string;
-  bgImagePath: string;
-  image1Url: string;
-  image1Path: string;
-  image2Url: string;
-  image2Path: string;
-  bgPosition: string;
-  order: number;
+  cta_text: string;
+  bg_image_url: string;
+  bg_image_path: string;
+  image1_url: string;
+  image1_path: string;
+  image2_url: string;
+  image2_path: string;
+  bg_position: string;
+  display_order: number;
   active: boolean;
   page: string;
-  createdAt: unknown;
+  created_at: string;
 }
 
 const PAGES = [
@@ -51,9 +33,9 @@ const EMPTY_FORM = {
   title: "",
   subtitle: "",
   badge: "",
-  ctaText: "Shop Now",
-  bgPosition: "50% 40%",
-  order: 0,
+  cta_text: "Shop Now",
+  bg_position: "50% 40%",
+  display_order: 0,
   active: true,
   page: "Homepage",
 };
@@ -83,8 +65,8 @@ export default function HeroSlides() {
 
   const fetchSlides = async () => {
     setLoading(true);
-    const snap = await getDocs(query(collection(db, "heroSlides"), orderBy("order", "asc")));
-    setSlides(snap.docs.map((d) => ({ id: d.id, ...d.data() } as HeroSlide)));
+    const { data } = await supabase.from("hero_slides").select("*").order("display_order", { ascending: true });
+    if (data) setSlides(data as HeroSlide[]);
     setLoading(false);
   };
 
@@ -105,15 +87,15 @@ export default function HeroSlides() {
       title: s.title,
       subtitle: s.subtitle,
       badge: s.badge,
-      ctaText: s.ctaText,
-      bgPosition: s.bgPosition ?? "50% 40%",
-      order: s.order ?? 0,
+      cta_text: s.cta_text,
+      bg_position: s.bg_position ?? "50% 40%",
+      display_order: s.display_order ?? 0,
       active: s.active ?? true,
       page: s.page ?? "Homepage",
     });
-    setBgFile(null); setBgPreview(s.bgImageUrl ?? "");
-    setImg1File(null); setImg1Preview(s.image1Url ?? "");
-    setImg2File(null); setImg2Preview(s.image2Url ?? "");
+    setBgFile(null); setBgPreview(s.bg_image_url ?? "");
+    setImg1File(null); setImg1Preview(s.image1_url ?? "");
+    setImg2File(null); setImg2Preview(s.image2_url ?? "");
     setModalOpen(true);
   };
 
@@ -125,13 +107,12 @@ export default function HeroSlides() {
   ): Promise<{ url: string; path: string }> => {
     if (!file) return { url: existing, path: existingPath };
     const path = `heroSlides/${folder}/${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
+    await supabase.storage.from("public-assets").upload(path, file);
+    const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
     if (existingPath) {
-      try { await deleteObject(ref(storage, existingPath)); } catch {}
+      try { await supabase.storage.from("public-assets").remove([existingPath]); } catch {}
     }
-    return { url, path };
+    return { url: data.publicUrl, path };
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -139,33 +120,33 @@ export default function HeroSlides() {
     setSaving(true);
     try {
       const [bg, img1, img2] = await Promise.all([
-        uploadIfNew(bgFile, editing?.bgImageUrl ?? "", editing?.bgImagePath ?? "", "bg"),
-        uploadIfNew(img1File, editing?.image1Url ?? "", editing?.image1Path ?? "", "img1"),
-        uploadIfNew(img2File, editing?.image2Url ?? "", editing?.image2Path ?? "", "img2"),
+        uploadIfNew(bgFile, editing?.bg_image_url ?? "", editing?.bg_image_path ?? "", "bg"),
+        uploadIfNew(img1File, editing?.image1_url ?? "", editing?.image1_path ?? "", "img1"),
+        uploadIfNew(img2File, editing?.image2_url ?? "", editing?.image2_path ?? "", "img2"),
       ]);
 
       const data = {
         title: form.title,
         subtitle: form.subtitle,
         badge: form.badge,
-        ctaText: form.ctaText,
-        bgPosition: form.bgPosition,
-        order: Number(form.order),
+        cta_text: form.cta_text,
+        bg_position: form.bg_position,
+        display_order: Number(form.display_order),
         active: form.active,
         page: form.page,
-        bgImageUrl: bg.url,
-        bgImagePath: bg.path,
-        image1Url: img1.url,
-        image1Path: img1.path,
-        image2Url: img2.url,
-        image2Path: img2.path,
-        updatedAt: serverTimestamp(),
+        bg_image_url: bg.url,
+        bg_image_path: bg.path,
+        image1_url: img1.url,
+        image1_path: img1.path,
+        image2_url: img2.url,
+        image2_path: img2.path,
+        updated_at: new Date().toISOString(),
       };
 
       if (editing) {
-        await updateDoc(doc(db, "heroSlides", editing.id), data);
+        await supabase.from("hero_slides").update(data).eq("id", editing.id);
       } else {
-        await addDoc(collection(db, "heroSlides"), { ...data, createdAt: serverTimestamp() });
+        await supabase.from("hero_slides").insert(data);
       }
 
       setModalOpen(false);
@@ -180,9 +161,9 @@ export default function HeroSlides() {
   const handleDelete = async (s: HeroSlide) => {
     setDeleteId(s.id);
     try {
-      await deleteDoc(doc(db, "heroSlides", s.id));
-      for (const path of [s.bgImagePath, s.image1Path, s.image2Path]) {
-        if (path) { try { await deleteObject(ref(storage, path)); } catch {} }
+      await supabase.from("hero_slides").delete().eq("id", s.id);
+      for (const path of [s.bg_image_path, s.image1_path, s.image2_path]) {
+        if (path) { try { await supabase.storage.from("public-assets").remove([path]); } catch {} }
       }
       setSlides((prev) => prev.filter((x) => x.id !== s.id));
     } finally {
@@ -245,8 +226,8 @@ export default function HeroSlides() {
               {slides.map((s) => (
                 <tr key={s.id} className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors">
                   <td className="px-5 py-3">
-                    {s.bgImageUrl ? (
-                      <img src={s.bgImageUrl} alt={s.title} className="w-20 h-12 object-cover border border-[#DEDEDE]" />
+                    {s.bg_image_url ? (
+                      <img src={s.bg_image_url} alt={s.title} className="w-20 h-12 object-cover border border-[#DEDEDE]" />
                     ) : (
                       <div className="w-20 h-12 bg-[#F5EDE1] flex items-center justify-center">
                         <ImageIcon size={18} className="text-[#533113]/30" />
@@ -262,8 +243,8 @@ export default function HeroSlides() {
                     </span>
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">{s.badge || "—"}</td>
-                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">{s.ctaText || "—"}</td>
-                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">{s.order ?? 0}</td>
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">{s.cta_text || "—"}</td>
+                  <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">{s.display_order ?? 0}</td>
                   <td className="px-5 py-3">
                     <span className={`raleway-regular text-sm px-2.5 py-1 ${s.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {s.active ? "Active" : "Inactive"}
@@ -396,8 +377,8 @@ export default function HeroSlides() {
                 </Field>
                 <Field label="CTA Button Text">
                   <input
-                    value={form.ctaText}
-                    onChange={(e) => setForm((f) => ({ ...f, ctaText: e.target.value }))}
+                    value={form.cta_text}
+                    onChange={(e) => setForm((f) => ({ ...f, cta_text: e.target.value }))}
                     placeholder="Shop Now"
                     className="input-base"
                   />
@@ -421,8 +402,8 @@ export default function HeroSlides() {
                   <input
                     type="number"
                     min="0"
-                    value={form.order}
-                    onChange={(e) => setForm((f) => ({ ...f, order: Number(e.target.value) }))}
+                    value={form.display_order}
+                    onChange={(e) => setForm((f) => ({ ...f, display_order: Number(e.target.value) }))}
                     placeholder="0"
                     className="input-base"
                   />
@@ -432,8 +413,8 @@ export default function HeroSlides() {
               {/* BG Position */}
               <Field label="BG Position (CSS)">
                 <input
-                  value={form.bgPosition}
-                  onChange={(e) => setForm((f) => ({ ...f, bgPosition: e.target.value }))}
+                  value={form.bg_position}
+                  onChange={(e) => setForm((f) => ({ ...f, bg_position: e.target.value }))}
                   placeholder="50% 40%"
                   className="input-base"
                 />

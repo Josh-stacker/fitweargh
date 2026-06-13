@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import {
   ShoppingCartIcon,
   UsersIcon,
@@ -23,7 +22,7 @@ interface Order {
   customerName: string;
   total: number;
   status: string;
-  createdAt: Timestamp;
+  created_at: string;
   items: number;
 }
 
@@ -69,42 +68,35 @@ export default function Dashboard() {
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        const [ordersSnap, customersSnap, productsSnap, monthOrdersSnap] = await Promise.all([
-          getDocs(collection(db, "orders")),
-          getDocs(collection(db, "customers")),
-          getDocs(collection(db, "products")),
-          getDocs(
-            query(
-              collection(db, "orders"),
-              where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
-            )
-          ),
+        const [
+          { data: allOrders, count: ordersCount },
+          { count: customersCount },
+          { count: productsCount },
+          { data: monthOrders },
+          { data: recentData }
+        ] = await Promise.all([
+          supabase.from("orders").select("total", { count: "exact" }),
+          supabase.from("profiles").select("*", { count: "exact", head: true }),
+          supabase.from("products").select("*", { count: "exact", head: true }),
+          supabase.from("orders").select("total").gte("created_at", startOfMonth.toISOString()),
+          supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
         ]);
 
-        const totalRevenue = ordersSnap.docs.reduce(
-          (sum, d) => sum + (d.data().total ?? 0),
-          0
-        );
-        const monthRevenue = monthOrdersSnap.docs.reduce(
-          (sum, d) => sum + (d.data().total ?? 0),
-          0
-        );
+        const totalRevenue = allOrders?.reduce((sum, d) => sum + (Number(d.total) || 0), 0) || 0;
+        const monthRevenue = monthOrders?.reduce((sum, d) => sum + (Number(d.total) || 0), 0) || 0;
 
         setStats({
           totalRevenue,
-          totalOrders: ordersSnap.size,
-          totalCustomers: customersSnap.size,
-          totalProducts: productsSnap.size,
+          totalOrders: ordersCount || 0,
+          totalCustomers: customersCount || 0,
+          totalProducts: productsCount || 0,
           monthRevenue,
-          monthOrders: monthOrdersSnap.size,
+          monthOrders: monthOrders?.length || 0,
         });
 
-        const recentSnap = await getDocs(
-          query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(8))
-        );
-        setRecentOrders(
-          recentSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))
-        );
+        if (recentData) {
+          setRecentOrders(recentData as Order[]);
+        }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -118,8 +110,8 @@ export default function Dashboard() {
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const fmtDate = (ts: Timestamp) =>
-    ts?.toDate().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) ?? "—";
+  const fmtDate = (isoString: string) =>
+    isoString ? new Date(isoString).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
   if (loading) {
     return (
@@ -237,7 +229,7 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
-                      {fmtDate(order.createdAt)}
+                      {fmtDate(order.created_at)}
                     </td>
                   </tr>
                 ))}

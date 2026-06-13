@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon } from "@phosphor-icons/react";
 
 interface ShippingMethod {
@@ -34,8 +25,8 @@ export default function ShippingMethods() {
 
   const fetchMethods = async () => {
     setLoading(true);
-    const snap = await getDocs(collection(db, "shippingMethods"));
-    setMethods(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShippingMethod)));
+    const { data } = await supabase.from("shipping_methods").select("*").order("created_at", { ascending: true });
+    if (data) setMethods(data as ShippingMethod[]);
     setLoading(false);
   };
 
@@ -48,16 +39,18 @@ export default function ShippingMethods() {
     if (isNaN(price) || price < 0) { setError("Enter a valid price."); return; }
     setSaving(true);
     try {
-      const ref = await addDoc(collection(db, "shippingMethods"), {
+      const { data, error } = await supabase.from("shipping_methods").insert({
         name: form.name.trim(),
         description: form.description.trim(),
         price,
         enabled: form.enabled,
-        createdAt: serverTimestamp(),
-      });
+      }).select().single();
+      
+      if (error) throw error;
+
       setMethods((prev) => [
         ...prev,
-        { id: ref.id, name: form.name.trim(), description: form.description.trim(), price, enabled: form.enabled },
+        data as ShippingMethod,
       ]);
       setForm(EMPTY_FORM);
       setShowForm(false);
@@ -78,12 +71,13 @@ export default function ShippingMethods() {
     if (isNaN(price) || price < 0) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, "shippingMethods", id), {
+      await supabase.from("shipping_methods").update({
         name: editForm.name.trim(),
         description: editForm.description.trim(),
         price,
         enabled: editForm.enabled,
-      });
+      }).eq("id", id);
+      
       setMethods((prev) =>
         prev.map((m) =>
           m.id === id
@@ -98,14 +92,14 @@ export default function ShippingMethods() {
   };
 
   const toggleEnabled = async (m: ShippingMethod) => {
-    await updateDoc(doc(db, "shippingMethods", m.id), { enabled: !m.enabled });
+    await supabase.from("shipping_methods").update({ enabled: !m.enabled }).eq("id", m.id);
     setMethods((prev) => prev.map((x) => (x.id === m.id ? { ...x, enabled: !x.enabled } : x)));
   };
 
   const handleRemove = async (id: string) => {
     setRemovingId(id);
     try {
-      await deleteDoc(doc(db, "shippingMethods", id));
+      await supabase.from("shipping_methods").delete().eq("id", id);
       setMethods((prev) => prev.filter((m) => m.id !== id));
     } finally {
       setRemovingId(null);

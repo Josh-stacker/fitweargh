@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 import { XIcon, ArrowLineUpRightIcon } from "@phosphor-icons/react";
 import { Link } from "react-router-dom";
 
@@ -23,11 +22,11 @@ function SalePopup() {
 
     const load = async () => {
       try {
-        const snap = await getDoc(doc(db, "siteSettings", "popup"));
-        if (snap.exists()) {
-          const data = snap.data() as PopupDoc;
-          if (data.enabled) {
-            setPopup(data);
+        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").single();
+        if (data && data.value) {
+          const popupData = data.value as PopupDoc;
+          if (popupData.enabled) {
+            setPopup(popupData);
             setVisible(true);
           }
         }

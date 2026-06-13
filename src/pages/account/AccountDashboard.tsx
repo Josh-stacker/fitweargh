@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, type Timestamp } from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import { useAuth } from "../../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -20,9 +19,9 @@ interface Order {
   id: string;
   total: number;
   status: string;
-  itemCount: number;
-  items: { name: string; qty: number; price: number }[];
-  createdAt: Timestamp;
+  item_count: number;
+  line_items: { name: string; quantity: number; price: number }[];
+  created_at: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,20 +53,14 @@ export default function AccountDashboard() {
     const fetchOrders = async () => {
       setLoadingOrders(true);
       try {
-        const snap = await getDocs(
-          query(
-            collection(db, "orders"),
-            where("customerId", "==", user.uid),
-            orderBy("createdAt", "desc")
-          )
-        );
-        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order)));
-      } catch {
-        // Index may not exist yet; fallback without orderBy
-        const snap = await getDocs(
-          query(collection(db, "orders"), where("customerId", "==", user.uid))
-        );
-        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order)));
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("user_id", user.uid)
+          .order("created_at", { ascending: false });
+        if (data) setOrders(data as Order[]);
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoadingOrders(false);
       }
@@ -75,9 +68,8 @@ export default function AccountDashboard() {
 
     // Fetch customer profile extras
     const fetchProfile = async () => {
-      const snap = await getDoc(doc(db, "customers", user.uid));
-      if (snap.exists()) {
-        const data = snap.data();
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.uid).single();
+      if (data) {
         setPhone(data.phone ?? "");
         setAddress(data.address ?? "");
         if (data.name) setName(data.name);
@@ -97,7 +89,7 @@ export default function AccountDashboard() {
     if (!user) return;
     setSavingProfile(true);
     try {
-      await updateDoc(doc(db, "customers", user.uid), { name, phone, address });
+      await supabase.from("profiles").update({ name, phone, address }).eq("id", user.uid);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
     } finally {
@@ -108,8 +100,8 @@ export default function AccountDashboard() {
   const fmt = (n: number) =>
     `gh₵ ${Number(n).toLocaleString("en-GH", { minimumFractionDigits: 2 })}`;
 
-  const fmtDate = (ts: Timestamp) =>
-    ts?.toDate().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) ?? "—";
+  const fmtDate = (isoString: string) =>
+    isoString ? new Date(isoString).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
   const totalSpent = orders.reduce((s, o) => s + (o.total ?? 0), 0);
 
@@ -152,7 +144,7 @@ export default function AccountDashboard() {
           <SummaryCard
             icon={ClockIcon}
             label="Last Order"
-            value={orders[0] ? fmtDate(orders[0].createdAt) : "—"}
+            value={orders[0] ? fmtDate(orders[0].created_at) : "—"}
             className="col-span-2 sm:col-span-1"
           />
         </div>
@@ -214,7 +206,7 @@ export default function AccountDashboard() {
                     </div>
                     <div className="flex items-center gap-6">
                       <span className="raleway-regular text-base text-[#533113]/60">
-                        {fmtDate(order.createdAt)}
+                        {fmtDate(order.created_at)}
                       </span>
                       <span className="raleway-bold text-base text-[#533113]">
                         {fmt(order.total ?? 0)}
@@ -225,15 +217,15 @@ export default function AccountDashboard() {
                   {/* Expanded items */}
                   {expandedOrder === order.id && (
                     <div className="border-t border-[#DEDEDE] px-5 py-4 flex flex-col gap-3">
-                      {order.items?.length > 0 ? (
-                        order.items.map((item, i) => (
+                      {order.line_items?.length > 0 ? (
+                        order.line_items.map((item, i) => (
                           <div key={i} className="flex justify-between items-center">
                             <div>
                               <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
-                              <p className="raleway-regular text-sm text-[#533113]/50">Qty: {item.qty}</p>
+                              <p className="raleway-regular text-sm text-[#533113]/50">Qty: {item.quantity}</p>
                             </div>
                             <p className="raleway-bold text-sm text-[#533113]">
-                              {fmt(item.price * item.qty)}
+                              {fmt(item.price * item.quantity)}
                             </p>
                           </div>
                         ))

@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  type Timestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import { MagnifyingGlassIcon, UserIcon, EnvelopeIcon, PhoneIcon } from "@phosphor-icons/react";
 
 interface Customer {
@@ -14,9 +7,9 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  orderCount: number;
-  totalSpent: number;
-  createdAt: Timestamp;
+  order_count: number;
+  total_spent: number;
+  created_at: string;
 }
 
 export default function Customers() {
@@ -27,10 +20,8 @@ export default function Customers() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const snap = await getDocs(
-        query(collection(db, "customers"), orderBy("createdAt", "desc"))
-      );
-      setCustomers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer)));
+      const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      if (data) setCustomers(data as Customer[]);
       setLoading(false);
     };
     fetch();
@@ -39,12 +30,12 @@ export default function Customers() {
   const fmt = (n: number) =>
     `gh₵ ${Number(n).toLocaleString("en-GH", { minimumFractionDigits: 2 })}`;
 
-  const fmtDate = (ts: Timestamp) =>
-    ts?.toDate().toLocaleDateString("en-GB", {
+  const fmtDate = (isoString: string) =>
+    isoString ? new Date(isoString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    }) ?? "—";
+    }) : "—";
 
   const filtered = customers.filter(
     (c) =>
@@ -136,13 +127,13 @@ export default function Customers() {
                     </div>
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
-                    {c.orderCount ?? 0}
+                    {c.order_count ?? 0}
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">
-                    {fmt(c.totalSpent ?? 0)}
+                    {fmt(c.total_spent ?? 0)}
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
-                    {fmtDate(c.createdAt)}
+                    {fmtDate(c.created_at)}
                   </td>
                 </tr>
               ))}

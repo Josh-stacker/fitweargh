@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  setDoc,
-  query,
-  orderBy,
-  type Timestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -30,17 +20,17 @@ interface LineItem {
 
 interface Order {
   id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
   address: string;
   city: string;
   total: number;
   status: string;
-  lineItems: LineItem[];
+  line_items: LineItem[];
   items: number;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  created_at: string;
+  updated_at: string;
 }
 
 const STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"];
@@ -63,8 +53,8 @@ export default function Orders() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc")));
-    setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order)));
+    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (data) setOrders(data as Order[]);
     setLoading(false);
   };
 
@@ -73,7 +63,7 @@ export default function Orders() {
   const updateStatus = async (orderId: string, status: string) => {
     setUpdatingId(orderId);
     try {
-      await updateDoc(doc(db, "orders", orderId), { status });
+      await supabase.from("orders").update({ status }).eq("id", orderId);
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       );
@@ -82,53 +72,47 @@ export default function Orders() {
       }
 
       const order = orders.find((o) => o.id === orderId);
-      if (!order?.customerEmail) return;
+      if (!order?.customer_email) return;
 
-      const lineItems = order.lineItems ?? [];
+      const lineItems = order.line_items ?? [];
 
       if (status === "shipped") {
-        await setDoc(doc(db, "mail", `shipped_${orderId}`), {
-          to: order.customerEmail,
-          message: {
-            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has shipped!`,
-            html: shippingEmailHtml({
-              orderId,
-              customerName: order.customerName,
-              customerEmail: order.customerEmail,
-              address: order.address,
-              city: order.city,
-              total: order.total,
-              lineItems,
-            }),
-          },
+        await supabase.from("mail_queue").insert({
+          to: order.customer_email,
+          subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has shipped!`,
+          html: shippingEmailHtml({
+            orderId,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            address: order.address,
+            city: order.city,
+            total: order.total,
+            lineItems,
+          }),
         });
       } else if (status === "cancelled") {
-        await setDoc(doc(db, "mail", `cancelled_${orderId}`), {
-          to: order.customerEmail,
-          message: {
-            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has been cancelled`,
-            html: cancellationEmailHtml({
-              orderId,
-              customerName: order.customerName,
-              customerEmail: order.customerEmail,
-              lineItems,
-              total: order.total,
-            }),
-          },
+        await supabase.from("mail_queue").insert({
+          to: order.customer_email,
+          subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has been cancelled`,
+          html: cancellationEmailHtml({
+            orderId,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            lineItems,
+            total: order.total,
+          }),
         });
       } else if (status === "processing" || status === "delivered") {
-        await setDoc(doc(db, "mail", `status_${orderId}_${status}`), {
-          to: order.customerEmail,
-          message: {
-            subject: `FitwearGH — Order #${orderId.slice(0, 8).toUpperCase()} update: ${status}`,
-            html: orderStatusHtml({
-              orderId,
-              customerName: order.customerName,
-              customerEmail: order.customerEmail,
-              status: status as "processing" | "delivered",
-              total: order.total,
-            }),
-          },
+        await supabase.from("mail_queue").insert({
+          to: order.customer_email,
+          subject: `FitwearGH — Order #${orderId.slice(0, 8).toUpperCase()} update: ${status}`,
+          html: orderStatusHtml({
+            orderId,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            status: status as "processing" | "delivered",
+            total: order.total,
+          }),
         });
       }
     } finally {
@@ -139,17 +123,17 @@ export default function Orders() {
   const fmt = (n: number) =>
     `gh₵ ${Number(n).toLocaleString("en-GH", { minimumFractionDigits: 2 })}`;
 
-  const fmtDate = (ts: Timestamp) =>
-    ts?.toDate().toLocaleDateString("en-GB", {
+  const fmtDate = (isoString: string) =>
+    isoString ? new Date(isoString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    }) ?? "—";
+    }) : "—";
 
   const filtered = orders.filter((o) => {
     const matchSearch =
-      o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-      o.customerEmail?.toLowerCase().includes(search.toLowerCase()) ||
+      o.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      o.customer_email?.toLowerCase().includes(search.toLowerCase()) ||
       o.id.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || o.status === filterStatus;
     return matchSearch && matchStatus;
@@ -227,11 +211,11 @@ export default function Orders() {
                     #{order.id.slice(0, 8)}
                   </td>
                   <td className="px-5 py-3">
-                    <p className="raleway-bold text-[#533113] text-sm">{order.customerName ?? "—"}</p>
-                    <p className="raleway-regular text-sm text-[#533113]/50">{order.customerEmail ?? ""}</p>
+                    <p className="raleway-bold text-[#533113] text-sm">{order.customer_name ?? "—"}</p>
+                    <p className="raleway-regular text-sm text-[#533113]/50">{order.customer_email ?? ""}</p>
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/70 text-center">
-                    {order.items ?? order.lineItems?.length ?? "—"}
+                    {order.items ?? order.line_items?.length ?? "—"}
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{fmt(order.total ?? 0)}</td>
                   <td className="px-5 py-3">
@@ -242,7 +226,7 @@ export default function Orders() {
                     />
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
-                    {fmtDate(order.createdAt)}
+                    {fmtDate(order.created_at)}
                   </td>
                   <td className="px-5 py-3">
                     <button
@@ -284,23 +268,29 @@ export default function Orders() {
               </div>
 
               {/* Customer */}
-              <div className="flex flex-col gap-1.5 bg-[#FFFBF6] px-4 py-4 border border-[#DEDEDE]">
-                <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest mb-1">Customer</p>
-                <p className="raleway-bold text-sm text-[#533113]">{selectedOrder.customerName ?? "—"}</p>
-                <p className="raleway-regular text-base text-[#533113]/70">{selectedOrder.customerEmail ?? "—"}</p>
-                <p className="raleway-regular text-base text-[#533113]/70">{selectedOrder.customerPhone ?? "—"}</p>
-                <p className="raleway-regular text-sm text-[#533113]/50 mt-1">{selectedOrder.address ?? "—"}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-widest mb-1">Customer</p>
+                  <p className="raleway-bold text-base text-[#533113]">{selectedOrder.customer_name}</p>
+                  <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.customer_email}</p>
+                  <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.customer_phone}</p>
+                </div>
+                <div>
+                  <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-widest mb-1">Shipping Address</p>
+                  <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.address}</p>
+                  <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.city}</p>
+                </div>
               </div>
 
               {/* Items */}
               <div className="flex flex-col gap-2">
-                <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest">Items</p>
-                {selectedOrder.lineItems?.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    {selectedOrder.lineItems.map((item, i) => (
+                <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-widest mb-2">Order Items ({selectedOrder.line_items?.length})</p>
+                {selectedOrder.line_items?.length > 0 ? (
+                  <div className="bg-[#FFFBF6] border border-[#DEDEDE]/60 divide-y divide-[#DEDEDE]/60">
+                    {selectedOrder.line_items.map((item, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between px-4 py-3 border border-[#DEDEDE] bg-white"
+                        className="flex items-center justify-between px-4 py-3"
                       >
                         <div>
                           <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
@@ -329,7 +319,7 @@ export default function Orders() {
 
               {/* Date */}
               <p className="raleway-regular text-sm text-[#533113]/40">
-                Placed on {fmtDate(selectedOrder.createdAt)}
+                Placed on {fmtDate(selectedOrder.created_at)}
               </p>
             </div>
           </div>

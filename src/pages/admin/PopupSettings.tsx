@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase";
+import { supabase } from "../../supabase";
 import { FloppyDiskIcon, ToggleLeftIcon, ToggleRightIcon } from "@phosphor-icons/react";
 
 interface PopupDoc {
@@ -28,8 +27,8 @@ export default function PopupSettings() {
   useEffect(() => {
     const load = async () => {
       try {
-        const snap = await getDoc(doc(db, "siteSettings", "popup"));
-        if (snap.exists()) setForm(snap.data() as PopupDoc);
+        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").single();
+        if (data && data.value) setForm(data.value as PopupDoc);
       } catch {}
       setLoading(false);
     };
@@ -42,9 +41,10 @@ export default function PopupSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, "siteSettings", "popup"), {
-        ...form,
-        updatedAt: serverTimestamp(),
+      await supabase.from("site_settings").upsert({
+        key: "popup",
+        value: form,
+        updated_at: new Date().toISOString()
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);

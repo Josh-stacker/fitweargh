@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, where, doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 import PageHero from "./PageHero";
 import herobg from "../assets/hero-bg2.webp";
 
@@ -9,11 +8,11 @@ interface Slide {
   title: string;
   subtitle: string;
   badge: string;
-  ctaText: string;
-  bgImageUrl: string;
-  image1Url: string;
-  image2Url: string;
-  bgPosition: string;
+  cta_text: string;
+  bg_image_url: string;
+  image1_url: string;
+  image2_url: string;
+  bg_position: string;
   page: string;
 }
 
@@ -33,24 +32,22 @@ function HeroSlider({ page = "Homepage" }: Props) {
       try {
         // For the homepage, fetch the heroMode setting
         if (page === "Homepage") {
-          const settingsSnap = await getDoc(doc(db, "siteSettings", "homepage"));
-          if (settingsSnap.exists()) {
-            const d = settingsSnap.data();
+          const { data } = await supabase.from("site_settings").select("value").eq("key", "homepage").single();
+          if (data && data.value) {
+            const d = data.value as any;
             setHeroMode(d.heroMode ?? "slider");
             setStillImageUrl(d.heroStillImageUrl ?? "");
           }
         }
 
-        const slidesSnap = await getDocs(
-          query(
-            collection(db, "heroSlides"),
-            where("active", "==", true),
-            where("page", "==", page),
-            orderBy("order", "asc")
-          )
-        );
-        const data = slidesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Slide));
-        setSlides(data);
+        const { data: slidesData } = await supabase
+          .from("hero_slides")
+          .select("*")
+          .eq("active", true)
+          .eq("page", page)
+          .order("display_order", { ascending: true });
+          
+        if (slidesData) setSlides(slidesData as Slide[]);
       } catch {
         // Firestore composite index may not exist yet — fall through to fallback
       } finally {
@@ -84,14 +81,14 @@ function HeroSlider({ page = "Homepage" }: Props) {
   return (
     <div className="relative">
       <PageHero
-        bgImage={s.bgImageUrl || herobg}
-        bgPosition={s.bgPosition || "50% 40%"}
+        bgImage={s.bg_image_url || herobg}
+        bgPosition={s.bg_position || "50% 40%"}
         title={s.title || undefined}
         subtitle={s.subtitle || undefined}
         badge={s.badge || undefined}
-        ctaText={s.ctaText || "Shop Now"}
-        image1={s.image1Url || undefined}
-        image2={s.image2Url || undefined}
+        ctaText={s.cta_text || "Shop Now"}
+        image1={s.image1_url || undefined}
+        image2={s.image2_url || undefined}
       />
 
       {slides.length > 1 && (

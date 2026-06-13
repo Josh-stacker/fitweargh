@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 import { orderConfirmHtml } from "../emails/orderConfirmEmail";
 import { orderAdminHtml } from "../emails/orderAdminEmail";
 import Navbar from "../components/Navbar";
@@ -61,12 +60,13 @@ export default function CartPage() {
   const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
 
   useEffect(() => {
-    getDocs(query(collection(db, "shippingMethods"), where("enabled", "==", true))).then((snap) => {
-      const methods = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShippingMethod));
-      // Sort by price ascending
-      methods.sort((a, b) => a.price - b.price);
-      setShippingMethods(methods);
-      if (methods.length > 0) setSelectedShipping(methods[0]);
+    supabase.from("shipping_methods").select("*").eq("enabled", true).then(({ data }) => {
+      if (data) {
+        const methods = data as ShippingMethod[];
+        methods.sort((a, b) => a.price - b.price);
+        setShippingMethods(methods);
+        if (methods.length > 0) setSelectedShipping(methods[0]);
+      }
     });
   }, []);
 
@@ -80,15 +80,14 @@ export default function CartPage() {
     e.preventDefault();
     setPlacing(true);
     try {
-      const ref = await addDoc(collection(db, "orders"), {
-        customerName: form.name,
-        customerEmail: form.email,
-        customerPhone: form.phone,
+      const { data: ref, error } = await supabase.from("orders").insert({
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone,
         address: form.address,
         city: form.city,
-        notes: form.notes,
-        customerId: user?.uid ?? null,
-        lineItems: items.map((i) => ({
+        user_id: user?.uid ?? null,
+        line_items: items.map((i) => ({
           productId: i.id,
           name: i.name,
           price: i.price,
@@ -97,32 +96,28 @@ export default function CartPage() {
           quantity: i.quantity,
           imageUrl: i.imageUrl,
         })),
-        subtotal: total,
-        deliveryFee,
-        shippingMethod: selectedShipping?.name ?? "Standard Delivery",
         total: grandTotal,
         status: "pending",
         items: count,
-        createdAt: serverTimestamp(),
-      });
-      setOrderId(ref.id);
+      }).select("id").single();
+      
+      if (error) throw error;
+      
+      const orderId = ref.id;
+      setOrderId(orderId);
 
       // Order confirmation to customer
-      await setDoc(doc(db, "mail", `order_confirm_${ref.id}`), {
+      await supabase.from("mail_queue").insert({
         to: form.email,
-        message: {
-          subject: `FitwearGH — Order Confirmed #${ref.id.slice(0, 8).toUpperCase()}`,
-          html: orderConfirmHtml({ orderId: ref.id, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
-        },
+        subject: `FitwearGH — Order Confirmed #${orderId.slice(0, 8).toUpperCase()}`,
+        html: orderConfirmHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
       });
 
       // New order alert to admin
-      await setDoc(doc(db, "mail", `order_admin_${ref.id}`), {
+      await supabase.from("mail_queue").insert({
         to: "nerdosey@gmail.com",
-        message: {
-          subject: `New Order #${ref.id.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
-          html: orderAdminHtml({ orderId: ref.id, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
-        },
+        subject: `New Order #${orderId.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
+        html: orderAdminHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
       });
 
       clearCart();

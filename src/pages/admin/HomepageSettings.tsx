@@ -1,16 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  serverTimestamp,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "../../firebase";
+import { supabase } from "../../supabase";
 import {
   ImageIcon,
   FloppyDiskIcon,
@@ -88,13 +77,16 @@ export default function HomepageSettings() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [settingsSnap, productsSnap] = await Promise.all([
-        getDoc(doc(db, "siteSettings", "homepage")),
-        getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"))),
+      const [
+        { data: settingsData },
+        { data: productsData }
+      ] = await Promise.all([
+        supabase.from("site_settings").select("value").eq("key", "homepage").single(),
+        supabase.from("products").select("*").order("created_at", { ascending: false })
       ]);
 
-      if (settingsSnap.exists()) {
-        const d = settingsSnap.data() as HomepageDoc;
+      if (settingsData?.value) {
+        const d = settingsData.value as HomepageDoc;
         setHeroMode(d.heroMode ?? "slider");
         setStillImageUrl(d.heroStillImageUrl ?? "");
         setStillImagePath(d.heroStillImagePath ?? "");
@@ -107,7 +99,9 @@ export default function HomepageSettings() {
         });
       }
 
-      setProducts(productsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product)));
+      if (productsData) {
+        setProducts(productsData as Product[]);
+      }
       setLoading(false);
     };
     load();
@@ -142,11 +136,11 @@ export default function HomepageSettings() {
 
       if (stillFile) {
         const path = `siteSettings/heroStill_${Date.now()}_${stillFile.name}`;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, stillFile);
-        imageUrl = await getDownloadURL(storageRef);
+        await supabase.storage.from("public-assets").upload(path, stillFile);
+        const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
+        imageUrl = data.publicUrl;
         if (stillImagePath) {
-          try { await deleteObject(ref(storage, stillImagePath)); } catch {}
+          try { await supabase.storage.from("public-assets").remove([stillImagePath]); } catch {}
         }
         imagePath = path;
         setStillImageUrl(imageUrl);
@@ -154,12 +148,15 @@ export default function HomepageSettings() {
         setStillFile(null);
       }
 
-      await setDoc(doc(db, "siteSettings", "homepage"), {
-        heroMode,
-        heroStillImageUrl: imageUrl,
-        heroStillImagePath: imagePath,
-        sections,
-        updatedAt: serverTimestamp(),
+      await supabase.from("site_settings").upsert({
+        key: "homepage",
+        value: {
+          heroMode,
+          heroStillImageUrl: imageUrl,
+          heroStillImagePath: imagePath,
+          sections,
+        },
+        updated_at: new Date().toISOString()
       });
     } catch (err) {
       console.error("Save error:", err);

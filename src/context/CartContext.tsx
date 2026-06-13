@@ -1,11 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 import { useAuth } from "./AuthContext";
 
 export interface CartItem {
@@ -57,8 +51,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const merge = async () => {
       try {
-        const snap = await getDoc(doc(db, "carts", user.uid));
-        const remoteItems: CartItem[] = snap.exists() ? (snap.data().items ?? []) : [];
+        const { data } = await supabase.from("carts").select("items").eq("id", user.uid).single();
+        const remoteItems: CartItem[] = data ? (data.items ?? []) : [];
         const localItems = loadLocal();
 
         // Merge: local items take precedence for qty (guest added items win over stale remote)
@@ -95,10 +89,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Persist: Firestore for logged-in users, localStorage for guests
   useEffect(() => {
     if (user && loadedForUser.current === user.uid) {
-      setDoc(doc(db, "carts", user.uid), {
+      void supabase.from("carts").upsert({
+        id: user.uid,
         items,
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
+        updated_at: new Date().toISOString(),
+      });
     } else if (!user) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }
@@ -136,7 +131,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => {
     setItems([]);
     if (user) {
-      setDoc(doc(db, "carts", user.uid), { items: [], updatedAt: serverTimestamp() }).catch(() => {});
+      void supabase.from("carts").upsert({ id: user.uid, items: [], updated_at: new Date().toISOString() });
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
