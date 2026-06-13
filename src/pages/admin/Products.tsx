@@ -7,6 +7,7 @@ import {
   XIcon,
   ImageIcon,
   MagnifyingGlassIcon,
+  ArrowsOutIcon,
 } from "@phosphor-icons/react";
 
 interface Product {
@@ -184,6 +185,7 @@ export default function Products() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Two hidden file inputs: one for adding new images (multiple), one for replacing a single slot
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -650,14 +652,24 @@ export default function Products() {
                             >
                               <img src={slot.preview} alt={`img ${i + 1}`} className="w-full h-full object-cover" />
 
-                              {/* Selected overlay */}
+                              {/* Lightbox zoom icon on hover */}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setLightboxSrc(slot.preview); }}
+                                className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-all opacity-0 group-hover:opacity-100"
+                                title="View full size"
+                              >
+                                <ArrowsOutIcon size={22} className="text-white drop-shadow" />
+                              </button>
+
+                              {/* Selected star overlay */}
                               {isDisplay && (
-                                <div className="absolute inset-0 bg-[#533113]/10 flex items-center justify-center">
-                                  <span className="text-white text-lg drop-shadow">★</span>
+                                <div className="absolute inset-0 bg-[#533113]/10 flex items-end justify-start p-1 pointer-events-none">
+                                  <span className="text-white text-base drop-shadow">★</span>
                                 </div>
                               )}
 
-                              {/* Action buttons — always visible in top corners */}
+                              {/* Replace / Remove buttons */}
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); triggerReplace(i); }}
@@ -905,6 +917,27 @@ export default function Products() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            className="absolute top-5 right-5 text-white/70 hover:text-white transition-colors"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <XIcon size={28} />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Full preview"
+            className="max-w-full max-h-[90vh] object-contain shadow-2xl rounded"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
