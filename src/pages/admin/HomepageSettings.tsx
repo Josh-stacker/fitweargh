@@ -81,7 +81,7 @@ export default function HomepageSettings() {
         { data: settingsData },
         { data: productsData }
       ] = await Promise.all([
-        supabase.from("site_settings").select("value").eq("key", "homepage").single(),
+        supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
         supabase.from("products").select("*").order("created_at", { ascending: false })
       ]);
 

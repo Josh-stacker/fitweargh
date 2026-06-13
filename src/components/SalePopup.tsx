@@ -22,7 +22,7 @@ function SalePopup() {
 
     const load = async () => {
       try {
-        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").single();
+        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").maybeSingle();
         if (data && data.value) {
           const popupData = data.value as PopupDoc;
           if (popupData.enabled) {

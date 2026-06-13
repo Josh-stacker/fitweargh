@@ -27,7 +27,7 @@ export default function PopupSettings() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").single();
+        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").maybeSingle();
         if (data && data.value) setForm(data.value as PopupDoc);
       } catch {}
       setLoading(false);

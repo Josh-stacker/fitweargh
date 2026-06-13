@@ -32,7 +32,7 @@ function HeroSlider({ page = "Homepage" }: Props) {
       try {
         // For the homepage, fetch the heroMode setting
         if (page === "Homepage") {
-          const { data } = await supabase.from("site_settings").select("value").eq("key", "homepage").single();
+          const { data } = await supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle();
           if (data && data.value) {
             const d = data.value as any;
             setHeroMode(d.heroMode ?? "slider");
