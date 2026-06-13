@@ -362,7 +362,16 @@ export default function Products() {
         : typeof currentValue === "number"
           ? [currentValue]
           : [];
-      const nextMap = { ...f.colorImageMap };
+      const nextMap = Object.fromEntries(
+        Object.entries(f.colorImageMap)
+          .map(([mappedColor, value]) => {
+            if (mappedColor === colorName) return [mappedColor, value] as const;
+            const slots = (Array.isArray(value) ? value : [value]).filter((idx) => idx !== slotIdx);
+            if (slots.length === 0) return null;
+            return [mappedColor, slots] as const;
+          })
+          .filter((entry): entry is readonly [string, number[] | number] => entry !== null),
+      );
       const nextSlots = current.includes(slotIdx)
         ? current.filter((idx) => idx !== slotIdx)
         : [...current, slotIdx].sort((a, b) => a - b);
