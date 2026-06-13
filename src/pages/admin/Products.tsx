@@ -132,7 +132,7 @@ const EMPTY_FORM = {
   description: "",
 };
 
-const PRODUCT_IMAGE_BUCKET = "product-images";
+const PRODUCT_IMAGE_BUCKET = "public-assets";
 
 function productFromRow(row: ProductRow): Product {
   return {
