@@ -16,6 +16,7 @@ export interface Product {
   images: string[];
   imagePaths: string[];
   displayImageIndex: number;
+  colorImageMap: Record<string, number>;
   description: string;
   createdAt: unknown;
 }
@@ -36,6 +37,7 @@ interface ProductRow {
   images: string[] | null;
   image_paths: string[] | null;
   display_image_index: number | null;
+  color_image_map: Record<string, number> | null;
   description: string;
   created_at: string;
 }
@@ -57,6 +59,7 @@ function productFromRow(row: ProductRow): Product {
     images: row.images ?? [],
     imagePaths: row.image_paths ?? [],
     displayImageIndex: row.display_image_index ?? 0,
+    colorImageMap: row.color_image_map ?? {},
     description: row.description ?? "",
     createdAt: row.created_at,
   };

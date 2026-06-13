@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { Link } from "react-router-dom";
 import DirectionButton from "./ui/DirectionButton";
 import ProductCard from "./ProductCard";
 
@@ -14,11 +15,18 @@ interface Product {
 interface FastSellingProps {
   products: Product[];
   mobileLimit?: number;
+  viewAllHref?: string;
+  viewAllLabel?: string;
 }
 
-function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
+function FastSelling({
+  products,
+  mobileLimit = 8,
+  viewAllHref = "/new-arrivals",
+  viewAllLabel = "View All Fast Selling",
+}: FastSellingProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [limit, setLimit] = useState(mobileLimit);
+  const visibleProducts = products.slice(0, mobileLimit);
 
   const scrollLeft = () => scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" });
   const scrollRight = () => scrollRef.current?.scrollBy({ left: 400, behavior: "smooth" });
@@ -29,7 +37,7 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
       <div className="md:hidden px-4 py-6">
         <h2 className="text-3xl raleway-black text-[#875A33] mb-5">FAST SELLING</h2>
         <div className="grid grid-cols-2 gap-3">
-          {products.slice(0, limit).map((p) => (
+          {visibleProducts.map((p) => (
             <ProductCard
               key={p.id}
               id={p.id}
@@ -40,14 +48,14 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
             />
           ))}
         </div>
-        {limit < products.length && (
-          <button
-            onClick={() => setLimit((prev) => prev + 4)}
+        <div className="mt-5">
+          <Link
+            to={viewAllHref}
             className="w-full mt-5 flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
           >
-            Load More
-          </button>
-        )}
+            {viewAllLabel}
+          </Link>
+        </div>
       </div>
 
       {/* Desktop: side label + horizontal scroll */}
@@ -69,7 +77,7 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             <style>{`section::-webkit-scrollbar { display: none; }`}</style>
-            {products.map((p) => (
+            {visibleProducts.map((p) => (
               <div
                 key={p.id}
                 className="flex-1 min-w-[calc(25%-0.375rem)] snap-start"
@@ -83,8 +91,8 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
                 />
               </div>
             ))}
-            {products.length < 4 &&
-              Array.from({ length: 4 - products.length }).map((_, i) => (
+            {visibleProducts.length < 4 &&
+              Array.from({ length: 4 - visibleProducts.length }).map((_, i) => (
                 <div key={`placeholder-${i}`} className="flex-1 min-w-[calc(25%-0.375rem)]" />
               ))}
           </section>

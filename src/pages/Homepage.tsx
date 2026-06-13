@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase";
 import { fetchProducts, hasCategory } from "../lib/products";
 import { Link } from "react-router-dom";
@@ -39,6 +39,16 @@ const TAB_TEXT: Record<string, { heading: string; copy?: string }> = {
   "Accessories": { heading: "ACCESSORIES", copy: "STYLE WITH ACCESSORIES" },
 };
 
+const SECTION_LINKS: Record<string, string> = {
+  "New Arrivals": "/new-arrivals",
+  "Fast Selling": "/new-arrivals",
+  "Shop By Category": "/clothing",
+  "Clothing": "/clothing",
+  "Body Shapers": "/body-shapers",
+  "Accessories": "/accessories",
+  "Sales": "/sales",
+};
+
 interface Product {
   id: string;
   name: string;
@@ -77,6 +87,10 @@ function resolvePinned(ids: string[], allProducts: Product[]): Product[] {
   return ids.map((id) => map.get(id)).filter(Boolean) as Product[];
 }
 
+function limitProducts(products: Product[]): Product[] {
+  return products.slice(0, MAX_PER_SECTION);
+}
+
 function Homepage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [sections, setSections] = useState<HomepageSections>({
@@ -89,16 +103,11 @@ function Homepage() {
   const [loading, setLoading] = useState(true);
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [naLimit, setNaLimit] = useState(8);
-  const [dynamicLimit, setDynamicLimit] = useState(8);
-
-  useEffect(() => {
-    setDynamicLimit(8);
-  }, [activeTab]);
 
   useEffect(() => {
     const load = async () => {
       try {
+        console.info("[Homepage] Loading homepage settings and products");
         const [settingsResult, products] = await Promise.all([
           supabase
             .from("site_settings")
@@ -108,13 +117,26 @@ function Homepage() {
           fetchProducts(),
         ]);
 
+        console.info("[Homepage] Products loaded", {
+          total: products.length,
+          newArrivals: products.filter((p) => hasCategory(p, "New Arrivals")).length,
+          accessories: products.filter((p) => hasCategory(p, "Accessories")).length,
+        });
         setAllProducts(products);
+
+        if (settingsResult.error) {
+          console.error("[Homepage] Settings load error:", settingsResult.error);
+        }
 
         if (settingsResult.data) {
           const d = settingsResult.data.value as {
             sections?: Partial<HomepageSections>;
             mobileTabs?: string[];
           };
+          console.info("[Homepage] Settings loaded", {
+            pinnedSections: d.sections,
+            mobileTabs: d.mobileTabs ?? [],
+          });
           setSections({
             newArrivals: d.sections?.newArrivals ?? [],
             fastSelling: d.sections?.fastSelling ?? [],
@@ -124,7 +146,7 @@ function Homepage() {
           setMobileTabs(d.mobileTabs ?? []);
         }
       } catch (err) {
-        console.error("Homepage load error:", err);
+        console.error("[Homepage] Load error:", err);
       } finally {
         setLoading(false);
       }
@@ -132,12 +154,20 @@ function Homepage() {
     load();
   }, []);
 
-  const newArrivalsProducts =
-    sections.newArrivals.length > 0
-      ? resolvePinned(sections.newArrivals, allProducts)
-      : allProducts
-          .filter((p) => hasCategory(p, "New Arrivals"))
-          .slice(0, MAX_PER_SECTION);
+  const taggedNewArrivals = useMemo(
+    () => allProducts.filter((p) => hasCategory(p, "New Arrivals")),
+    [allProducts],
+  );
+  const newArrivalsProducts = useMemo(
+    () => limitProducts(
+      sections.newArrivals.length > 0
+        ? resolvePinned(sections.newArrivals, allProducts)
+        : taggedNewArrivals.length > 0
+          ? taggedNewArrivals
+          : allProducts
+    ),
+    [allProducts, sections.newArrivals, taggedNewArrivals],
+  );
 
   const hasProducts = allProducts.length > 0;
 
@@ -145,26 +175,75 @@ function Homepage() {
     ? STATIC_PRODUCTS
     : newArrivalsProducts;
 
-  const fastSellingProducts =
-    sections.fastSelling.length > 0
-      ? resolvePinned(sections.fastSelling, allProducts)
-      : STATIC_PRODUCTS;
+  const fastSellingProducts = useMemo(
+    () => limitProducts(
+      sections.fastSelling.length > 0
+        ? resolvePinned(sections.fastSelling, allProducts)
+        : STATIC_PRODUCTS
+    ),
+    [allProducts, sections.fastSelling],
+  );
 
-  const shopByCategoryProducts =
-    sections.shopByCategory.length > 0
-      ? resolvePinned(sections.shopByCategory, allProducts)
-      : STATIC_PRODUCTS;
+  const shopByCategoryProducts = useMemo(
+    () => limitProducts(
+      sections.shopByCategory.length > 0
+        ? resolvePinned(sections.shopByCategory, allProducts)
+        : STATIC_PRODUCTS
+    ),
+    [allProducts, sections.shopByCategory],
+  );
 
-  const accessoriesProducts =
-    sections.accessories.length > 0
-      ? resolvePinned(sections.accessories, allProducts)
-      : allProducts
-            .filter((p) => hasCategory(p, "Accessories"))
-            .slice(0, MAX_PER_SECTION).length > 0
-        ? allProducts
-            .filter((p) => hasCategory(p, "Accessories"))
-            .slice(0, MAX_PER_SECTION)
-        : STATIC_PRODUCTS;
+  const taggedAccessories = useMemo(
+    () => allProducts.filter((p) => hasCategory(p, "Accessories")),
+    [allProducts],
+  );
+  const accessoriesProducts = useMemo(
+    () => limitProducts(
+      sections.accessories.length > 0
+        ? resolvePinned(sections.accessories, allProducts)
+        : taggedAccessories.length > 0
+          ? taggedAccessories
+          : STATIC_PRODUCTS
+    ),
+    [allProducts, sections.accessories, taggedAccessories],
+  );
+
+  useEffect(() => {
+    if (loading) return;
+    console.info("[Homepage] Resolved section products", {
+      newArrivals: {
+        pinnedIds: sections.newArrivals,
+        taggedCount: taggedNewArrivals.length,
+        renderedCount: fallbackNewArrivals.length,
+        renderedIds: fallbackNewArrivals.map((p) => p.id),
+      },
+      fastSelling: {
+        pinnedIds: sections.fastSelling,
+        renderedCount: fastSellingProducts.length,
+        renderedIds: fastSellingProducts.map((p) => p.id),
+      },
+      shopByCategory: {
+        pinnedIds: sections.shopByCategory,
+        renderedCount: shopByCategoryProducts.length,
+        renderedIds: shopByCategoryProducts.map((p) => p.id),
+      },
+      accessories: {
+        pinnedIds: sections.accessories,
+        taggedCount: taggedAccessories.length,
+        renderedCount: accessoriesProducts.length,
+        renderedIds: accessoriesProducts.map((p) => p.id),
+      },
+    });
+  }, [
+    loading,
+    sections,
+    taggedNewArrivals,
+    taggedAccessories,
+    fallbackNewArrivals,
+    fastSellingProducts,
+    shopByCategoryProducts,
+    accessoriesProducts,
+  ]);
 
   return (
     <div>
@@ -230,7 +309,7 @@ function Homepage() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {filtered.slice(0, dynamicLimit).map((p) => (
+              {filtered.slice(0, MAX_PER_SECTION).map((p) => (
                 <ProductCard
                   key={p.id}
                   id={p.id}
@@ -241,17 +320,9 @@ function Homepage() {
                 />
               ))}
             </div>
-            {dynamicLimit < filtered.length && (
-              <button
-                onClick={() => setDynamicLimit((prev) => prev + 6)}
-                className="w-full mt-5 py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
-              >
-                Load More
-              </button>
-            )}
             <div className="mt-6">
               <Link
-                to={`/${activeTab!.toLowerCase().replace(/\s+/g, '-')}`}
+                to={SECTION_LINKS[activeTab!] ?? `/${activeTab!.toLowerCase().replace(/\s+/g, '-')}`}
                 className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
               >
                 View All {activeTab}
@@ -275,7 +346,7 @@ function Homepage() {
             to="/new-arrivals"
             className="bg-[#533113] text-white py-2 px-4 flex justify-between items-center w-full md:w-64 lg:w-48"
           >
-            <span className="raleway-regular text-base">Shop Now</span>
+            <span className="raleway-regular text-base">View All New Arrivals</span>
             <ArrowLineUpRightIcon size={24} />
           </Link>
         </section>
@@ -291,36 +362,25 @@ function Homepage() {
           <section
             className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-4 ${activeTab !== null ? "hidden md:grid" : ""}`}
           >
-            {fallbackNewArrivals.slice(0, naLimit).map((p, item) => (
-              <div
+            {fallbackNewArrivals.slice(0, MAX_PER_SECTION).map((p) => (
+              <ProductCard
                 key={p.id}
-                className={`
-                  ${item === 2 ? "block" : ""}
-                  ${item === 3 ? "block md:hidden lg:block" : ""}
-                  ${item === 4 ? "hidden 2xl:block" : ""}
-                  ${item === 5 ? "hidden min-[1920px]:block" : ""}
-                `}
-              >
-                <ProductCard
-                  id={p.id}
-                  image={p.imageUrl}
-                  name={p.name}
-                  price={p.discountPrice ?? p.price}
-                  colors={p.colors}
-                />
-              </div>
+                id={p.id}
+                image={p.imageUrl}
+                name={p.name}
+                price={p.discountPrice ?? p.price}
+                colors={p.colors}
+              />
             ))}
           </section>
-          {naLimit < fallbackNewArrivals.length && (
-            <div className={`md:hidden max-w-[1440px] mx-auto px-4 mb-8 ${activeTab !== null ? "hidden" : ""}`}>
-              <button
-                onClick={() => setNaLimit((prev) => prev + 4)}
-                className="w-full py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
-              >
-                Load More
-              </button>
-            </div>
-          )}
+          <div className={`md:hidden max-w-[1440px] mx-auto px-4 mb-8 ${activeTab !== null ? "hidden" : ""}`}>
+            <Link
+              to="/new-arrivals"
+              className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+            >
+              View All New Arrivals
+            </Link>
+          </div>
 
           {fastSellingProducts.length > 0 && (
             <section
@@ -329,6 +389,8 @@ function Homepage() {
               <FastSelling
                 products={fastSellingProducts}
                 mobileLimit={8}
+                viewAllHref="/new-arrivals"
+                viewAllLabel="View All Fast Selling"
               />
             </section>
           )}
@@ -339,7 +401,8 @@ function Homepage() {
             >
               <ShopByCategory
                 products={shopByCategoryProducts}
-                mobileLimit={2}
+                viewAllHref="/clothing"
+                viewAllLabel="View All Categories"
               />
             </section>
           )}
@@ -348,7 +411,12 @@ function Homepage() {
             <section
               className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
             >
-              <Accesories products={accessoriesProducts} mobileLimit={8} />
+              <Accesories
+                products={accessoriesProducts}
+                mobileLimit={8}
+                viewAllHref="/accessories"
+                viewAllLabel="View All Accessories"
+              />
             </section>
           )}
         </>

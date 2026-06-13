@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "./ui/Button";
 import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
@@ -16,10 +15,18 @@ interface Product {
 interface AccesoriesProps {
   products: Product[];
   mobileLimit?: number;
+  viewAllHref?: string;
+  viewAllLabel?: string;
 }
 
-function Accesories({ products, mobileLimit = 4 }: AccesoriesProps) {
-  const [limit, setLimit] = useState(mobileLimit);
+function Accesories({
+  products,
+  mobileLimit = 8,
+  viewAllHref = "/accessories",
+  viewAllLabel = "View All Accessories",
+}: AccesoriesProps) {
+  const visibleProducts = products.slice(0, mobileLimit);
+
   return (
     <main>
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
@@ -29,25 +36,17 @@ function Accesories({ products, mobileLimit = 4 }: AccesoriesProps) {
             TO COMPLEMENT ALL YOUR CLOTHING AND SPORTS WEAR
           </p>
         </div>
-        <Link to="/accessories" className="w-full md:w-auto shrink-0">
+        <Link to={viewAllHref} className="w-full md:w-auto shrink-0">
           <Button
-            text="view all accessories"
+            text={viewAllLabel}
             width="w-full md:w-64"
             icon={<ArrowLineUpRightIcon size={24} />}
           />
         </Link>
       </section>
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6">
-        {products.map((p, item) => (
-          <div
-            key={p.id}
-            className={`
-              ${item === 2 ? (limit > 2 ? "block md:block" : "hidden md:block") : ""}
-              ${item === 3 ? (limit > 3 ? "block md:hidden lg:block" : "hidden lg:block") : ""}
-              ${item === 4 ? (limit > 4 ? "block md:hidden 2xl:block" : "hidden 2xl:block") : ""}
-              ${item === 5 ? (limit > 5 ? "block md:hidden min-[1920px]:block" : "hidden min-[1920px]:block") : ""}
-            `}
-          >
+        {visibleProducts.map((p) => (
+          <div key={p.id}>
             <ProductCard
               id={p.id}
               image={p.imageUrl}
@@ -58,16 +57,14 @@ function Accesories({ products, mobileLimit = 4 }: AccesoriesProps) {
           </div>
         ))}
       </section>
-      {limit < products.length && (
-        <div className="md:hidden mt-5 px-4 w-full">
-          <button
-            onClick={() => setLimit((prev) => prev + 4)}
-            className="w-full py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
-          >
-            Load More
-          </button>
-        </div>
-      )}
+      <div className="md:hidden mt-5 px-4 w-full">
+        <Link
+          to={viewAllHref}
+          className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+        >
+          {viewAllLabel}
+        </Link>
+      </div>
     </main>
   );
 }

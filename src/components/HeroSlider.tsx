@@ -20,6 +20,12 @@ interface Props {
   page?: string; // "Homepage" | "New Arrivals" | etc. — defaults to "Homepage"
 }
 
+interface HomepageHeroSettings {
+  heroMode?: "slider" | "still";
+  heroSliderInterval?: number;
+  heroStillImageUrl?: string;
+}
+
 function HeroSlider({ page = "Homepage" }: Props) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
@@ -31,26 +37,42 @@ function HeroSlider({ page = "Homepage" }: Props) {
   useEffect(() => {
     const load = async () => {
       try {
+        console.info("[HeroSlider] Loading", { page });
         // For the homepage, fetch the heroMode setting
         if (page === "Homepage") {
-          const { data } = await supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle();
+          const { data, error } = await supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle();
+          if (error) console.error("[HeroSlider] Homepage settings error:", error);
           if (data && data.value) {
-            const d = data.value as any;
+            const d = data.value as HomepageHeroSettings;
             setHeroMode(d.heroMode ?? "slider");
             setHeroSliderInterval(d.heroSliderInterval ?? 5);
             setStillImageUrl(d.heroStillImageUrl ?? "");
+            console.info("[HeroSlider] Homepage settings loaded", {
+              heroMode: d.heroMode ?? "slider",
+              heroSliderInterval: d.heroSliderInterval ?? 5,
+              hasStillImage: Boolean(d.heroStillImageUrl),
+            });
           }
         }
 
-        const { data: slidesData } = await supabase
+        const { data: slidesData, error: slidesError } = await supabase
           .from("hero_slides")
           .select("*")
           .eq("active", true)
           .eq("page", page)
           .order("display_order", { ascending: true });
-          
+
+        if (slidesError) {
+          console.error("[HeroSlider] Slides load error:", { page, error: slidesError });
+        }
         if (slidesData) setSlides(slidesData as Slide[]);
-      } catch {
+        console.info("[HeroSlider] Slides loaded", {
+          page,
+          count: slidesData?.length ?? 0,
+          slideIds: slidesData?.map((s) => s.id) ?? [],
+        });
+      } catch (err) {
+        console.error("[HeroSlider] Load error:", { page, error: err });
         // Firestore composite index may not exist yet — fall through to fallback
       } finally {
         setReady(true);

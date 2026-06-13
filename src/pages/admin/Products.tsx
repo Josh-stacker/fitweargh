@@ -26,6 +26,7 @@ interface Product {
   images: string[];
   imagePaths: string[];
   displayImageIndex: number;
+  colorImageMap: Record<string, number>;
   description: string;
   createdAt: unknown;
 }
@@ -46,6 +47,7 @@ interface ProductRow {
   images: string[] | null;
   image_paths: string[] | null;
   display_image_index: number | null;
+  color_image_map: Record<string, number> | null;
   description: string;
   created_at: string;
 }
@@ -142,6 +144,7 @@ const EMPTY_FORM = {
   sizes: [] as string[],
   colors: [] as string[],
   colorSizeStock: {} as Record<string, number>,
+  colorImageMap: {} as Record<string, number>,
   description: "",
 };
 
@@ -164,6 +167,7 @@ function productFromRow(row: ProductRow): Product {
     images: row.images ?? [],
     imagePaths: row.image_paths ?? [],
     displayImageIndex: row.display_image_index ?? 0,
+    colorImageMap: row.color_image_map ?? {},
     description: row.description ?? "",
     createdAt: row.created_at,
   };
@@ -248,6 +252,7 @@ export default function Products() {
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
       colorSizeStock: p.colorSizeStock ?? {},
+      colorImageMap: p.colorImageMap ?? {},
       description: p.description ?? "",
     });
     setImageSlots(buildSlots(p));
@@ -292,6 +297,17 @@ export default function Products() {
     setImageSlots((prev) => {
       const next = prev.filter((_, i) => i !== idx);
       setDisplayIdx((d) => Math.min(d, Math.max(0, next.length - 1)));
+      setForm((f) => {
+        const nextMap = Object.fromEntries(
+          Object.entries(f.colorImageMap)
+            .map(([color, imageIdx]) => {
+              if (imageIdx === idx) return null;
+              return [color, imageIdx > idx ? imageIdx - 1 : imageIdx] as const;
+            })
+            .filter((entry): entry is readonly [string, number] => entry !== null),
+        );
+        return { ...f, colorImageMap: nextMap };
+      });
       return next;
     });
   };
@@ -311,10 +327,32 @@ export default function Products() {
     }));
 
   const toggleColor = (name: string) =>
-    setForm((f) => ({
-      ...f,
-      colors: f.colors.includes(name) ? f.colors.filter((x) => x !== name) : [...f.colors, name],
-    }));
+    setForm((f) => {
+      const isSelected = f.colors.includes(name);
+      if (!isSelected) return { ...f, colors: [...f.colors, name] };
+
+      const nextStock = Object.fromEntries(
+        Object.entries(f.colorSizeStock).filter(([key]) => !key.startsWith(`${name}_`)),
+      );
+      const nextColorImageMap = { ...f.colorImageMap };
+      delete nextColorImageMap[name];
+      return {
+        ...f,
+        colors: f.colors.filter((x) => x !== name),
+        colorSizeStock: nextStock,
+        colorImageMap: nextColorImageMap,
+      };
+    });
+
+  const setSlotColor = (slotIdx: number, colorName: string) => {
+    setForm((f) => {
+      const nextMap = Object.fromEntries(
+        Object.entries(f.colorImageMap).filter(([, imageIdx]) => imageIdx !== slotIdx),
+      );
+      if (colorName) nextMap[colorName] = slotIdx;
+      return { ...f, colorImageMap: nextMap };
+    });
+  };
 
   const setColorSizeStock = (color: string, size: string, qty: number) => {
     const key = `${color}_${size}`;
@@ -344,7 +382,11 @@ export default function Products() {
 
       // Remove the old image if it was replaced
       if (slot.existingPath) {
-        try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([slot.existingPath]); } catch {}
+        try {
+          await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([slot.existingPath]);
+        } catch (removeError) {
+          console.warn("Could not remove replaced product image:", removeError);
+        }
       }
       return { url: data.publicUrl, path };
     }
@@ -366,17 +408,26 @@ export default function Products() {
         const keptPaths = new Set(uploaded.map((u) => u.path));
         const removedPaths = oldPaths.filter((oldPath) => oldPath && !keptPaths.has(oldPath));
         if (removedPaths.length > 0) {
-          try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(removedPaths); } catch {}
+          try {
+            await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(removedPaths);
+          } catch (removeError) {
+            console.warn("Could not remove old product images:", removeError);
+          }
         }
       }
 
-      const safeDisplayIdx = Math.min(displayIdx, uploaded.length - 1);
+      const safeDisplayIdx = uploaded.length > 0 ? Math.min(displayIdx, uploaded.length - 1) : 0;
       // imageUrl = the chosen display image (used by product cards & product page first view)
       // allUrls / allPaths preserve full ordered list so ProductPage can reconstruct the gallery
       const allUrls = uploaded.map((u) => u.url);
       const allPaths = uploaded.map((u) => u.path);
 
       const computedStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
+      const colorImageMap = Object.fromEntries(
+        Object.entries(form.colorImageMap).filter(
+          ([color, idx]) => form.colors.includes(color) && idx >= 0 && idx < uploaded.length,
+        ),
+      );
 
       const data = {
         name: form.name,
@@ -387,6 +438,7 @@ export default function Products() {
         sizes: form.sizes,
         colors: form.colors,
         color_size_stock: form.colorSizeStock,
+        color_image_map: colorImageMap,
         stock: computedStock,
         description: form.description,
         display_image_index: safeDisplayIdx,
@@ -427,7 +479,11 @@ export default function Products() {
       if (error) throw error;
       const allPaths = [p.imagePath, ...(p.imagePaths ?? [])].filter(Boolean);
       if (allPaths.length > 0) {
-        try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(allPaths); } catch {}
+        try {
+          await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(allPaths);
+        } catch (removeError) {
+          console.warn("Could not remove deleted product images:", removeError);
+        }
       }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
     } finally {
@@ -644,6 +700,8 @@ export default function Products() {
                     <div className="flex flex-wrap gap-3">
                       {imageSlots.map((slot, i) => {
                         const isDisplay = i === displayIdx;
+                        const assignedColor =
+                          Object.entries(form.colorImageMap).find(([, imageIdx]) => imageIdx === i)?.[0] ?? "";
                         return (
                           <div key={i} className="flex flex-col items-center gap-1.5">
                             {/* Image tile */}
@@ -695,6 +753,21 @@ export default function Products() {
                             <span className={`raleway-bold text-[9px] uppercase tracking-widest ${isDisplay ? "text-[#533113]" : "text-[#533113]/30"}`}>
                               {isDisplay ? "★ Display" : `Photo ${i + 1}`}
                             </span>
+                            {form.colors.length > 0 && (
+                              <select
+                                value={assignedColor}
+                                onChange={(e) => setSlotColor(i, e.target.value)}
+                                className="w-24 border border-[#DEDEDE] bg-white px-1.5 py-1 raleway-regular text-[11px] text-[#533113] outline-none focus:border-[#533113]"
+                                aria-label={`Color for photo ${i + 1}`}
+                              >
+                                <option value="">No color</option>
+                                {form.colors.map((colorName) => (
+                                  <option key={colorName} value={colorName}>
+                                    {colorName}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                         );
                       })}

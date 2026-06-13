@@ -58,6 +58,7 @@ interface Product {
   imageUrl: string;
   images?: string[];
   displayImageIndex?: number;
+  colorImageMap?: Record<string, number>;
   sizes: string[];
   colors: string[];
   colorSizeStock?: Record<string, number>;
@@ -65,6 +66,20 @@ interface Product {
   categories?: string[];
   stock: number;
   onSale?: boolean;
+}
+
+interface RelatedProductRow {
+  id: string;
+  name: string;
+  price: number | string;
+  discount_price: number | string | null;
+  image_url: string | null;
+  images: string[] | null;
+  display_image_index: number | null;
+  color_image_map: Record<string, number> | null;
+  colors: string[] | null;
+  category: string | null;
+  stock: number | null;
 }
 
 const UK_SIZE_CHART = [
@@ -140,7 +155,7 @@ function ProductPage() {
               let { data: relatedData } = await supabase
                 .from("products")
                 .select(
-                  "id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock",
+                  "id,name,price,discount_price,image_url,images,display_image_index,color_image_map,colors,category,categories,stock",
                 )
                 .neq("id", id)
                 .overlaps("categories", cats)
@@ -151,7 +166,7 @@ function ProductPage() {
                 const fb = await supabase
                   .from("products")
                   .select(
-                    "id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock",
+                    "id,name,price,discount_price,image_url,images,display_image_index,color_image_map,colors,category,categories,stock",
                   )
                   .neq("id", id)
                   .eq("category", cats[0])
@@ -159,14 +174,15 @@ function ProductPage() {
                 relatedData = fb.data;
               }
 
-              const toRelated = (r: any): Product => ({
+              const toRelated = (r: RelatedProductRow): Product => ({
                 id: r.id,
                 name: r.name,
                 price: Number(r.price),
-                discountPrice: r.discount_price ?? null,
+                discountPrice: r.discount_price == null ? null : Number(r.discount_price),
                 imageUrl: r.image_url ?? "",
                 images: r.images ?? [],
                 displayImageIndex: r.display_image_index ?? 0,
+                colorImageMap: r.color_image_map ?? {},
                 colors: r.colors ?? [],
                 category: r.category ?? "",
                 sizes: [],
@@ -209,6 +225,15 @@ function ProductPage() {
   const inStock = p.stock > 0;
 
   const displayPrice = p.discountPrice ?? p.price;
+  const selectedImage = images[primaryIdx] ?? p.imageUrl;
+
+  const handleColorSelect = (colorName: string) => {
+    setSelectedColor(colorName);
+    const imageIdx = p.colorImageMap?.[colorName];
+    if (typeof imageIdx === "number" && images[imageIdx]) {
+      setPrimaryIdx(imageIdx);
+    }
+  };
 
   const handleAddToCart = () => {
     if (p.sizes?.length > 0 && !selectedSize) {
@@ -220,7 +245,7 @@ function ProductPage() {
       id: p.id,
       name: p.name,
       price: displayPrice,
-      imageUrl: p.imageUrl,
+      imageUrl: selectedImage,
       size: selectedSize,
       color: selectedColor || (p.colors?.[0] ?? ""),
       quantity,
@@ -374,7 +399,7 @@ function ProductPage() {
                     return (
                       <button
                         key={colorName}
-                        onClick={() => setSelectedColor(colorName)}
+                        onClick={() => handleColorSelect(colorName)}
                         className={`flex items-center gap-2 px-4 py-2.5 border raleway-regular text-lg transition-all duration-150 ${
                           selectedColor === colorName
                             ? "bg-[#533113] text-white border-[#533113]"
