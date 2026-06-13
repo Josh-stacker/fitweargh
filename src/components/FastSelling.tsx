@@ -13,9 +13,10 @@ interface Product {
 
 interface FastSellingProps {
   products: Product[];
+  mobileLimit?: number;
 }
 
-function FastSelling({ products }: FastSellingProps) {
+function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" });
@@ -27,7 +28,7 @@ function FastSelling({ products }: FastSellingProps) {
       <div className="md:hidden px-4 py-6">
         <h2 className="text-3xl raleway-black text-[#875A33] mb-5">FAST SELLING</h2>
         <div className="grid grid-cols-2 gap-3">
-          {products.map((p) => (
+          {products.slice(0, mobileLimit).map((p) => (
             <ProductCard
               key={p.id}
               id={p.id}

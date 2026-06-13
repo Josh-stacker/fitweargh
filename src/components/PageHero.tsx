@@ -25,7 +25,7 @@ function PageHero({
   const hasContent = !!title;
 
   return (
-    <section className="relative w-full h-[85vh] md:h-[85vh] min-[1441px]:h-[80vh] overflow-hidden bg-[#1a0d06]">
+    <section className="relative w-full h-[60vh] md:h-[85vh] min-[1441px]:h-[75vh] overflow-hidden bg-[#1a0d06]">
       {/* Background — same image, CSS cover handles mobile & desktop */}
       <div
         className={`absolute inset-0 ${hasContent ? "opacity-50" : "opacity-100"}`}

@@ -4,7 +4,7 @@ import { fetchProducts, hasCategory } from "../lib/products";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import HeroSlider from "../components/HeroSlider";
-import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
+import { ArrowLineUpRightIcon, StarIcon, FireIcon } from "@phosphor-icons/react";
 import ProductCard from "../components/ProductCard";
 import FastSelling from "../components/FastSelling";
 import ShopByCategory from "../components/ShopByCategory";
@@ -59,6 +59,7 @@ function Homepage() {
     accessories: [],
   });
   const [loading, setLoading] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"default" | "newArrivals" | "fastSelling">("default");
 
   useEffect(() => {
     const load = async () => {
@@ -123,7 +124,29 @@ function Homepage() {
 
       <HeroSlider page="Homepage" />
 
-      <main className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10">
+      {/* Mobile Category Toggle Buttons */}
+      <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto">
+        <button
+          onClick={() => setMobileTab(mobileTab === "newArrivals" ? "default" : "newArrivals")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
+            mobileTab === "newArrivals" ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+          }`}
+        >
+          <StarIcon size={16} weight={mobileTab === "newArrivals" ? "fill" : "regular"} />
+          New Arrivals
+        </button>
+        <button
+          onClick={() => setMobileTab(mobileTab === "fastSelling" ? "default" : "fastSelling")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
+            mobileTab === "fastSelling" ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+          }`}
+        >
+          <FireIcon size={16} weight={mobileTab === "fastSelling" ? "fill" : "regular"} />
+          Fast Selling
+        </button>
+      </div>
+
+      <main className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10 ${mobileTab === "fastSelling" ? "hidden md:block" : ""}`}>
         <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
           <div className="flex flex-col gap-2 w-full md:w-[70%] lg:w-full">
             <h3 className="text-2xl font-bold raleway-bold">NEW ARRIVALS</h3>
@@ -148,15 +171,15 @@ function Homepage() {
       ) : (
         <>
           {/* New Arrivals grid */}
-          <section className="max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10">
+          <section className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10 ${mobileTab === "fastSelling" ? "hidden md:grid" : ""}`}>
             {fallbackNewArrivals.map((p, item) => (
               <div
                 key={p.id}
-                className={`${item === 2 ? "hidden md:block" : ""} ${
-                  item === 3 ? "hidden lg:block" : ""
-                } ${item === 4 ? "hidden 2xl:block" : ""} ${
-                  item === 5 ? "hidden min-[1920px]:block" : ""
-                }`}
+                className={`
+                  ${item === 3 ? "block md:hidden lg:block" : ""}
+                  ${item === 4 ? (mobileTab === "newArrivals" ? "block md:hidden 2xl:block" : "hidden 2xl:block") : ""}
+                  ${item === 5 ? (mobileTab === "newArrivals" ? "block md:hidden min-[1920px]:block" : "hidden min-[1920px]:block") : ""}
+                `}
               >
                 <ProductCard
                   id={p.id}
@@ -169,21 +192,30 @@ function Homepage() {
             ))}
           </section>
 
+          {/* Mobile View More for New Arrivals */}
+          {mobileTab === "newArrivals" && (
+            <div className="md:hidden px-4 mb-10">
+              <Link to="/new-arrivals" className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors">
+                View All New Arrivals
+              </Link>
+            </div>
+          )}
+
           {fastSellingProducts.length > 0 && (
-            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-              <FastSelling products={fastSellingProducts} />
+            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto md:px-10 my-20 ${mobileTab === "newArrivals" ? "hidden md:block" : ""}`}>
+              <FastSelling products={fastSellingProducts} mobileLimit={mobileTab === "fastSelling" ? 6 : 4} />
             </section>
           )}
 
           {shopByCategoryProducts.length > 0 && (
-            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-              <ShopByCategory products={shopByCategoryProducts} />
+            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${mobileTab !== "default" ? "hidden md:block" : ""}`}>
+              <ShopByCategory products={shopByCategoryProducts} mobileLimit={2} />
             </section>
           )}
 
           {accessoriesProducts.length > 0 && (
-            <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20">
-              <Accesories products={accessoriesProducts} />
+            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${mobileTab !== "default" ? "hidden md:block" : ""}`}>
+              <Accesories products={accessoriesProducts} mobileLimit={4} />
             </section>
           )}
         </>

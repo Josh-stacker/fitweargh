@@ -12,9 +12,10 @@ interface Product {
 
 interface ShopByCategoryProps {
   products: Product[];
+  mobileLimit?: number;
 }
 
-function ShopByCategory({ products }: ShopByCategoryProps) {
+function ShopByCategory({ products, mobileLimit = 2 }: ShopByCategoryProps) {
   return (
     <main>
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
@@ -36,11 +37,12 @@ function ShopByCategory({ products }: ShopByCategoryProps) {
         {products.map((p, item) => (
           <div
             key={p.id}
-            className={`${item === 2 ? "hidden md:block" : ""} ${
-              item === 3 ? "hidden lg:block" : ""
-            } ${item === 4 ? "hidden 2xl:block" : ""} ${
-              item === 5 ? "hidden min-[1920px]:block" : ""
-            }`}
+            className={`
+              ${item === 2 ? (mobileLimit > 2 ? "block md:block" : "hidden md:block") : ""}
+              ${item === 3 ? (mobileLimit > 3 ? "block md:hidden lg:block" : "hidden lg:block") : ""}
+              ${item === 4 ? (mobileLimit > 4 ? "block md:hidden 2xl:block" : "hidden 2xl:block") : ""}
+              ${item === 5 ? (mobileLimit > 5 ? "block md:hidden min-[1920px]:block" : "hidden min-[1920px]:block") : ""}
+            `}
           >
             <CatCards
               image={p.imageUrl}
