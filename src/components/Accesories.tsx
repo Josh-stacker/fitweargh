@@ -38,7 +38,7 @@ function Accesories({
         </div>
         <Link to={viewAllHref} className="w-full md:w-auto shrink-0">
           <Button
-            text={viewAllLabel}
+            text="Shop Now"
             width="w-full md:w-64"
             icon={<ArrowLineUpRightIcon size={24} />}
           />
@@ -57,7 +57,7 @@ function Accesories({
           </div>
         ))}
       </section>
-      <div className="md:hidden mt-5 px-4 w-full">
+      <div className="mt-5 w-full">
         <Link
           to={viewAllHref}
           className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"

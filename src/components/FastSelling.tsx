@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import DirectionButton from "./ui/DirectionButton";
 import ProductCard from "./ProductCard";
+import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
 
 interface Product {
   id: string;
@@ -35,7 +36,16 @@ function FastSelling({
     <section className="bg-[#FDF1E1]">
       {/* Mobile: 2-column grid */}
       <div className="md:hidden px-4 py-6">
-        <h2 className="text-3xl raleway-black text-[#875A33] mb-5">FAST SELLING</h2>
+        <div className="flex flex-col gap-4 mb-5">
+          <h2 className="text-3xl raleway-black text-[#875A33]">FAST SELLING</h2>
+          <Link
+            to={viewAllHref}
+            className="w-full bg-[#875A33] text-white py-2 px-4 flex justify-between items-center"
+          >
+            <span className="raleway-regular text-base">Shop Now</span>
+            <ArrowLineUpRightIcon size={24} />
+          </Link>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {visibleProducts.map((p) => (
             <ProductCard
@@ -51,7 +61,7 @@ function FastSelling({
         <div className="mt-5">
           <Link
             to={viewAllHref}
-            className="w-full mt-5 flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
+            className="w-full flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
           >
             {viewAllLabel}
           </Link>
@@ -65,6 +75,13 @@ function FastSelling({
             FAST <br />
             SELLING
           </h2>
+          <Link
+            to={viewAllHref}
+            className="bg-[#875A33] text-white py-2 px-4 flex justify-between items-center w-full mt-5"
+          >
+            <span className="raleway-regular text-base">Shop Now</span>
+            <ArrowLineUpRightIcon size={24} />
+          </Link>
           <div className="flex justify-start md:justify-between gap-6 mt-4">
             <DirectionButton direction="left" onClick={scrollLeft} />
             <DirectionButton direction="right" onClick={scrollRight} />
@@ -97,6 +114,14 @@ function FastSelling({
               ))}
           </section>
         </main>
+      </div>
+      <div className="hidden md:block px-6 lg:px-10 pb-6 lg:pb-10">
+        <Link
+          to={viewAllHref}
+          className="w-full flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
+        >
+          {viewAllLabel}
+        </Link>
       </div>
     </section>
   );

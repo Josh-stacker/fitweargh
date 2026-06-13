@@ -102,7 +102,7 @@ function HeroSlider({ page = "Homepage" }: Props) {
   }
 
   return (
-    <div className="relative w-full h-[60vh] md:h-[85vh] min-[1441px]:h-[75vh] overflow-hidden bg-[#1a0d06]">
+    <div className="relative w-full h-[60vh] md:h-[80.75vh] min-[1441px]:h-[71.25vh] overflow-hidden bg-[#1a0d06]">
       {slides.map((s, i) => (
         <div
           key={s.id}

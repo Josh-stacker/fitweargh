@@ -346,7 +346,7 @@ function Homepage() {
             to="/new-arrivals"
             className="bg-[#533113] text-white py-2 px-4 flex justify-between items-center w-full md:w-64 lg:w-48"
           >
-            <span className="raleway-regular text-base">View All New Arrivals</span>
+            <span className="raleway-regular text-base">Shop Now</span>
             <ArrowLineUpRightIcon size={24} />
           </Link>
         </section>
@@ -373,12 +373,13 @@ function Homepage() {
               />
             ))}
           </section>
-          <div className={`md:hidden max-w-[1440px] mx-auto px-4 mb-8 ${activeTab !== null ? "hidden" : ""}`}>
+          <div className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mb-8 ${activeTab !== null ? "hidden md:block" : ""}`}>
             <Link
               to="/new-arrivals"
-              className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 border border-[#533113] text-[#533113] py-3 px-4 raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
             >
-              View All New Arrivals
+              <span>View All New Arrivals</span>
+              <ArrowLineUpRightIcon size={22} />
             </Link>
           </div>
 
