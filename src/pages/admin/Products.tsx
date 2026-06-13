@@ -27,6 +27,7 @@ interface Product {
   imagePaths: string[];
   displayImageIndex: number;
   colorImageMap: Record<string, number | number[]>;
+  subcategories: string[];
   description: string;
   createdAt: unknown;
 }
@@ -48,6 +49,7 @@ interface ProductRow {
   image_paths: string[] | null;
   display_image_index: number | null;
   color_image_map: Record<string, number | number[]> | null;
+  subcategories: string[] | null;
   description: string;
   created_at: string;
 }
@@ -100,6 +102,10 @@ const CATEGORIES = [
   "Accessories",
   "Sales",
 ];
+
+const SUBCATEGORY_MAP: Record<string, string[]> = {
+  Clothing: ["Sets", "Pants", "Jumpsuits", "Men", "Tops", "Women"],
+};
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const UK_SIZE_LABELS: Record<string, string> = {
   S: "8–10", M: "10–12", L: "14–16", XL: "16–18", XXL: "20",
@@ -140,6 +146,7 @@ const EMPTY_FORM = {
   price: "",
   discountPrice: "",
   categories: [] as string[],
+  subcategories: [] as string[],
   sizes: [] as string[],
   colors: [] as string[],
   colorSizeStock: {} as Record<string, number>,
@@ -167,6 +174,7 @@ function productFromRow(row: ProductRow): Product {
     imagePaths: row.image_paths ?? [],
     displayImageIndex: row.display_image_index ?? 0,
     colorImageMap: row.color_image_map ?? {},
+    subcategories: row.subcategories ?? [],
     description: row.description ?? "",
     createdAt: row.created_at,
   };
@@ -248,6 +256,7 @@ export default function Products() {
       price: String(p.price),
       discountPrice: p.discountPrice != null ? String(p.discountPrice) : "",
       categories: p.categories?.length ? p.categories : (p.category ? [p.category] : []),
+      subcategories: p.subcategories ?? [],
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
       colorSizeStock: p.colorSizeStock ?? {},
@@ -316,11 +325,25 @@ export default function Products() {
   };
 
   const toggleCategory = (cat: string) =>
+    setForm((f) => {
+      const next = f.categories.includes(cat)
+        ? f.categories.filter((x) => x !== cat)
+        : [...f.categories, cat];
+      // Remove subcategories that belong to a deselected category
+      const validSubs = next.flatMap((c) => SUBCATEGORY_MAP[c] ?? []);
+      return {
+        ...f,
+        categories: next,
+        subcategories: f.subcategories.filter((s) => validSubs.includes(s)),
+      };
+    });
+
+  const toggleSubcategory = (sub: string) =>
     setForm((f) => ({
       ...f,
-      categories: f.categories.includes(cat)
-        ? f.categories.filter((x) => x !== cat)
-        : [...f.categories, cat],
+      subcategories: f.subcategories.includes(sub)
+        ? f.subcategories.filter((x) => x !== sub)
+        : [...f.subcategories, sub],
     }));
 
   const toggleSize = (s: string) =>
@@ -479,6 +502,7 @@ export default function Products() {
         price: Number(form.price),
         discount_price: form.discountPrice !== "" ? Number(form.discountPrice) : null,
         categories: form.categories,
+        subcategories: form.subcategories,
         category: form.categories[0] ?? "",
         sizes: form.sizes,
         colors: form.colors,
@@ -884,6 +908,36 @@ export default function Products() {
                   <p className="raleway-regular text-sm text-red-400">Select at least one category.</p>
                 )}
               </div>
+
+              {/* Subcategories — shown when a category with subcategories is selected */}
+              {form.categories.some((c) => SUBCATEGORY_MAP[c]) && (
+                <div className="flex flex-col gap-2">
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                    Subcategories <span className="raleway-regular normal-case tracking-normal text-[#533113]/40">(select all that apply)</span>
+                  </label>
+                  {form.categories.filter((c) => SUBCATEGORY_MAP[c]).map((c) => (
+                    <div key={c} className="flex flex-col gap-1.5">
+                      <span className="raleway-bold text-xs text-[#533113]/50 uppercase tracking-widest">{c}</span>
+                      <div className="flex flex-wrap gap-2">
+                        {SUBCATEGORY_MAP[c].map((sub) => (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => toggleSubcategory(sub)}
+                            className={`border px-3 py-1.5 raleway-regular text-sm transition-colors ${
+                              form.subcategories.includes(sub)
+                                ? "bg-[#533113] text-white border-[#533113]"
+                                : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Sizes */}
               <div className="flex flex-col gap-2">

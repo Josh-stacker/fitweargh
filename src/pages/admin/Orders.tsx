@@ -9,6 +9,7 @@ import {
 import { orderStatusHtml } from "../../emails/orderStatusEmail";
 import { shippingEmailHtml } from "../../emails/shippingEmail";
 import { cancellationEmailHtml } from "../../emails/cancellationEmail";
+import { queueAndSendMail } from "../../lib/mail";
 
 interface LineItem {
   name: string;
@@ -77,43 +78,49 @@ export default function Orders() {
       const lineItems = order.line_items ?? [];
 
       if (status === "shipped") {
-        await supabase.from("mail_queue").insert({
-          to: order.customer_email,
-          subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has shipped!`,
-          html: shippingEmailHtml({
-            orderId,
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            address: order.address,
-            city: order.city,
-            total: order.total,
-            lineItems,
-          }),
-        });
+        await queueAndSendMail([
+          {
+            to: order.customer_email,
+            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has shipped!`,
+            html: shippingEmailHtml({
+              orderId,
+              customerName: order.customer_name,
+              customerEmail: order.customer_email,
+              address: order.address,
+              city: order.city,
+              total: order.total,
+              lineItems,
+            }),
+          },
+        ]);
       } else if (status === "cancelled") {
-        await supabase.from("mail_queue").insert({
-          to: order.customer_email,
-          subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has been cancelled`,
-          html: cancellationEmailHtml({
-            orderId,
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            lineItems,
-            total: order.total,
-          }),
-        });
+        await queueAndSendMail([
+          {
+            to: order.customer_email,
+            subject: `Your FitwearGH order #${orderId.slice(0, 8).toUpperCase()} has been cancelled`,
+            html: cancellationEmailHtml({
+              orderId,
+              customerName: order.customer_name,
+              customerEmail: order.customer_email,
+              lineItems,
+              total: order.total,
+            }),
+          },
+        ]);
       } else if (status === "processing" || status === "delivered") {
-        await supabase.from("mail_queue").insert({
-          to: order.customer_email,
-          subject: `FitwearGH — Order #${orderId.slice(0, 8).toUpperCase()} update: ${status}`,
-          html: orderStatusHtml({
-            orderId,
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            status: status as "processing" | "delivered",
-            total: order.total,
-          }),
-        });
+        await queueAndSendMail([
+          {
+            to: order.customer_email,
+            subject: `FitwearGH — Order #${orderId.slice(0, 8).toUpperCase()} update: ${status}`,
+            html: orderStatusHtml({
+              orderId,
+              customerName: order.customer_name,
+              customerEmail: order.customer_email,
+              status: status as "processing" | "delivered",
+              total: order.total,
+            }),
+          },
+        ]);
       }
     } finally {
       setUpdatingId(null);
@@ -358,4 +365,3 @@ function StatusSelect({
     </div>
   );
 }
-

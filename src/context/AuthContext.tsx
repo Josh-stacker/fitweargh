@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase, type AppUser } from "../supabase";
 import { welcomeEmailHtml } from "../emails/welcomeEmail";
+import { queueAndSendMail } from "../lib/mail";
 
 interface AuthContextType {
   user: AppUser | null;
@@ -134,12 +135,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       total_spent: 0,
     });
 
-    await supabase.from("email_events").insert({
-      type: "welcome",
-      recipient: email,
-      subject: "Welcome to FitwearGH!",
-      html: welcomeEmailHtml(name),
-    });
+    await queueAndSendMail([
+      {
+        to: email,
+        subject: "Welcome to FitwearGH!",
+        html: welcomeEmailHtml(name),
+      },
+    ]);
 
     setUser(toAppUser(data.user));
     setIsAdmin(false);

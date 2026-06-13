@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { orderConfirmHtml } from "../emails/orderConfirmEmail";
 import { orderAdminHtml } from "../emails/orderAdminEmail";
+import { queueAndSendMail } from "../lib/mail";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
@@ -109,19 +110,18 @@ export default function CartPage() {
       const orderId = ref.id;
       setOrderId(orderId);
 
-      // Order confirmation to customer
-      await supabase.from("mail_queue").insert({
-        to: form.email,
-        subject: `FitwearGH — Order Confirmed #${orderId.slice(0, 8).toUpperCase()}`,
-        html: orderConfirmHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
-      });
-
-      // New order alert to admin
-      await supabase.from("mail_queue").insert({
-        to: "nerdosey@gmail.com",
-        subject: `New Order #${orderId.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
-        html: orderAdminHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
-      });
+      await queueAndSendMail([
+        {
+          to: form.email,
+          subject: `FitwearGH — Order Confirmed #${orderId.slice(0, 8).toUpperCase()}`,
+          html: orderConfirmHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
+        },
+        {
+          to: "nerdosey@gmail.com",
+          subject: `New Order #${orderId.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
+          html: orderAdminHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
+        },
+      ]);
 
       clearCart();
       setStep("success");
@@ -500,4 +500,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-

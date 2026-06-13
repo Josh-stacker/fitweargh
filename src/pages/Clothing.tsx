@@ -9,18 +9,18 @@ import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
 
 
-const SUBCATEGORIES = ["All", "Women's", "Men's", "Sports"];
+const SUBCATEGORIES = ["All", "Sets", "Pants", "Jumpsuits", "Men", "Tops", "Women"];
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6", "#f97316", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
-
-const CLOTHING_CATS = ["Women's", "Men's", "Sports"];
 
 interface Product {
   id: string;
   name: string;
   price: number;
   category: string;
+  categories?: string[];
+  subcategories?: string[];
   imageUrl?: string;
   colors?: string[];
 }
@@ -29,7 +29,7 @@ const FALLBACK: Product[] = Array.from({ length: 12 }, (_, i) => ({
   id: String(i + 1),
   name: i % 3 === 0 ? "Women's Sports Wear" : i % 3 === 1 ? "Men's Activewear" : "Sports Tee",
   price: 100 + i * 15,
-  category: CLOTHING_CATS[i % 3],
+  category: "Clothing",
   imageUrl: product1,
 }));
 
@@ -48,7 +48,7 @@ function Clothing() {
     const fetch = async () => {
       try {
         const all = await fetchProducts();
-        const clothing = all.filter((p) => CLOTHING_CATS.some((cat) => hasCategory(p, cat)));
+        const clothing = all.filter((p) => hasCategory(p, "Clothing"));
         setProducts(clothing.length > 0 ? clothing : FALLBACK);
       } catch {
         setProducts(FALLBACK);
@@ -62,7 +62,7 @@ function Clothing() {
   const display = loading ? FALLBACK : products;
 
   const filtered = display.filter((p) => {
-    if (activeFilter !== "All" && p.category !== activeFilter) return false;
+    if (activeFilter !== "All" && !(p.subcategories ?? []).includes(activeFilter)) return false;
     if (p.price < priceMin || p.price > priceMax) return false;
     return true;
   });
