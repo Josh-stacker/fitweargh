@@ -344,12 +344,14 @@ export default function Products() {
       };
     });
 
-  const setSlotColor = (slotIdx: number, colorName: string) => {
+  const setColorImageSlot = (colorName: string, slotIdx: number | null) => {
     setForm((f) => {
-      const nextMap = Object.fromEntries(
-        Object.entries(f.colorImageMap).filter(([, imageIdx]) => imageIdx !== slotIdx),
-      );
-      if (colorName) nextMap[colorName] = slotIdx;
+      const nextMap = { ...f.colorImageMap };
+      if (slotIdx === null) {
+        delete nextMap[colorName];
+      } else {
+        nextMap[colorName] = slotIdx;
+      }
       return { ...f, colorImageMap: nextMap };
     });
   };
@@ -700,8 +702,9 @@ export default function Products() {
                     <div className="flex flex-wrap gap-3">
                       {imageSlots.map((slot, i) => {
                         const isDisplay = i === displayIdx;
-                        const assignedColor =
-                          Object.entries(form.colorImageMap).find(([, imageIdx]) => imageIdx === i)?.[0] ?? "";
+                        const assignedColors = Object.entries(form.colorImageMap)
+                          .filter(([, imageIdx]) => imageIdx === i)
+                          .map(([color]) => color);
                         return (
                           <div key={i} className="flex flex-col items-center gap-1.5">
                             {/* Image tile */}
@@ -753,21 +756,20 @@ export default function Products() {
                             <span className={`raleway-bold text-[9px] uppercase tracking-widest ${isDisplay ? "text-[#533113]" : "text-[#533113]/30"}`}>
                               {isDisplay ? "★ Display" : `Photo ${i + 1}`}
                             </span>
-                            {form.colors.length > 0 && (
-                              <select
-                                value={assignedColor}
-                                onChange={(e) => setSlotColor(i, e.target.value)}
-                                className="w-24 border border-[#DEDEDE] bg-white px-1.5 py-1 raleway-regular text-[11px] text-[#533113] outline-none focus:border-[#533113]"
-                                aria-label={`Color for photo ${i + 1}`}
-                              >
-                                <option value="">No color</option>
-                                {form.colors.map((colorName) => (
-                                  <option key={colorName} value={colorName}>
-                                    {colorName}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
+                            <div className="w-24 min-h-5 flex flex-wrap justify-center gap-1">
+                              {assignedColors.length > 0 ? (
+                                assignedColors.map((colorName) => (
+                                  <span
+                                    key={colorName}
+                                    className="w-3.5 h-3.5 rounded-full border border-black/10"
+                                    style={{ backgroundColor: COLOR_HEX[colorName] ?? "#ccc" }}
+                                    title={colorName}
+                                  />
+                                ))
+                              ) : (
+                                <span className="raleway-regular text-[10px] text-[#533113]/30">No color</span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -897,6 +899,62 @@ export default function Products() {
                   ))}
                 </div>
               </div>
+
+              {form.colors.length > 0 && imageSlots.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                    Color Photos
+                  </label>
+                  <div className="border border-[#DEDEDE] divide-y divide-[#DEDEDE]">
+                    {form.colors.map((colorName) => {
+                      const selectedSlot = form.colorImageMap[colorName];
+                      return (
+                        <div key={colorName} className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 px-3 py-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="w-4 h-4 rounded-full border border-black/10 shrink-0"
+                              style={{ backgroundColor: COLOR_HEX[colorName] ?? "#ccc" }}
+                            />
+                            <span className="raleway-bold text-sm text-[#533113] truncate">{colorName}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setColorImageSlot(colorName, null)}
+                              className={`h-14 min-w-16 px-3 border raleway-regular text-xs transition-colors ${
+                                selectedSlot == null
+                                  ? "border-[#533113] bg-[#533113] text-white"
+                                  : "border-[#DEDEDE] text-[#533113] hover:border-[#533113]"
+                              }`}
+                            >
+                              Any
+                            </button>
+                            {imageSlots.map((slot, i) => (
+                              <button
+                                key={`${colorName}-${i}`}
+                                type="button"
+                                onClick={() => setColorImageSlot(colorName, i)}
+                                className={`relative w-12 h-14 border-2 overflow-hidden transition-colors ${
+                                  selectedSlot === i
+                                    ? "border-[#533113] ring-2 ring-[#533113]/30"
+                                    : "border-[#DEDEDE] hover:border-[#533113]/60"
+                                }`}
+                                aria-label={`${colorName} uses photo ${i + 1}`}
+                                title={`Photo ${i + 1}`}
+                              >
+                                <img src={slot.preview} alt="" className="w-full h-full object-cover" />
+                                <span className="absolute left-0 bottom-0 bg-[#533113] text-white raleway-bold text-[9px] leading-4 px-1">
+                                  {i + 1}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Stock by Color × Size */}
               {form.colors.length > 0 && form.sizes.length > 0 && (
