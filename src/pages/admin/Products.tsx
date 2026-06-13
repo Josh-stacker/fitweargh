@@ -9,6 +9,7 @@ import {
   MagnifyingGlassIcon,
   ArrowsOutIcon,
 } from "@phosphor-icons/react";
+import { BUILT_IN_SIZE_CHARTS, DEFAULT_SIZE_CHART, mergeBuiltInSizeCharts, type SizeChart } from "../../lib/sizeCharts";
 
 interface Product {
   id: string;
@@ -28,6 +29,7 @@ interface Product {
   displayImageIndex: number;
   colorImageMap: Record<string, number | number[]>;
   subcategories: string[];
+  sizeChartId: string | null;
   description: string;
   createdAt: unknown;
 }
@@ -50,6 +52,7 @@ interface ProductRow {
   display_image_index: number | null;
   color_image_map: Record<string, number | number[]> | null;
   subcategories: string[] | null;
+  size_chart_id: string | null;
   description: string;
   created_at: string;
 }
@@ -105,10 +108,12 @@ const CATEGORIES = [
 
 const SUBCATEGORY_MAP: Record<string, string[]> = {
   Clothing: ["Sets", "Pants", "Jumpsuits", "Men", "Tops", "Women"],
+  "Body Shapers": ["Waist Trainers"],
 };
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL", "6XL", "7XL"];
 const UK_SIZE_LABELS: Record<string, string> = {
-  S: "8–10", M: "10–12", L: "14–16", XL: "16–18", XXL: "20",
+  S: "8-10", M: "10-12", L: "14-16", XL: "16-18", XXL: "20",
+  "2XL": "14-16", "3XL": "16", "4XL": "18", "5XL": "18-20", "6XL": "20-22", "7XL": "22-24",
 };
 const COLORS: { name: string; hex: string }[] = [
   { name: "Black",  hex: "#000000" },
@@ -147,6 +152,7 @@ const EMPTY_FORM = {
   discountPrice: "",
   categories: [] as string[],
   subcategories: [] as string[],
+  sizeChartId: "",
   sizes: [] as string[],
   colors: [] as string[],
   colorSizeStock: {} as Record<string, number>,
@@ -180,6 +186,7 @@ function productFromRow(row: ProductRow): Product {
     displayImageIndex: row.display_image_index ?? 0,
     colorImageMap: row.color_image_map ?? {},
     subcategories: row.subcategories ?? [],
+    sizeChartId: row.size_chart_id ?? null,
     description: row.description ?? "",
     createdAt: row.created_at,
   };
@@ -195,10 +202,14 @@ function storageName(fileName: string) {
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [sizeCharts, setSizeCharts] = useState<SizeChart[]>(BUILT_IN_SIZE_CHARTS);
+  const [editingChartId, setEditingChartId] = useState<string | null>(null);
+  const [chartSaving, setChartSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [customSubcategory, setCustomSubcategory] = useState("");
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>([]);
   const [displayIdx, setDisplayIdx] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -235,7 +246,26 @@ export default function Products() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchProducts(); }, []);
+  const fetchSizeCharts = async () => {
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "size_charts")
+      .maybeSingle();
+
+    if (error) {
+      console.error("Fetch size charts error:", error);
+      return;
+    }
+
+    const saved = data?.value as { charts?: SizeChart[] } | null;
+    setSizeCharts(mergeBuiltInSizeCharts(saved?.charts));
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchSizeCharts();
+  }, []);
 
   const buildSlots = (p: Product): ImageSlot[] => {
     // New schema: images[] = all slots. Legacy schema (no displayImageIndex): images = slots[1..].
@@ -257,6 +287,7 @@ export default function Products() {
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setCustomSubcategory("");
     setImageSlots([]);
     setDisplayIdx(0);
     setModalOpen(true);
@@ -270,6 +301,7 @@ export default function Products() {
       discountPrice: p.discountPrice != null ? String(p.discountPrice) : "",
       categories: p.categories?.length ? p.categories : (p.category ? [p.category] : []),
       subcategories: p.subcategories ?? [],
+      sizeChartId: p.sizeChartId ?? "",
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
       colorSizeStock: p.colorSizeStock ?? {},
@@ -278,7 +310,48 @@ export default function Products() {
     });
     setImageSlots(buildSlots(p));
     setDisplayIdx(p.displayImageIndex ?? 0);
+    setCustomSubcategory("");
     setModalOpen(true);
+  };
+
+  const saveSizeCharts = async (charts: SizeChart[]) => {
+    setChartSaving(true);
+    try {
+      const cleanCharts = charts.map((chart) => ({
+        ...chart,
+        rows: chart.rows.filter((row) => row.size.trim() || row.label.trim() || row.value.trim()),
+      }));
+      const { error } = await supabase.from("site_settings").upsert({
+        key: "size_charts",
+        value: { charts: cleanCharts },
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setSizeCharts(cleanCharts.length ? cleanCharts : [DEFAULT_SIZE_CHART]);
+    } finally {
+      setChartSaving(false);
+    }
+  };
+
+  const updateChart = (chartId: string, updater: (chart: SizeChart) => SizeChart) => {
+    setSizeCharts((prev) => prev.map((chart) => chart.id === chartId ? updater(chart) : chart));
+  };
+
+  const addSizeChart = () => {
+    const chart: SizeChart = {
+      id: crypto.randomUUID(),
+      name: "New Size Chart",
+      categories: [],
+      subcategories: [],
+      rows: [{ size: "", label: "", value: "" }],
+    };
+    setSizeCharts((prev) => [...prev, chart]);
+    setEditingChartId(chart.id);
+  };
+
+  const removeSizeChart = (chartId: string) => {
+    setSizeCharts((prev) => prev.filter((chart) => chart.id !== chartId));
+    if (editingChartId === chartId) setEditingChartId(null);
   };
 
   const triggerAdd = () => {
@@ -358,6 +431,16 @@ export default function Products() {
         ? f.subcategories.filter((x) => x !== sub)
         : [...f.subcategories, sub],
     }));
+
+  const addCustomSubcategory = () => {
+    const sub = customSubcategory.trim();
+    if (!sub) return;
+    setForm((f) => ({
+      ...f,
+      subcategories: f.subcategories.includes(sub) ? f.subcategories : [...f.subcategories, sub],
+    }));
+    setCustomSubcategory("");
+  };
 
   const toggleSize = (s: string) =>
     setForm((f) => ({
@@ -516,6 +599,7 @@ export default function Products() {
         discount_price: form.discountPrice !== "" ? Number(form.discountPrice) : null,
         categories: form.categories,
         subcategories: form.subcategories,
+        size_chart_id: form.sizeChartId || null,
         category: form.categories[0] ?? "",
         sizes: form.sizes,
         colors: form.colors,
@@ -700,6 +784,188 @@ export default function Products() {
           <PlusIcon size={16} weight="bold" />
           Add Product
         </button>
+      </div>
+
+      {/* Size Charts */}
+      <div className="bg-white border border-[#DEDEDE] p-4 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">Size Charts</h3>
+            <p className="raleway-regular text-sm text-[#533113]/50 mt-1">
+              Charts can apply by category, subcategory, or a product override in the product modal.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={addSizeChart}
+              className="raleway-bold text-xs uppercase tracking-widest px-3 py-2 border border-[#533113] text-[#533113] hover:bg-[#533113]/10 transition-colors"
+            >
+              Add Chart
+            </button>
+            <button
+              type="button"
+              onClick={() => saveSizeCharts(sizeCharts)}
+              disabled={chartSaving}
+              className="raleway-bold text-xs uppercase tracking-widest px-4 py-2 bg-[#533113] text-white hover:bg-[#3d2409] transition-colors disabled:opacity-50"
+            >
+              {chartSaving ? "Saving..." : "Save Charts"}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {sizeCharts.map((chart) => (
+            <button
+              key={chart.id}
+              type="button"
+              onClick={() => setEditingChartId(editingChartId === chart.id ? null : chart.id)}
+              className={`px-3 py-2 border raleway-regular text-sm transition-colors ${
+                editingChartId === chart.id
+                  ? "bg-[#533113] text-white border-[#533113]"
+                  : "text-[#533113] border-[#DEDEDE] hover:border-[#533113]"
+              }`}
+            >
+              {chart.name}
+            </button>
+          ))}
+        </div>
+
+        {editingChartId && (() => {
+          const chart = sizeCharts.find((item) => item.id === editingChartId);
+          if (!chart) return null;
+          return (
+            <div className="border border-[#DEDEDE] p-4 flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Field label="Chart Name">
+                  <input
+                    value={chart.name}
+                    onChange={(e) => updateChart(chart.id, (current) => ({ ...current, name: e.target.value }))}
+                    className="input-base"
+                  />
+                </Field>
+                <Field label="Middle Column">
+                  <input
+                    value={chart.labelHeading ?? ""}
+                    onChange={(e) => updateChart(chart.id, (current) => ({ ...current, labelHeading: e.target.value }))}
+                    className="input-base"
+                    placeholder="Waist (inch)"
+                  />
+                </Field>
+                <Field label="Last Column">
+                  <input
+                    value={chart.valueHeading ?? ""}
+                    onChange={(e) => updateChart(chart.id, (current) => ({ ...current, valueHeading: e.target.value }))}
+                    className="input-base"
+                    placeholder="Dress Size (UK)"
+                  />
+                </Field>
+                <Field label="Applies To Categories">
+                  <select
+                    multiple
+                    value={chart.categories}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
+                      updateChart(chart.id, (current) => ({ ...current, categories: selected }));
+                    }}
+                    className="input-base h-28"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Applies To Subcategories">
+                  <select
+                    multiple
+                    value={chart.subcategories}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
+                      updateChart(chart.id, (current) => ({ ...current, subcategories: selected }));
+                    }}
+                    className="input-base h-28"
+                  >
+                    {Array.from(new Set([...Object.values(SUBCATEGORY_MAP).flat(), ...products.flatMap((p) => p.subcategories ?? [])])).sort().map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-[1fr_1fr_1.5fr_32px] gap-2">
+                  <span className="raleway-bold text-[10px] uppercase tracking-widest text-[#533113]/50">Size</span>
+                  <span className="raleway-bold text-[10px] uppercase tracking-widest text-[#533113]/50">Label</span>
+                  <span className="raleway-bold text-[10px] uppercase tracking-widest text-[#533113]/50">Measurement / Guide</span>
+                  <span />
+                </div>
+                {chart.rows.map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_1.5fr_32px] gap-2">
+                    <input
+                      value={row.size}
+                      onChange={(e) => updateChart(chart.id, (current) => ({
+                        ...current,
+                        rows: current.rows.map((item, i) => i === idx ? { ...item, size: e.target.value } : item),
+                      }))}
+                      className="input-base"
+                      placeholder="S"
+                    />
+                    <input
+                      value={row.label}
+                      onChange={(e) => updateChart(chart.id, (current) => ({
+                        ...current,
+                        rows: current.rows.map((item, i) => i === idx ? { ...item, label: e.target.value } : item),
+                      }))}
+                      className="input-base"
+                      placeholder="UK Small"
+                    />
+                    <input
+                      value={row.value}
+                      onChange={(e) => updateChart(chart.id, (current) => ({
+                        ...current,
+                        rows: current.rows.map((item, i) => i === idx ? { ...item, value: e.target.value } : item),
+                      }))}
+                      className="input-base"
+                      placeholder="8 - 10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateChart(chart.id, (current) => ({
+                        ...current,
+                        rows: current.rows.filter((_, i) => i !== idx),
+                      }))}
+                      className="text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateChart(chart.id, (current) => ({
+                    ...current,
+                    rows: [...current.rows, { size: "", label: "", value: "" }],
+                  }))}
+                  className="raleway-bold text-xs uppercase tracking-widest px-3 py-2 border border-[#533113] text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                >
+                  Add Row
+                </button>
+                {!BUILT_IN_SIZE_CHARTS.some((builtIn) => builtIn.id === chart.id) && (
+                  <button
+                    type="button"
+                    onClick={() => removeSizeChart(chart.id)}
+                    className="raleway-bold text-xs uppercase tracking-widest px-3 py-2 text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
+                  >
+                    Delete Chart
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Filters */}
@@ -1121,35 +1387,81 @@ export default function Products() {
                 )}
               </div>
 
-              {/* Subcategories — shown when a category with subcategories is selected */}
-              {form.categories.some((c) => SUBCATEGORY_MAP[c]) && (
-                <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
-                    Subcategories <span className="raleway-regular normal-case tracking-normal text-[#533113]/40">(select all that apply)</span>
-                  </label>
-                  {form.categories.filter((c) => SUBCATEGORY_MAP[c]).map((c) => (
-                    <div key={c} className="flex flex-col gap-1.5">
-                      <span className="raleway-bold text-xs text-[#533113]/50 uppercase tracking-widest">{c}</span>
-                      <div className="flex flex-wrap gap-2">
-                        {SUBCATEGORY_MAP[c].map((sub) => (
-                          <button
-                            key={sub}
-                            type="button"
-                            onClick={() => toggleSubcategory(sub)}
-                            className={`border px-3 py-1.5 raleway-regular text-sm transition-colors ${
-                              form.subcategories.includes(sub)
-                                ? "bg-[#533113] text-white border-[#533113]"
-                                : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
-                            }`}
-                          >
-                            {sub}
-                          </button>
-                        ))}
-                      </div>
+              <div className="flex flex-col gap-2">
+                <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                  Subcategories <span className="raleway-regular normal-case tracking-normal text-[#533113]/40">(preset or custom)</span>
+                </label>
+                {form.categories.filter((c) => SUBCATEGORY_MAP[c]).map((c) => (
+                  <div key={c} className="flex flex-col gap-1.5">
+                    <span className="raleway-bold text-xs text-[#533113]/50 uppercase tracking-widest">{c}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {SUBCATEGORY_MAP[c].map((sub) => (
+                        <button
+                          key={sub}
+                          type="button"
+                          onClick={() => toggleSubcategory(sub)}
+                          className={`border px-3 py-1.5 raleway-regular text-sm transition-colors ${
+                            form.subcategories.includes(sub)
+                              ? "bg-[#533113] text-white border-[#533113]"
+                              : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                          }`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                ))}
+                {form.subcategories.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {form.subcategories.map((sub) => (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => toggleSubcategory(sub)}
+                        className="flex items-center gap-1 border border-[#533113] bg-[#533113] text-white px-3 py-1.5 raleway-regular text-sm"
+                      >
+                        {sub}
+                        <XIcon size={10} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    value={customSubcategory}
+                    onChange={(e) => setCustomSubcategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomSubcategory();
+                      }
+                    }}
+                    placeholder="Add custom subcategory"
+                    className="input-base flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomSubcategory}
+                    className="raleway-bold text-xs uppercase tracking-widest px-4 border border-[#533113] text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                  >
+                    Add
+                  </button>
                 </div>
-              )}
+              </div>
+
+              <Field label="Size Chart Override">
+                <select
+                  value={form.sizeChartId}
+                  onChange={(e) => setForm((f) => ({ ...f, sizeChartId: e.target.value }))}
+                  className="input-base"
+                >
+                  <option value="">Auto by subcategory/category</option>
+                  {sizeCharts.map((chart) => (
+                    <option key={chart.id} value={chart.id}>{chart.name}</option>
+                  ))}
+                </select>
+              </Field>
 
               {/* Sizes */}
               <div className="flex flex-col gap-2">

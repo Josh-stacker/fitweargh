@@ -18,6 +18,7 @@ export interface Product {
   displayImageIndex: number;
   colorImageMap: Record<string, number | number[]>;
   subcategories: string[];
+  sizeChartId: string | null;
   description: string;
   createdAt: unknown;
 }
@@ -40,6 +41,7 @@ interface ProductRow {
   display_image_index: number | null;
   color_image_map: Record<string, number | number[]> | null;
   subcategories: string[] | null;
+  size_chart_id: string | null;
   description: string;
   created_at: string;
 }
@@ -63,6 +65,7 @@ function productFromRow(row: ProductRow): Product {
     displayImageIndex: row.display_image_index ?? 0,
     colorImageMap: row.color_image_map ?? {},
     subcategories: row.subcategories ?? [],
+    sizeChartId: row.size_chart_id ?? null,
     description: row.description ?? "",
     createdAt: row.created_at,
   };

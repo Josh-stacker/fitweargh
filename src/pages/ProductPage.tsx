@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fetchProduct as fetchProductById } from "../lib/products.ts";
+import { BUILT_IN_SIZE_CHARTS, mergeBuiltInSizeCharts, resolveSizeChart, type SizeChart } from "../lib/sizeCharts";
 import { supabase } from "../supabase";
 import ProductCard from "../components/ProductCard";
 
@@ -64,6 +65,8 @@ interface Product {
   colorSizeStock?: Record<string, number>;
   category: string;
   categories?: string[];
+  subcategories?: string[];
+  sizeChartId?: string | null;
   stock: number;
   onSale?: boolean;
 }
@@ -81,14 +84,6 @@ interface RelatedProductRow {
   category: string | null;
   stock: number | null;
 }
-
-const UK_SIZE_CHART = [
-  { size: "S", label: "UK Small", uk: "8 – 10" },
-  { size: "M", label: "UK Medium", uk: "10 – 12" },
-  { size: "L", label: "UK Large", uk: "14 – 16" },
-  { size: "XL", label: "UK Extra Large", uk: "16 – 18" },
-  { size: "XXL", label: "UK XXL", uk: "20" },
-];
 
 // Fallback shown when no product is found for the given ID
 const FALLBACK: Product = {
@@ -109,6 +104,7 @@ function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
+  const [sizeCharts, setSizeCharts] = useState<SizeChart[]>(BUILT_IN_SIZE_CHARTS);
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const [toast, setToast] = useState(false);
@@ -129,6 +125,14 @@ function ProductPage() {
       setSelectedColor("");
       setQuantity(1);
       try {
+        const chartResult = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "size_charts")
+          .maybeSingle();
+        const savedCharts = chartResult.data?.value as { charts?: SizeChart[] } | null;
+        setSizeCharts(mergeBuiltInSizeCharts(savedCharts?.charts));
+
         if (!id || !isNaN(Number(id))) {
           setProduct(FALLBACK);
           setRelated([]);
@@ -223,6 +227,12 @@ function ProductPage() {
   const p = product ?? FALLBACK;
   const images = p.images && p.images.length > 0 ? p.images : [p.imageUrl];
   const inStock = p.stock > 0;
+  const activeSizeChart = resolveSizeChart({
+    charts: sizeCharts,
+    productChartId: p.sizeChartId,
+    categories: p.categories?.length ? p.categories : p.category ? [p.category] : [],
+    subcategories: p.subcategories ?? [],
+  });
 
   const displayPrice = p.discountPrice ?? p.price;
   const selectedImage = images[primaryIdx] ?? p.imageUrl;
@@ -357,7 +367,7 @@ function ProductPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {p.sizes.map((s) => {
-                    const chart = UK_SIZE_CHART.find((r) => r.size === s);
+                    const chart = activeSizeChart.rows.find((r) => r.size === s);
                     return (
                       <button
                         key={s}
@@ -373,7 +383,7 @@ function ProductPage() {
                           <span
                             className={`raleway-regular text-xs leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}
                           >
-                            {chart.uk}
+                            {chart.value}
                           </span>
                         )}
                       </button>
@@ -493,22 +503,22 @@ function ProductPage() {
                           Size
                         </th>
                         <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">
-                          UK Label
+                          {activeSizeChart.labelHeading ?? "Label"}
                         </th>
                         <th className="raleway-bold text-left pb-2 text-[#533113]">
-                          UK Dress Size
+                          {activeSizeChart.valueHeading ?? "Guide"}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {UK_SIZE_CHART.map((row) => (
+                      {activeSizeChart.rows.map((row) => (
                         <tr
                           key={row.size}
                           className="border-b border-[#DEDEDE]/40"
                         >
                           <td className="py-2 pr-8 raleway-bold">{row.size}</td>
                           <td className="py-2 pr-8">{row.label}</td>
-                          <td className="py-2">{row.uk}</td>
+                          <td className="py-2">{row.value}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -41,8 +41,8 @@ function Navbar() {
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `raleway-bold text-lg text-[#533113] underline-offset-8 decoration-2 transition-colors ${
-                  isActive ? "underline" : "no-underline hover:underline"
+                `text-lg text-[#533113] underline-offset-8 decoration-2 transition-colors ${
+                  isActive ? "raleway-bold underline" : "raleway-regular no-underline hover:underline"
                 }`
               }
             >
@@ -138,8 +138,8 @@ function Navbar() {
                 end={to === "/"}
                 onClick={() => setIsMenuOpen(false)}
                 className={({ isActive }) =>
-                  `raleway-bold text-2xl text-[#533113] underline-offset-8 decoration-2 transition-colors ${
-                    isActive ? "underline" : "no-underline hover:underline"
+                  `text-2xl text-[#533113] underline-offset-8 decoration-2 transition-colors ${
+                    isActive ? "raleway-bold underline" : "raleway-regular no-underline hover:underline"
                   }`
                 }
               >
