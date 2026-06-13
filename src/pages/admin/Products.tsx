@@ -1,22 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { db, storage } from "../../firebase";
+import { supabase } from "../../supabase";
 import {
   PlusIcon,
   PencilSimpleIcon,
@@ -44,6 +27,26 @@ interface Product {
   displayImageIndex: number;
   description: string;
   createdAt: unknown;
+}
+
+interface ProductRow {
+  id: string;
+  name: string;
+  price: number | string;
+  discount_price: number | string | null;
+  category: string;
+  categories: string[] | null;
+  sizes: string[] | null;
+  colors: string[] | null;
+  stock: number;
+  color_size_stock: Record<string, number> | null;
+  image_url: string;
+  image_path: string;
+  images: string[] | null;
+  image_paths: string[] | null;
+  display_image_index: number | null;
+  description: string;
+  created_at: string;
 }
 
 // One slot in the multi-image editor
@@ -129,6 +132,38 @@ const EMPTY_FORM = {
   description: "",
 };
 
+const PRODUCT_IMAGE_BUCKET = "product-images";
+
+function productFromRow(row: ProductRow): Product {
+  return {
+    id: row.id,
+    name: row.name,
+    price: Number(row.price ?? 0),
+    discountPrice: row.discount_price == null ? null : Number(row.discount_price),
+    category: row.category ?? "",
+    categories: row.categories ?? [],
+    sizes: row.sizes ?? [],
+    colors: row.colors ?? [],
+    stock: row.stock ?? 0,
+    colorSizeStock: row.color_size_stock ?? {},
+    imageUrl: row.image_url ?? "",
+    imagePath: row.image_path ?? "",
+    images: row.images ?? [],
+    imagePaths: row.image_paths ?? [],
+    displayImageIndex: row.display_image_index ?? 0,
+    description: row.description ?? "",
+    createdAt: row.created_at,
+  };
+}
+
+function storageName(fileName: string) {
+  const safeName = fileName
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `products/${crypto.randomUUID()}-${safeName || "image.jpg"}`;
+}
+
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,8 +183,17 @@ export default function Products() {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc")));
-    setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product)));
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Fetch products error:", error);
+      setProducts([]);
+    } else {
+      setProducts((data as ProductRow[]).map(productFromRow));
+    }
     setLoading(false);
   };
 
@@ -270,15 +314,25 @@ export default function Products() {
 
   const uploadSlot = async (slot: ImageSlot, index: number): Promise<{ url: string; path: string }> => {
     if (slot.file) {
-      const path = `products/${Date.now()}_${index}_${slot.file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, slot.file);
-      const url = await getDownloadURL(storageRef);
+      const path = storageName(`${index}_${slot.file.name}`);
+      const { error } = await supabase.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .upload(path, slot.file, {
+          contentType: slot.file.type,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .getPublicUrl(path);
+
       // Remove the old image if it was replaced
       if (slot.existingPath) {
-        try { await deleteObject(ref(storage, slot.existingPath)); } catch {}
+        try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([slot.existingPath]); } catch {}
       }
-      return { url, path };
+      return { url: data.publicUrl, path };
     }
     // Unchanged existing image
     return { url: slot.existingUrl, path: slot.existingPath };
@@ -296,10 +350,9 @@ export default function Products() {
       if (editing) {
         const oldPaths = [editing.imagePath, ...(editing.imagePaths ?? [])].filter(Boolean);
         const keptPaths = new Set(uploaded.map((u) => u.path));
-        for (const oldPath of oldPaths) {
-          if (oldPath && !keptPaths.has(oldPath)) {
-            try { await deleteObject(ref(storage, oldPath)); } catch {}
-          }
+        const removedPaths = oldPaths.filter((oldPath) => oldPath && !keptPaths.has(oldPath));
+        if (removedPaths.length > 0) {
+          try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(removedPaths); } catch {}
         }
       }
 
@@ -314,27 +367,34 @@ export default function Products() {
       const data = {
         name: form.name,
         price: Number(form.price),
-        discountPrice: form.discountPrice !== "" ? Number(form.discountPrice) : null,
+        discount_price: form.discountPrice !== "" ? Number(form.discountPrice) : null,
         categories: form.categories,
         category: form.categories[0] ?? "",
         sizes: form.sizes,
         colors: form.colors,
-        colorSizeStock: form.colorSizeStock,
+        color_size_stock: form.colorSizeStock,
         stock: computedStock,
         description: form.description,
-        displayImageIndex: safeDisplayIdx,
-        imageUrl: allUrls[safeDisplayIdx] ?? allUrls[0] ?? "",
-        imagePath: allPaths[0] ?? "",
+        display_image_index: safeDisplayIdx,
+        image_url: allUrls[safeDisplayIdx] ?? allUrls[0] ?? "",
+        image_path: allPaths[0] ?? "",
         // images / imagePaths store ALL slots (0..N) so ProductPage can rebuild the full gallery
         images: allUrls,
-        imagePaths: allPaths,
-        updatedAt: serverTimestamp(),
+        image_paths: allPaths,
+        updated_at: new Date().toISOString(),
       };
 
       if (editing) {
-        await updateDoc(doc(db, "products", editing.id), data);
+        const { error } = await supabase
+          .from("products")
+          .update(data)
+          .eq("id", editing.id);
+        if (error) throw error;
       } else {
-        await addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() });
+        const { error } = await supabase
+          .from("products")
+          .insert({ ...data, created_at: new Date().toISOString() });
+        if (error) throw error;
       }
 
       setModalOpen(false);
@@ -349,10 +409,11 @@ export default function Products() {
   const handleDelete = async (p: Product) => {
     setDeleteId(p.id);
     try {
-      await deleteDoc(doc(db, "products", p.id));
+      const { error } = await supabase.from("products").delete().eq("id", p.id);
+      if (error) throw error;
       const allPaths = [p.imagePath, ...(p.imagePaths ?? [])].filter(Boolean);
-      for (const path of allPaths) {
-        try { await deleteObject(ref(storage, path)); } catch {}
+      if (allPaths.length > 0) {
+        try { await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(allPaths); } catch {}
       }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
     } finally {

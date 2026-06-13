@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../firebase";
+import { fetchProducts, hasCategory } from "../lib/products";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -48,11 +47,8 @@ function Clothing() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const snap = await getDocs(
-          query(collection(db, "products"), orderBy("createdAt", "desc"))
-        );
-        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
-        const clothing = all.filter((p) => CLOTHING_CATS.includes(p.category));
+        const all = await fetchProducts();
+        const clothing = all.filter((p) => CLOTHING_CATS.some((cat) => hasCategory(p, cat)));
         setProducts(clothing.length > 0 ? clothing : FALLBACK);
       } catch {
         setProducts(FALLBACK);

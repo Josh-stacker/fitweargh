@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../firebase";
+import { fetchProducts } from "../lib/products";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -46,10 +45,7 @@ function Sales() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const snap = await getDocs(
-          query(collection(db, "products"), orderBy("createdAt", "desc"))
-        );
-        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+        const all = await fetchProducts();
         const onSale = all.filter(
           (p) => p.discountPrice != null && p.discountPrice < p.price
         );

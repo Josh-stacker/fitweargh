@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
+import { fetchProducts, hasCategory } from "../lib/products";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import HeroSlider from "../components/HeroSlider";
@@ -70,18 +63,19 @@ function Homepage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [settingsSnap, productsSnap] = await Promise.all([
-          getDoc(doc(db, "siteSettings", "homepage")),
-          getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"))),
+        const [settingsResult, products] = await Promise.all([
+          supabase
+            .from("site_settings")
+            .select("value")
+            .eq("key", "homepage")
+            .maybeSingle(),
+          fetchProducts(),
         ]);
 
-        const products = productsSnap.docs.map(
-          (d) => ({ id: d.id, ...d.data() } as Product)
-        );
         setAllProducts(products);
 
-        if (settingsSnap.exists()) {
-          const d = settingsSnap.data();
+        if (settingsResult.data) {
+          const d = settingsResult.data.value as { sections?: Partial<HomepageSections> };
           setSections({
             newArrivals: d.sections?.newArrivals ?? [],
             fastSelling: d.sections?.fastSelling ?? [],
@@ -97,9 +91,6 @@ function Homepage() {
     };
     load();
   }, []);
-
-  const hasCategory = (p: Product, cat: string) =>
-    p.categories?.includes(cat) ?? p.category === cat;
 
   // Resolve each section: pinned IDs → products, or fall back to auto-latest
   const newArrivalsProducts =

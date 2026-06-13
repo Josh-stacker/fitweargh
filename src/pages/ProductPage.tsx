@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { doc, getDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../firebase";
+import { fetchProduct as fetchProductById, fetchProducts } from "../lib/products";
 import ProductCard from "../components/ProductCard";
 
 // Color name → hex for swatches (matches admin COLORS list)
@@ -96,9 +95,9 @@ function ProductPage() {
           setProduct(FALLBACK);
           setRelated([]);
         } else {
-          const snap = await getDoc(doc(db, "products", id));
-          if (snap.exists()) {
-            const data = { id: snap.id, ...snap.data() } as FirestoreProduct;
+          const product = await fetchProductById(id);
+          if (product) {
+            const data = product as FirestoreProduct;
             // New schema: images[] = all slots. Legacy: images = slots[1..], prepend imageUrl.
             if (!data.images || data.images.length === 0) {
               data.images = [data.imageUrl];
@@ -109,11 +108,8 @@ function ProductPage() {
             setPrimaryIdx(data.displayImageIndex ?? 0);
 
             // Fetch related: same category, exclude current
-            const allSnap = await getDocs(
-              query(collection(db, "products"), orderBy("createdAt", "desc"))
-            );
-            const others = allSnap.docs
-              .map((d) => ({ id: d.id, ...d.data() } as FirestoreProduct))
+            const others = (await fetchProducts())
+              .map((p) => p as FirestoreProduct)
               .filter((p) => p.id !== id && p.category === data.category)
               .slice(0, 4);
             setRelated(others);

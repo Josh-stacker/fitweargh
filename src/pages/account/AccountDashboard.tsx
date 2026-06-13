@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, type Timestamp } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 import Navbar from "../../components/Navbar";
@@ -98,7 +97,6 @@ export default function AccountDashboard() {
     if (!user) return;
     setSavingProfile(true);
     try {
-      await updateProfile(user, { displayName: name });
       await updateDoc(doc(db, "customers", user.uid), { name, phone, address });
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
