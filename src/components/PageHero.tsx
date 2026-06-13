@@ -26,7 +26,7 @@ function PageHero({
 
   return (
     <section
-      className="relative w-full h-[60vh] min-[1441px]:h-[50vh] overflow-hidden bg-[#1a0d06]"
+      className="relative w-full h-[75vh] md:h-[80vh] min-[1441px]:h-[70vh] overflow-hidden bg-[#1a0d06]"
     >
       {/* Background */}
       <div

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabase";
 import { PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, ImageIcon } from "@phosphor-icons/react";
+import Cropper from "react-easy-crop";
+import getCroppedImg from "../../lib/cropImage";
 
 interface HeroSlide {
   id: string;
@@ -58,6 +60,14 @@ export default function HeroSlides() {
 
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Cropper state
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropTarget, setCropTarget] = useState<"bg" | "img1" | "img2" | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState("");
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   const bgRef = useRef<HTMLInputElement>(null);
   const img1Ref = useRef<HTMLInputElement>(null);
@@ -172,13 +182,41 @@ export default function HeroSlides() {
   };
 
   const makeFileHandler = (
-    setFile: (f: File) => void,
-    setPreview: (s: string) => void
+    target: "bg" | "img1" | "img2"
   ) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFile(file);
-    setPreview(URL.createObjectURL(file));
+    setCropImageUrl(URL.createObjectURL(file));
+    setCropTarget(target);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCropModalOpen(true);
+    e.target.value = ""; // reset input
+  };
+
+  const handleCropSave = async () => {
+    if (!cropTarget || !cropImageUrl || !croppedAreaPixels) return;
+    try {
+      const croppedBlob = await getCroppedImg(cropImageUrl, croppedAreaPixels);
+      if (!croppedBlob) throw new Error("Cropping failed");
+      
+      const file = new File([croppedBlob], "cropped.webp", { type: "image/webp" });
+      const previewUrl = URL.createObjectURL(croppedBlob);
+      
+      if (cropTarget === "bg") {
+        setBgFile(file);
+        setBgPreview(previewUrl);
+      } else if (cropTarget === "img1") {
+        setImg1File(file);
+        setImg1Preview(previewUrl);
+      } else if (cropTarget === "img2") {
+        setImg2File(file);
+        setImg2Preview(previewUrl);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setCropModalOpen(false);
   };
 
   return (
@@ -304,7 +342,13 @@ export default function HeroSlides() {
                     </div>
                   )}
                 </div>
-                <input ref={bgRef} type="file" accept="image/*" onChange={makeFileHandler(setBgFile, setBgPreview)} className="hidden" />
+                <input
+                  ref={bgRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={makeFileHandler("bg")}
+                  className="hidden"
+                />
               </div>
 
               {/* Portrait images row */}
@@ -324,7 +368,13 @@ export default function HeroSlides() {
                       </div>
                     )}
                   </div>
-                  <input ref={img1Ref} type="file" accept="image/*" onChange={makeFileHandler(setImg1File, setImg1Preview)} className="hidden" />
+                  <input
+                  ref={img1Ref}
+                  type="file"
+                  accept="image/*"
+                  onChange={makeFileHandler("img1")}
+                  className="hidden"
+                />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Portrait Image 2</label>
@@ -341,7 +391,13 @@ export default function HeroSlides() {
                       </div>
                     )}
                   </div>
-                  <input ref={img2Ref} type="file" accept="image/*" onChange={makeFileHandler(setImg2File, setImg2Preview)} className="hidden" />
+                  <input
+                  ref={img2Ref}
+                  type="file"
+                  accept="image/*"
+                  onChange={makeFileHandler("img2")}
+                  className="hidden"
+                />
                 </div>
               </div>
 
@@ -458,6 +514,49 @@ export default function HeroSlides() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cropper Modal */}
+      {cropModalOpen && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 bg-black text-white shrink-0">
+            <h3 className="raleway-bold text-base">Crop Image</h3>
+            <button onClick={() => setCropModalOpen(false)} className="hover:text-gray-300">
+              <XIcon size={24} />
+            </button>
+          </div>
+          <div className="flex-1 relative bg-black">
+            <Cropper
+              image={cropImageUrl}
+              crop={crop}
+              zoom={zoom}
+              aspect={cropTarget === "bg" ? 16 / 9 : 3 / 4}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(_, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+            />
+          </div>
+          <div className="p-6 bg-black flex flex-col sm:flex-row items-center gap-4 shrink-0">
+            <div className="flex-1 flex items-center gap-4 w-full text-white raleway-bold text-sm">
+              <span>Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full sm:w-64"
+              />
+            </div>
+            <button
+              onClick={handleCropSave}
+              className="w-full sm:w-auto bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-8 py-3 hover:bg-[#3d2409] transition-colors"
+            >
+              Crop & Save
+            </button>
           </div>
         </div>
       )}
