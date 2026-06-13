@@ -6,6 +6,13 @@ import Navbar from "../components/Navbar";
 import HeroSlider from "../components/HeroSlider";
 import {
   ArrowLineUpRightIcon,
+  StarIcon,
+  FireIcon,
+  SquaresFourIcon,
+  TShirtIcon,
+  CrownIcon,
+  HandbagIcon,
+  TagIcon,
 } from "@phosphor-icons/react";
 import ProductCard from "../components/ProductCard";
 import FastSelling from "../components/FastSelling";
@@ -14,6 +21,16 @@ import Accesories from "../components/Accesories";
 import Footer from "../components/Footer";
 import SalePopup from "../components/SalePopup";
 import product1 from "../assets/prod-1.webp";
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  "New Arrivals": StarIcon,
+  "Fast Selling": FireIcon,
+  "Shop By Category": SquaresFourIcon,
+  "Clothing": TShirtIcon,
+  "Body Shapers": CrownIcon,
+  "Accessories": HandbagIcon,
+  "Sales": TagIcon,
+};
 
 interface Product {
   id: string;
@@ -146,40 +163,55 @@ function Homepage() {
       {/* Dynamic Mobile Category Toggle Buttons */}
       {mobileTabs.length > 0 && mobileTabs.length <= 2 && (
         <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto">
-          {mobileTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(activeTab === tab ? null : tab)}
-              className={`flex-1 px-5 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
-                activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {mobileTabs.map(tab => {
+            const Icon = CATEGORY_ICONS[tab] || StarIcon;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+                className={`flex-1 flex items-center justify-center gap-2 px-5 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
+                  activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+                }`}
+              >
+                <Icon size={16} weight={activeTab === tab ? "fill" : "regular"} />
+                {tab}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {mobileTabs.length > 2 && (
-        <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto overflow-x-auto snap-x hide-scrollbar pb-2">
-          {mobileTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(activeTab === tab ? null : tab)}
-              className={`w-28 h-28 flex-shrink-0 flex items-center justify-center text-center p-2 border border-[#533113] raleway-bold text-sm uppercase transition-colors snap-center ${
-                activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto overflow-x-auto snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-2">
+          {mobileTabs.map(tab => {
+            const Icon = CATEGORY_ICONS[tab] || StarIcon;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+                className={`w-[85px] h-[85px] flex-shrink-0 flex flex-col items-center justify-center gap-1.5 p-1 border border-[#533113] uppercase transition-colors snap-center ${
+                  activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+                }`}
+              >
+                <Icon size={24} weight={activeTab === tab ? "fill" : "regular"} />
+                <span className="raleway-bold text-[10px] leading-tight text-center px-1 break-words">{tab}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Dynamic Mobile Category Content */}
       {activeTab !== null && (
         <section className="md:hidden max-w-[1440px] mx-auto px-4 mt-8 mb-10">
-          <h2 className="text-3xl raleway-black text-[#875A33] mb-5 uppercase">{activeTab}</h2>
+          <div className="flex flex-col gap-2 w-full mb-6">
+            <h2 className="text-[32px] text-[#533113] raleway-black uppercase leading-[1.1]">
+              {activeTab} <br /> that define you
+            </h2>
+            <p className="raleway-regular text-sm text-[#533113] w-full max-w-[90%]">
+              Discover pieces that redefine bold and confidence.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             {allProducts
               .filter((p) => hasCategory(p, activeTab))
