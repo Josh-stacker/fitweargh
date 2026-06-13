@@ -57,6 +57,16 @@ const DEFAULT_SECTIONS = {
   accessories: [] as string[],
 };
 
+const CATEGORIES = [
+  "New Arrivals",
+  "Fast Selling",
+  "Shop By Category",
+  "Clothing",
+  "Body Shapers",
+  "Accessories",
+  "Sales",
+];
+
 export default function HomepageSettings() {
   const [heroMode, setHeroMode] = useState<"slider" | "still">("slider");
   const [heroSliderInterval, setHeroSliderInterval] = useState(5);
@@ -84,14 +94,18 @@ export default function HomepageSettings() {
     const load = async () => {
       setLoading(true);
       const [
-        { data: settingsData },
-        { data: productsData },
-        { data: catsData }
+        settingsResult,
+        productsResult
       ] = await Promise.all([
         supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("categories").select("id, name").order("name", { ascending: true })
+        supabase.from("products").select("*").order("created_at", { ascending: false })
       ]);
+
+      if (settingsResult.error) console.error("Settings error:", settingsResult.error);
+      if (productsResult.error) console.error("Products error:", productsResult.error);
+
+      const settingsData = settingsResult.data;
+      const productsData = productsResult.data;
 
       if (settingsData?.value) {
         const d = settingsData.value as HomepageDoc;
@@ -111,9 +125,6 @@ export default function HomepageSettings() {
 
       if (productsData) {
         setProducts(productsData as Product[]);
-      }
-      if (catsData) {
-        setCategories(catsData as { id: string; name: string }[]);
       }
       setLoading(false);
     };
@@ -321,15 +332,15 @@ export default function HomepageSettings() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => {
-            const isSelected = mobileTabs.includes(cat.name);
+          {CATEGORIES.map((catName) => {
+            const isSelected = mobileTabs.includes(catName);
             return (
               <button
-                key={cat.id}
+                key={catName}
                 type="button"
                 onClick={() => {
-                  if (isSelected) setMobileTabs(prev => prev.filter(t => t !== cat.name));
-                  else setMobileTabs(prev => [...prev, cat.name]);
+                  if (isSelected) setMobileTabs(prev => prev.filter(t => t !== catName));
+                  else setMobileTabs(prev => [...prev, catName]);
                 }}
                 className={`px-4 py-2 border transition-all text-sm raleway-bold uppercase tracking-widest ${
                   isSelected
@@ -337,7 +348,7 @@ export default function HomepageSettings() {
                     : "bg-transparent text-[#533113] border-[#DEDEDE] hover:border-[#533113]"
                 }`}
               >
-                {cat.name}
+                {catName}
               </button>
             );
           })}
