@@ -122,6 +122,7 @@ const COLORS: { name: string; hex: string }[] = [
   { name: "Butter Yellow", hex: "#FFF099" },
   { name: "Lilac",  hex: "#C8A2C8" },
   { name: "Mint Green", hex: "#98FF98" },
+  { name: "Burgundy", hex: "#800020" },
 ];
 
 // Map color name → hex for rendering swatches

@@ -327,7 +327,7 @@ export default function HeroSlides() {
               {/* Background image */}
               <div className="flex flex-col gap-2">
                 <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
-                  Background Image <span className="text-[#533113]/40 normal-case">(required)</span>
+                  {form.page === "Homepage" ? "Desktop Background Image" : "Background Image"} <span className="text-[#533113]/40 normal-case">(required)</span>
                 </label>
                 <div
                   onClick={() => bgRef.current?.click()}
@@ -352,9 +352,11 @@ export default function HeroSlides() {
               </div>
 
               {/* Portrait images row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${form.page === "Homepage" ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
                 <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Portrait Image 1</label>
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                    {form.page === "Homepage" ? "Mobile Background Image" : "Portrait Image 1"}
+                  </label>
                   <div
                     onClick={() => img1Ref.current?.click()}
                     className="border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors cursor-pointer flex items-center justify-center h-28 overflow-hidden"
@@ -376,29 +378,32 @@ export default function HeroSlides() {
                   className="hidden"
                 />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Portrait Image 2</label>
-                  <div
-                    onClick={() => img2Ref.current?.click()}
-                    className="border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors cursor-pointer flex items-center justify-center h-28 overflow-hidden"
-                  >
-                    {img2Preview ? (
-                      <img src={img2Preview} alt="img2" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-[#533113]/40">
-                        <ImageIcon size={24} />
-                        <span className="raleway-regular text-xs">Upload</span>
-                      </div>
-                    )}
+                
+                {form.page !== "Homepage" && (
+                  <div className="flex flex-col gap-2">
+                    <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Portrait Image 2</label>
+                    <div
+                      onClick={() => img2Ref.current?.click()}
+                      className="border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors cursor-pointer flex items-center justify-center h-28 overflow-hidden"
+                    >
+                      {img2Preview ? (
+                        <img src={img2Preview} alt="img2" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-[#533113]/40">
+                          <ImageIcon size={24} />
+                          <span className="raleway-regular text-xs">Upload</span>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                    ref={img2Ref}
+                    type="file"
+                    accept="image/*"
+                    onChange={makeFileHandler("img2")}
+                    className="hidden"
+                  />
                   </div>
-                  <input
-                  ref={img2Ref}
-                  type="file"
-                  accept="image/*"
-                  onChange={makeFileHandler("img2")}
-                  className="hidden"
-                />
-                </div>
+                )}
               </div>
 
               {/* Title */}
@@ -532,7 +537,11 @@ export default function HeroSlides() {
               image={cropImageUrl}
               crop={crop}
               zoom={zoom}
-              aspect={cropTarget === "bg" ? 16 / 9 : 3 / 4}
+              aspect={
+                cropTarget === "bg" ? 16 / 9 :
+                (cropTarget === "img1" && form.page === "Homepage") ? 9 / 16 :
+                3 / 4
+              }
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={(_, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}

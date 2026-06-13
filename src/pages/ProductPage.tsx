@@ -6,11 +6,24 @@ import ProductCard from "../components/ProductCard";
 
 // Color name → hex for swatches (matches admin COLORS list)
 const COLOR_HEX: Record<string, string> = {
-  Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
-  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
-  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#800080",
-  Nude: "#E3BC9A", "Hot Pink": "#FF69B4", "Dark Purple": "#4A0E4E",
-  "Sea Blue": "#006994", "Butter Yellow": "#FFF099", Lilac: "#C8A2C8",
+  Black: "#000000",
+  White: "#FFFFFF",
+  Red: "#ef4444",
+  Green: "#00864A",
+  Brown: "#533113",
+  Blue: "#3b82f6",
+  Orange: "#f97316",
+  Pink: "#ec4899",
+  Navy: "#1e3a5f",
+  Grey: "#6b7280",
+  Yellow: "#eab308",
+  Purple: "#800080",
+  Nude: "#E3BC9A",
+  "Hot Pink": "#FF69B4",
+  "Dark Purple": "#4A0E4E",
+  "Sea Blue": "#a9edff",
+  "Butter Yellow": "#FFF099",
+  Lilac: "#C8A2C8",
   "Mint Green": "#98FF98",
 };
 
@@ -51,11 +64,11 @@ interface Product {
 }
 
 const UK_SIZE_CHART = [
-  { size: "S",   label: "UK Small",       uk: "8 – 10"  },
-  { size: "M",   label: "UK Medium",      uk: "10 – 12" },
-  { size: "L",   label: "UK Large",       uk: "14 – 16" },
-  { size: "XL",  label: "UK Extra Large", uk: "16 – 18" },
-  { size: "XXL", label: "UK XXL",         uk: "20"      },
+  { size: "S", label: "UK Small", uk: "8 – 10" },
+  { size: "M", label: "UK Medium", uk: "10 – 12" },
+  { size: "L", label: "UK Large", uk: "14 – 16" },
+  { size: "XL", label: "UK Extra Large", uk: "16 – 18" },
+  { size: "XXL", label: "UK XXL", uk: "20" },
 ];
 
 // Fallback shown when no product is found for the given ID
@@ -114,11 +127,17 @@ function ProductPage() {
             setPrimaryIdx(data.displayImageIndex ?? 0);
 
             // Fetch related: query Supabase directly by category, exclude current product
-            const cats = data.categories?.length ? data.categories : data.category ? [data.category] : [];
+            const cats = data.categories?.length
+              ? data.categories
+              : data.category
+                ? [data.category]
+                : [];
             if (cats.length > 0) {
               let { data: relatedData } = await supabase
                 .from("products")
-                .select("id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock")
+                .select(
+                  "id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock",
+                )
                 .neq("id", id)
                 .overlaps("categories", cats)
                 .limit(4);
@@ -127,7 +146,9 @@ function ProductPage() {
               if (!relatedData || relatedData.length === 0) {
                 const fb = await supabase
                   .from("products")
-                  .select("id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock")
+                  .select(
+                    "id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock",
+                  )
                   .neq("id", id)
                   .eq("category", cats[0])
                   .limit(4);
@@ -135,12 +156,18 @@ function ProductPage() {
               }
 
               const toRelated = (r: any): Product => ({
-                id: r.id, name: r.name, price: Number(r.price),
+                id: r.id,
+                name: r.name,
+                price: Number(r.price),
                 discountPrice: r.discount_price ?? null,
-                imageUrl: r.image_url ?? "", images: r.images ?? [],
+                imageUrl: r.image_url ?? "",
+                images: r.images ?? [],
                 displayImageIndex: r.display_image_index ?? 0,
-                colors: r.colors ?? [], category: r.category ?? "",
-                sizes: [], stock: r.stock ?? 0, description: "",
+                colors: r.colors ?? [],
+                category: r.category ?? "",
+                sizes: [],
+                stock: r.stock ?? 0,
+                description: "",
                 colorSizeStock: {},
               });
               setRelated((relatedData ?? []).map(toRelated));
@@ -205,18 +232,22 @@ function ProductPage() {
       {/* Breadcrumb */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-3 md:py-4">
         <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60">
-          <Link to="/new-arrivals" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
+          <Link
+            to="/new-arrivals"
+            className="flex items-center gap-1 hover:text-[#533113] transition-colors"
+          >
             <ArrowLeftIcon size={14} />
             New Arrivals
           </Link>
           <span>/</span>
-          <span className="text-[#533113] truncate max-w-[200px]">{p.name}</span>
+          <span className="text-[#533113] truncate max-w-[200px]">
+            {p.name}
+          </span>
         </div>
       </div>
 
       <main className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto">
         <div className="flex flex-col md:flex-row">
-
           {/* Left: image gallery */}
           <div className="w-full md:w-[45%] md:sticky md:top-0 md:self-start">
             <div className="w-full bg-[#F5EDE0] overflow-hidden aspect-[3/4]">
@@ -246,7 +277,11 @@ function ProductPage() {
                         : "border-[#DEDEDE] opacity-60 hover:opacity-100"
                     }`}
                   >
-                    <img src={img} alt={`view ${i + 1}`} className="w-full h-full object-cover" />
+                    <img
+                      src={img}
+                      alt={`view ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -255,7 +290,6 @@ function ProductPage() {
 
           {/* Right: product info */}
           <div className="w-full md:w-[55%] px-4 md:pl-16 md:pr-10 py-6 md:py-10 flex flex-col gap-5 md:gap-6">
-
             {/* Category tag */}
             <span className="raleway-regular text-sm text-[#533113]/60 uppercase tracking-widest self-start border border-[#DEDEDE] px-3 py-1">
               {p.category}
@@ -278,7 +312,9 @@ function ProductPage() {
                   </p>
                 )}
               </div>
-              <span className={`raleway-regular text-base px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              <span
+                className={`raleway-regular text-base px-3 py-1 shrink-0 ${inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+              >
                 {inStock ? "In Stock" : "Out of Stock"}
               </span>
             </div>
@@ -304,7 +340,9 @@ function ProductPage() {
                       >
                         <span className="text-base">{s}</span>
                         {chart && (
-                          <span className={`raleway-regular text-xs leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}>
+                          <span
+                            className={`raleway-regular text-xs leading-tight mt-0.5 ${selectedSize === s ? "text-white/70" : "text-[#533113]/50"}`}
+                          >
                             {chart.uk}
                           </span>
                         )}
@@ -351,10 +389,11 @@ function ProductPage() {
               </div>
             )}
 
-
             {/* Quantity */}
             <div className="flex items-center gap-4">
-              <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">Qty</p>
+              <p className="raleway-bold text-sm uppercase tracking-widest text-[#533113]">
+                Qty
+              </p>
               <div className="flex items-stretch border border-[#533113]">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -385,7 +424,11 @@ function ProductPage() {
                 <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
                   Description
                 </span>
-                {descOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
+                {descOpen ? (
+                  <CaretUpIcon size={18} color="#533113" />
+                ) : (
+                  <CaretDownIcon size={18} color="#533113" />
+                )}
               </button>
               <hr className="border-[#DEDEDE]" />
               {descOpen && (
@@ -404,7 +447,11 @@ function ProductPage() {
                 <span className="raleway-bold text-base uppercase tracking-widest text-[#533113]">
                   Size Guide
                 </span>
-                {chartOpen ? <CaretUpIcon size={18} color="#533113" /> : <CaretDownIcon size={18} color="#533113" />}
+                {chartOpen ? (
+                  <CaretUpIcon size={18} color="#533113" />
+                ) : (
+                  <CaretDownIcon size={18} color="#533113" />
+                )}
               </button>
               <hr className="border-[#DEDEDE]" />
               {chartOpen && (
@@ -412,14 +459,23 @@ function ProductPage() {
                   <table className="w-full text-lg raleway-regular text-[#533113]">
                     <thead>
                       <tr className="border-b border-[#DEDEDE]">
-                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">Size</th>
-                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">UK Label</th>
-                        <th className="raleway-bold text-left pb-2 text-[#533113]">UK Dress Size</th>
+                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">
+                          Size
+                        </th>
+                        <th className="raleway-bold text-left pb-2 pr-8 text-[#533113]">
+                          UK Label
+                        </th>
+                        <th className="raleway-bold text-left pb-2 text-[#533113]">
+                          UK Dress Size
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {UK_SIZE_CHART.map((row) => (
-                        <tr key={row.size} className="border-b border-[#DEDEDE]/40">
+                        <tr
+                          key={row.size}
+                          className="border-b border-[#DEDEDE]/40"
+                        >
                           <td className="py-2 pr-8 raleway-bold">{row.size}</td>
                           <td className="py-2 pr-8">{row.label}</td>
                           <td className="py-2">{row.uk}</td>
@@ -452,8 +508,12 @@ function ProductPage() {
           <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 py-12">
             <div className="flex items-end justify-between mb-8">
               <div>
-                <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-[0.3em] mb-1">More Like This</p>
-                <h2 className="raleway-bold text-2xl text-[#533113]">You May Also Like</h2>
+                <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-[0.3em] mb-1">
+                  More Like This
+                </p>
+                <h2 className="raleway-bold text-2xl text-[#533113]">
+                  You May Also Like
+                </h2>
               </div>
               <Link
                 to="/new-arrivals"
@@ -487,9 +547,7 @@ function ProductPage() {
 
       <Footer />
 
-      {toast && (
-        <Toast message={toastMsg} onDone={() => setToast(false)} />
-      )}
+      {toast && <Toast message={toastMsg} onDone={() => setToast(false)} />}
     </div>
   );
 }

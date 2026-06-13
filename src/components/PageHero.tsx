@@ -3,6 +3,7 @@ import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
 
 interface PageHeroProps {
   bgImage: string;
+  mobileBgImage?: string;
   bgPosition?: string;
   title?: string;
   subtitle?: string;
@@ -14,6 +15,7 @@ interface PageHeroProps {
 
 function PageHero({
   bgImage,
+  mobileBgImage,
   bgPosition = "50% 40%",
   title,
   subtitle,
@@ -26,11 +28,20 @@ function PageHero({
 
   return (
     <section
-      className="relative w-full h-[75vh] md:h-[80vh] min-[1441px]:h-[70vh] overflow-hidden bg-[#1a0d06]"
+      className="relative w-full h-[85vh] md:h-[85vh] min-[1441px]:h-[80vh] overflow-hidden bg-[#1a0d06]"
     >
-      {/* Background */}
+      {/* Mobile Background */}
       <div
-        className={`absolute inset-0 ${hasContent ? "opacity-50" : "opacity-100"}`}
+        className={`absolute inset-0 md:hidden ${hasContent ? "opacity-50" : "opacity-100"}`}
+        style={{
+          backgroundImage: `url(${mobileBgImage || bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: bgPosition,
+        }}
+      />
+      {/* Desktop Background */}
+      <div
+        className={`absolute inset-0 hidden md:block ${hasContent ? "opacity-50" : "opacity-100"}`}
         style={{
           backgroundImage: `url(${bgImage})`,
           backgroundSize: "cover",

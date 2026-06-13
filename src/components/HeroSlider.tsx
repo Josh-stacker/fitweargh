@@ -76,20 +76,28 @@ function HeroSlider({ page = "Homepage" }: Props) {
     return <PageHero bgImage={herobg} bgPosition="50% 40%" />;
   }
 
-  const s = slides[current];
-
   return (
-    <div className="relative">
-      <PageHero
-        bgImage={s.bg_image_url || herobg}
-        bgPosition={s.bg_position || "50% 40%"}
-        title={s.title || undefined}
-        subtitle={s.subtitle || undefined}
-        badge={s.badge || undefined}
-        ctaText={s.cta_text || "Shop Now"}
-        image1={s.image1_url || undefined}
-        image2={s.image2_url || undefined}
-      />
+    <div className="relative w-full h-[85vh] md:h-[85vh] min-[1441px]:h-[80vh] overflow-hidden bg-[#1a0d06]">
+      {slides.map((s, i) => (
+        <div
+          key={s.id}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+            i === current ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+          }`}
+        >
+          <PageHero
+            bgImage={s.bg_image_url || herobg}
+            mobileBgImage={s.image1_url || undefined}
+            bgPosition={s.bg_position || "50% 40%"}
+            title={s.title || undefined}
+            subtitle={s.subtitle || undefined}
+            badge={s.badge || undefined}
+            ctaText={s.cta_text || "Shop Now"}
+            image1={s.image1_url || undefined}
+            image2={s.image2_url || undefined}
+          />
+        </div>
+      ))}
 
       {slides.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">

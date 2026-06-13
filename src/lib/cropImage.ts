@@ -99,3 +99,19 @@ export default async function getCroppedImg(
     );
   });
 }
+
+export async function compressImage(imageSrc: string): Promise<Blob | null> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) return null;
+
+  canvas.width = image.width;
+  canvas.height = image.height;
+  ctx.drawImage(image, 0, 0);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/webp", 0.85);
+  });
+}
