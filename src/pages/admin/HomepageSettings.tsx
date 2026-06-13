@@ -81,7 +81,7 @@ export default function HomepageSettings() {
   const [activeSection, setActiveSection] = useState<SectionKey>("newArrivals");
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
