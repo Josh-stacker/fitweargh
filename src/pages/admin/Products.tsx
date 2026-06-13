@@ -26,7 +26,7 @@ interface Product {
   images: string[];
   imagePaths: string[];
   displayImageIndex: number;
-  colorImageMap: Record<string, number>;
+  colorImageMap: Record<string, number | number[]>;
   description: string;
   createdAt: unknown;
 }
@@ -47,7 +47,7 @@ interface ProductRow {
   images: string[] | null;
   image_paths: string[] | null;
   display_image_index: number | null;
-  color_image_map: Record<string, number> | null;
+  color_image_map: Record<string, number | number[]> | null;
   description: string;
   created_at: string;
 }
@@ -95,7 +95,6 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise
 const CATEGORIES = [
   "New Arrivals",
   "Fast Selling",
-  "Shop By Category",
   "Clothing",
   "Body Shapers",
   "Accessories",
@@ -144,7 +143,7 @@ const EMPTY_FORM = {
   sizes: [] as string[],
   colors: [] as string[],
   colorSizeStock: {} as Record<string, number>,
-  colorImageMap: {} as Record<string, number>,
+  colorImageMap: {} as Record<string, number | number[]>,
   description: "",
 };
 
@@ -300,11 +299,15 @@ export default function Products() {
       setForm((f) => {
         const nextMap = Object.fromEntries(
           Object.entries(f.colorImageMap)
-            .map(([color, imageIdx]) => {
-              if (imageIdx === idx) return null;
-              return [color, imageIdx > idx ? imageIdx - 1 : imageIdx] as const;
+            .map(([color, value]) => {
+              const imageIndices = Array.isArray(value) ? value : [value];
+              const nextIndices = imageIndices
+                .filter((imageIdx) => imageIdx !== idx)
+                .map((imageIdx) => (imageIdx > idx ? imageIdx - 1 : imageIdx));
+              if (nextIndices.length === 0) return null;
+              return [color, nextIndices] as const;
             })
-            .filter((entry): entry is readonly [string, number] => entry !== null),
+            .filter((entry): entry is readonly [string, number[]] => entry !== null),
         );
         return { ...f, colorImageMap: nextMap };
       });
@@ -344,14 +347,39 @@ export default function Products() {
       };
     });
 
-  const setColorImageSlot = (colorName: string, slotIdx: number | null) => {
+  const getColorImageSlots = (colorName: string) => {
+    const value = form.colorImageMap[colorName];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "number") return [value];
+    return [];
+  };
+
+  const toggleColorImageSlot = (colorName: string, slotIdx: number) => {
     setForm((f) => {
+      const currentValue = f.colorImageMap[colorName];
+      const current = Array.isArray(currentValue)
+        ? currentValue
+        : typeof currentValue === "number"
+          ? [currentValue]
+          : [];
       const nextMap = { ...f.colorImageMap };
-      if (slotIdx === null) {
+      const nextSlots = current.includes(slotIdx)
+        ? current.filter((idx) => idx !== slotIdx)
+        : [...current, slotIdx].sort((a, b) => a - b);
+
+      if (nextSlots.length === 0) {
         delete nextMap[colorName];
       } else {
-        nextMap[colorName] = slotIdx;
+        nextMap[colorName] = nextSlots;
       }
+      return { ...f, colorImageMap: nextMap };
+    });
+  };
+
+  const clearColorImageSlots = (colorName: string) => {
+    setForm((f) => {
+      const nextMap = { ...f.colorImageMap };
+      delete nextMap[colorName];
       return { ...f, colorImageMap: nextMap };
     });
   };
@@ -426,9 +454,15 @@ export default function Products() {
 
       const computedStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
       const colorImageMap = Object.fromEntries(
-        Object.entries(form.colorImageMap).filter(
-          ([color, idx]) => form.colors.includes(color) && idx >= 0 && idx < uploaded.length,
-        ),
+        Object.entries(form.colorImageMap)
+          .map(([color, value]) => {
+            const indices = (Array.isArray(value) ? value : [value]).filter(
+              (idx) => idx >= 0 && idx < uploaded.length,
+            );
+            if (!form.colors.includes(color) || indices.length === 0) return null;
+            return [color, indices] as const;
+          })
+          .filter((entry): entry is readonly [string, number[]] => entry !== null),
       );
 
       const data = {
@@ -703,7 +737,7 @@ export default function Products() {
                       {imageSlots.map((slot, i) => {
                         const isDisplay = i === displayIdx;
                         const assignedColors = Object.entries(form.colorImageMap)
-                          .filter(([, imageIdx]) => imageIdx === i)
+                          .filter(([, value]) => (Array.isArray(value) ? value : [value]).includes(i))
                           .map(([color]) => color);
                         return (
                           <div key={i} className="flex flex-col items-center gap-1.5">
@@ -907,7 +941,7 @@ export default function Products() {
                   </label>
                   <div className="border border-[#DEDEDE] divide-y divide-[#DEDEDE]">
                     {form.colors.map((colorName) => {
-                      const selectedSlot = form.colorImageMap[colorName];
+                      const selectedSlots = getColorImageSlots(colorName);
                       return (
                         <div key={colorName} className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 px-3 py-3">
                           <div className="flex items-center gap-2 min-w-0">
@@ -920,34 +954,43 @@ export default function Products() {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => setColorImageSlot(colorName, null)}
+                              onClick={() => clearColorImageSlots(colorName)}
                               className={`h-14 min-w-16 px-3 border raleway-regular text-xs transition-colors ${
-                                selectedSlot == null
+                                selectedSlots.length === 0
                                   ? "border-[#533113] bg-[#533113] text-white"
                                   : "border-[#DEDEDE] text-[#533113] hover:border-[#533113]"
                               }`}
                             >
                               Any
                             </button>
-                            {imageSlots.map((slot, i) => (
-                              <button
-                                key={`${colorName}-${i}`}
-                                type="button"
-                                onClick={() => setColorImageSlot(colorName, i)}
-                                className={`relative w-12 h-14 border-2 overflow-hidden transition-colors ${
-                                  selectedSlot === i
-                                    ? "border-[#533113] ring-2 ring-[#533113]/30"
-                                    : "border-[#DEDEDE] hover:border-[#533113]/60"
-                                }`}
-                                aria-label={`${colorName} uses photo ${i + 1}`}
-                                title={`Photo ${i + 1}`}
-                              >
-                                <img src={slot.preview} alt="" className="w-full h-full object-cover" />
-                                <span className="absolute left-0 bottom-0 bg-[#533113] text-white raleway-bold text-[9px] leading-4 px-1">
-                                  {i + 1}
-                                </span>
-                              </button>
-                            ))}
+                            {imageSlots.map((slot, i) => {
+                              const selected = selectedSlots.includes(i);
+                              return (
+                                <button
+                                  key={`${colorName}-${i}`}
+                                  type="button"
+                                  onClick={() => toggleColorImageSlot(colorName, i)}
+                                  className={`relative w-12 h-14 border-2 overflow-hidden transition-colors ${
+                                    selected
+                                      ? "border-[#533113] ring-2 ring-[#533113]/30"
+                                      : "border-[#DEDEDE] hover:border-[#533113]/60"
+                                  }`}
+                                  aria-pressed={selected}
+                                  aria-label={`${selected ? "Remove" : "Add"} photo ${i + 1} for ${colorName}`}
+                                  title={`Photo ${i + 1}`}
+                                >
+                                  <img src={slot.preview} alt="" className="w-full h-full object-cover" />
+                                  <span className="absolute left-0 bottom-0 bg-[#533113] text-white raleway-bold text-[9px] leading-4 px-1">
+                                    {i + 1}
+                                  </span>
+                                  {selected && (
+                                    <span className="absolute right-0 top-0 bg-white text-[#533113] raleway-bold text-[9px] leading-4 px-1">
+                                      ✓
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       );

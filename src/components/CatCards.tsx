@@ -6,9 +6,10 @@ interface CatCardsProps {
   name: string;
   colors?: string[];
   id?: string;
+  href?: string;
 }
 
-function CatCards({ image, name, id }: CatCardsProps) {
+function CatCards({ image, name, id, href }: CatCardsProps) {
   const inner = (
     <section className="w-full h-full bg-[#FFFBF6] flex flex-col border border-[#DEDEDE]">
       <div className="relative w-full overflow-hidden">
@@ -22,8 +23,9 @@ function CatCards({ image, name, id }: CatCardsProps) {
     </section>
   );
 
-  if (id) {
-    return <Link to={`/product/${id}`} className="block h-full">{inner}</Link>;
+  const to = href ?? (id ? `/product/${id}` : "");
+  if (to) {
+    return <Link to={to} className="block h-full">{inner}</Link>;
   }
   return inner;
 }

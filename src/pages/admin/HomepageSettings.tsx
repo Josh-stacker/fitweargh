@@ -15,10 +15,13 @@ interface HomepageDoc {
   heroStillImagePath: string;
   heroSliderInterval?: number;
   mobileTabs?: string[];
+  categoryCards?: Record<string, {
+    imageUrl?: string;
+    imagePath?: string;
+  }>;
   sections: {
     newArrivals: string[];    // product IDs, empty = auto latest
     fastSelling: string[];
-    shopByCategory: string[];
     accessories: string[];
   };
   updatedAt: unknown;
@@ -33,39 +36,63 @@ interface Product {
   discountPrice?: number | null;
 }
 
+interface CategoryCardForm {
+  imageUrl: string;
+  imagePath: string;
+  preview: string;
+  file: File | null;
+  removeExisting?: boolean;
+}
+
 const SECTION_LABELS: Record<string, string> = {
   newArrivals: "New Arrivals",
   fastSelling: "Fast Selling",
-  shopByCategory: "Shop By Category",
   accessories: "Accessories",
 };
 
 const SECTION_HINTS: Record<string, string> = {
   newArrivals: "Leave empty to auto-show the latest products",
   fastSelling: "Leave empty to auto-show latest products",
-  shopByCategory: "Leave empty to auto-show latest products",
   accessories: "Leave empty to auto-show Accessories products",
 };
 
-type SectionKey = "newArrivals" | "fastSelling" | "shopByCategory" | "accessories";
-const SECTIONS: SectionKey[] = ["newArrivals", "fastSelling", "shopByCategory", "accessories"];
+type SectionKey = "newArrivals" | "fastSelling" | "accessories";
+const SECTIONS: SectionKey[] = ["newArrivals", "fastSelling", "accessories"];
 
 const DEFAULT_SECTIONS = {
   newArrivals: [] as string[],
   fastSelling: [] as string[],
-  shopByCategory: [] as string[],
   accessories: [] as string[],
 };
 
 const CATEGORIES = [
   "New Arrivals",
   "Fast Selling",
-  "Shop By Category",
   "Clothing",
   "Body Shapers",
   "Accessories",
   "Sales",
 ];
+
+const CATEGORY_CARD_OPTIONS = [
+  { name: "Clothing", href: "/clothing" },
+  { name: "Body Shapers", href: "/body-shapers" },
+  { name: "Accessories", href: "/accessories" },
+  { name: "Sales", href: "/sales" },
+];
+
+const EMPTY_CATEGORY_CARDS = Object.fromEntries(
+  CATEGORY_CARD_OPTIONS.map((category) => [
+    category.name,
+    {
+      imageUrl: "",
+      imagePath: "",
+      preview: "",
+      file: null,
+      removeExisting: false,
+    },
+  ]),
+) as Record<string, CategoryCardForm>;
 
 export default function HomepageSettings() {
   const [heroMode, setHeroMode] = useState<"slider" | "still">("slider");
@@ -75,6 +102,7 @@ export default function HomepageSettings() {
   const [stillFile, setStillFile] = useState<File | null>(null);
   const [stillPreview, setStillPreview] = useState("");
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
+  const [categoryCards, setCategoryCards] = useState(EMPTY_CATEGORY_CARDS);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -88,6 +116,7 @@ export default function HomepageSettings() {
   const [saving, setSaving] = useState(false);
 
   const stillRef = useRef<HTMLInputElement>(null);
+  const categoryCardRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Load existing settings, size chart, and all products
   useEffect(() => {
@@ -114,13 +143,29 @@ export default function HomepageSettings() {
         setStillImageUrl(d.heroStillImageUrl ?? "");
         setStillImagePath(d.heroStillImagePath ?? "");
         setStillPreview(d.heroStillImageUrl ?? "");
-        setMobileTabs(d.mobileTabs ?? []);
+        setMobileTabs((d.mobileTabs ?? []).filter((tab) => CATEGORIES.includes(tab)));
         setSections({
           newArrivals: d.sections?.newArrivals ?? [],
           fastSelling: d.sections?.fastSelling ?? [],
-          shopByCategory: d.sections?.shopByCategory ?? [],
           accessories: d.sections?.accessories ?? [],
         });
+        setCategoryCards(
+          Object.fromEntries(
+            CATEGORY_CARD_OPTIONS.map((category) => {
+              const saved = d.categoryCards?.[category.name];
+              return [
+                category.name,
+                {
+                  imageUrl: saved?.imageUrl ?? "",
+                  imagePath: saved?.imagePath ?? "",
+                  preview: saved?.imageUrl ?? "",
+                  file: null,
+                  removeExisting: false,
+                },
+              ];
+            }),
+          ) as Record<string, CategoryCardForm>,
+        );
       }
 
       if (productsData) {
@@ -136,6 +181,33 @@ export default function HomepageSettings() {
     if (!file) return;
     setStillFile(file);
     setStillPreview(URL.createObjectURL(file));
+  };
+
+  const handleCategoryCardFile = (categoryName: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCategoryCards((prev) => ({
+      ...prev,
+      [categoryName]: {
+        ...prev[categoryName],
+        preview: URL.createObjectURL(file),
+        file,
+        removeExisting: false,
+      },
+    }));
+  };
+
+  const removeCategoryCardImage = (categoryName: string) => {
+    setCategoryCards((prev) => ({
+      ...prev,
+      [categoryName]: {
+        ...prev[categoryName],
+        imageUrl: "",
+        preview: "",
+        file: null,
+        removeExisting: Boolean(prev[categoryName].imagePath),
+      },
+    }));
   };
 
   const toggleProduct = (productId: string) => {
@@ -172,6 +244,55 @@ export default function HomepageSettings() {
         setStillFile(null);
       }
 
+      const savedCategoryCards = Object.fromEntries(
+        await Promise.all(
+          CATEGORY_CARD_OPTIONS.map(async (category) => {
+            const card = categoryCards[category.name];
+            let cardImageUrl = card.imageUrl;
+            let cardImagePath = card.imagePath;
+
+            if (card.file) {
+              const safeName = card.file.name
+                .toLowerCase()
+                .replace(/[^a-z0-9.]+/g, "-")
+                .replace(/^-+|-+$/g, "");
+              const path = `siteSettings/categoryCards/${category.name.toLowerCase().replace(/\s+/g, "-")}_${Date.now()}_${safeName || "image.jpg"}`;
+              await supabase.storage.from("public-assets").upload(path, card.file);
+              const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
+              cardImageUrl = data.publicUrl;
+              if (card.imagePath) {
+                try { await supabase.storage.from("public-assets").remove([card.imagePath]); } catch {}
+              }
+              cardImagePath = path;
+            } else if (card.removeExisting && card.imagePath) {
+              try { await supabase.storage.from("public-assets").remove([card.imagePath]); } catch {}
+              cardImageUrl = "";
+              cardImagePath = "";
+            }
+
+            return [category.name, { imageUrl: cardImageUrl, imagePath: cardImagePath }] as const;
+          }),
+        ),
+      );
+
+      setCategoryCards(
+        Object.fromEntries(
+          CATEGORY_CARD_OPTIONS.map((category) => {
+            const saved = savedCategoryCards[category.name] as { imageUrl?: string; imagePath?: string };
+            return [
+              category.name,
+              {
+                imageUrl: saved.imageUrl ?? "",
+                imagePath: saved.imagePath ?? "",
+                preview: saved.imageUrl ?? "",
+                file: null,
+                removeExisting: false,
+              },
+            ];
+          }),
+        ) as Record<string, CategoryCardForm>,
+      );
+
       await supabase.from("site_settings").upsert({
         key: "homepage",
         value: {
@@ -180,6 +301,7 @@ export default function HomepageSettings() {
           heroStillImagePath: imagePath,
           heroSliderInterval,
           mobileTabs,
+          categoryCards: savedCategoryCards,
           sections,
         },
         updated_at: new Date().toISOString()
@@ -350,6 +472,66 @@ export default function HomepageSettings() {
               >
                 {catName}
               </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Shop By Category Cards ── */}
+      <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-5">
+        <div>
+          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#DEDEDE] pb-3">
+            Shop By Category Cards
+          </h3>
+          <p className="raleway-regular text-sm text-[#533113]/50 mt-2">
+            Upload the image shown for each category card on the homepage.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {CATEGORY_CARD_OPTIONS.map((category) => {
+            const card = categoryCards[category.name];
+            return (
+              <div key={category.name} className="border border-[#DEDEDE] p-3 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                    {category.name}
+                  </span>
+                  {(card.preview || card.imageUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => removeCategoryCardImage(category.name)}
+                      className="text-red-500 hover:text-red-700"
+                      title={`Remove ${category.name} image`}
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => categoryCardRefs.current[category.name]?.click()}
+                  className="border-2 border-dashed border-[#DEDEDE] hover:border-[#533113] transition-colors h-40 flex items-center justify-center overflow-hidden bg-[#FFFBF6]"
+                >
+                  {card.preview ? (
+                    <img src={card.preview} alt={category.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-[#533113]/40">
+                      <ImageIcon size={26} />
+                      <span className="raleway-regular text-sm">Upload image</span>
+                    </div>
+                  )}
+                </button>
+
+                <input
+                  ref={(node) => { categoryCardRefs.current[category.name] = node; }}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleCategoryCardFile(category.name, e)}
+                  className="hidden"
+                />
+              </div>
             );
           })}
         </div>

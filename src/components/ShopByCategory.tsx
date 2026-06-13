@@ -10,20 +10,32 @@ interface Product {
   colors?: string[];
 }
 
+interface CategoryCard {
+  name: string;
+  imageUrl: string;
+  href: string;
+}
+
 interface ShopByCategoryProps {
-  products: Product[];
+  products?: Product[];
+  categories?: CategoryCard[];
   mobileLimit?: number;
   viewAllHref?: string;
   viewAllLabel?: string;
 }
 
 function ShopByCategory({
-  products,
+  products = [],
+  categories,
   mobileLimit = 8,
   viewAllHref = "/clothing",
   viewAllLabel = "View All Categories",
 }: ShopByCategoryProps) {
-  const visibleProducts = products.slice(0, mobileLimit);
+  const visibleCards = categories ?? products.map((p) => ({
+    name: p.name,
+    imageUrl: p.imageUrl,
+    href: `/product/${p.id}`,
+  }));
 
   return (
     <main>
@@ -43,13 +55,12 @@ function ShopByCategory({
         </Link>
       </section>
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 lg:gap-12">
-        {visibleProducts.map((p) => (
-          <div key={p.id}>
+        {visibleCards.slice(0, mobileLimit).map((card) => (
+          <div key={card.name}>
             <CatCards
-              image={p.imageUrl}
-              name={p.name}
-              colors={p.colors}
-              id={p.id}
+              image={card.imageUrl}
+              name={card.name}
+              href={card.href}
             />
           </div>
         ))}

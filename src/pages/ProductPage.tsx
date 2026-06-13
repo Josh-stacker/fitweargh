@@ -58,7 +58,7 @@ interface Product {
   imageUrl: string;
   images?: string[];
   displayImageIndex?: number;
-  colorImageMap?: Record<string, number>;
+  colorImageMap?: Record<string, number | number[]>;
   sizes: string[];
   colors: string[];
   colorSizeStock?: Record<string, number>;
@@ -76,7 +76,7 @@ interface RelatedProductRow {
   image_url: string | null;
   images: string[] | null;
   display_image_index: number | null;
-  color_image_map: Record<string, number> | null;
+  color_image_map: Record<string, number | number[]> | null;
   colors: string[] | null;
   category: string | null;
   stock: number | null;
@@ -229,7 +229,8 @@ function ProductPage() {
 
   const handleColorSelect = (colorName: string) => {
     setSelectedColor(colorName);
-    const imageIdx = p.colorImageMap?.[colorName];
+    const imageValue = p.colorImageMap?.[colorName];
+    const imageIdx = Array.isArray(imageValue) ? imageValue[0] : imageValue;
     if (typeof imageIdx === "number" && images[imageIdx]) {
       setPrimaryIdx(imageIdx);
     }

@@ -16,7 +16,7 @@ export interface Product {
   images: string[];
   imagePaths: string[];
   displayImageIndex: number;
-  colorImageMap: Record<string, number>;
+  colorImageMap: Record<string, number | number[]>;
   description: string;
   createdAt: unknown;
 }
@@ -37,7 +37,7 @@ interface ProductRow {
   images: string[] | null;
   image_paths: string[] | null;
   display_image_index: number | null;
-  color_image_map: Record<string, number> | null;
+  color_image_map: Record<string, number | number[]> | null;
   description: string;
   created_at: string;
 }

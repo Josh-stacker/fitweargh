@@ -49,6 +49,22 @@ const SECTION_LINKS: Record<string, string> = {
   "Sales": "/sales",
 };
 
+const SHOP_CATEGORY_CARDS = [
+  { name: "Clothing", href: "/clothing" },
+  { name: "Body Shapers", href: "/body-shapers" },
+  { name: "Accessories", href: "/accessories" },
+  { name: "Sales", href: "/sales" },
+];
+
+const HOMEPAGE_TAB_CATEGORIES = [
+  "New Arrivals",
+  "Fast Selling",
+  "Clothing",
+  "Body Shapers",
+  "Accessories",
+  "Sales",
+];
+
 interface Product {
   id: string;
   name: string;
@@ -67,6 +83,13 @@ interface HomepageSections {
   shopByCategory: string[];
   accessories: string[];
   mobileTabs?: string[];
+}
+
+interface CategoryCardSettings {
+  [categoryName: string]: {
+    imageUrl?: string;
+    imagePath?: string;
+  };
 }
 
 const MAX_PER_SECTION = 8;
@@ -103,6 +126,7 @@ function Homepage() {
   const [loading, setLoading] = useState(true);
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [categoryCardSettings, setCategoryCardSettings] = useState<CategoryCardSettings>({});
 
   useEffect(() => {
     const load = async () => {
@@ -132,6 +156,7 @@ function Homepage() {
           const d = settingsResult.data.value as {
             sections?: Partial<HomepageSections>;
             mobileTabs?: string[];
+            categoryCards?: CategoryCardSettings;
           };
           console.info("[Homepage] Settings loaded", {
             pinnedSections: d.sections,
@@ -143,7 +168,8 @@ function Homepage() {
             shopByCategory: d.sections?.shopByCategory ?? [],
             accessories: d.sections?.accessories ?? [],
           });
-          setMobileTabs(d.mobileTabs ?? []);
+          setMobileTabs((d.mobileTabs ?? []).filter((tab) => HOMEPAGE_TAB_CATEGORIES.includes(tab)));
+          setCategoryCardSettings(d.categoryCards ?? {});
         }
       } catch (err) {
         console.error("[Homepage] Load error:", err);
@@ -184,13 +210,16 @@ function Homepage() {
     [allProducts, sections.fastSelling],
   );
 
-  const shopByCategoryProducts = useMemo(
-    () => limitProducts(
-      sections.shopByCategory.length > 0
-        ? resolvePinned(sections.shopByCategory, allProducts)
-        : STATIC_PRODUCTS
-    ),
-    [allProducts, sections.shopByCategory],
+  const shopByCategoryCards = useMemo(
+    () => SHOP_CATEGORY_CARDS.map((category) => {
+      const savedImage = categoryCardSettings[category.name]?.imageUrl;
+      const imageProduct = allProducts.find((p) => hasCategory(p, category.name));
+      return {
+        ...category,
+        imageUrl: savedImage || imageProduct?.imageUrl || product1,
+      };
+    }),
+    [allProducts, categoryCardSettings],
   );
 
   const taggedAccessories = useMemo(
@@ -223,9 +252,8 @@ function Homepage() {
         renderedIds: fastSellingProducts.map((p) => p.id),
       },
       shopByCategory: {
-        pinnedIds: sections.shopByCategory,
-        renderedCount: shopByCategoryProducts.length,
-        renderedIds: shopByCategoryProducts.map((p) => p.id),
+        renderedCount: shopByCategoryCards.length,
+        renderedNames: shopByCategoryCards.map((card) => card.name),
       },
       accessories: {
         pinnedIds: sections.accessories,
@@ -241,7 +269,7 @@ function Homepage() {
     taggedAccessories,
     fallbackNewArrivals,
     fastSellingProducts,
-    shopByCategoryProducts,
+    shopByCategoryCards,
     accessoriesProducts,
   ]);
 
@@ -396,12 +424,12 @@ function Homepage() {
             </section>
           )}
 
-          {shopByCategoryProducts.length > 0 && (
+          {shopByCategoryCards.length > 0 && (
             <section
               className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
             >
               <ShopByCategory
-                products={shopByCategoryProducts}
+                categories={shopByCategoryCards}
                 viewAllHref="/clothing"
                 viewAllLabel="View All Categories"
               />
