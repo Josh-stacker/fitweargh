@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchProduct as fetchProductById, fetchProducts } from "../lib/products";
+import { fetchProduct as fetchProductById } from "../lib/products.ts";
+import { supabase } from "../supabase";
 import ProductCard from "../components/ProductCard";
 
 // Color name → hex for swatches (matches admin COLORS list)
@@ -28,7 +29,7 @@ import product1 from "../assets/prod-1.webp";
 import heroBg from "../assets/hero-bg.webp";
 import heroBg2 from "../assets/hero-bg2.webp";
 
-interface FirestoreProduct {
+interface Product {
   id: string;
   name: string;
   price: number;
@@ -41,7 +42,9 @@ interface FirestoreProduct {
   colors: string[];
   colorSizeStock?: Record<string, number>;
   category: string;
+  categories?: string[];
   stock: number;
+  onSale?: boolean;
 }
 
 const UK_SIZE_CHART = [
@@ -52,8 +55,8 @@ const UK_SIZE_CHART = [
   { size: "XXL", label: "UK XXL",         uk: "20"      },
 ];
 
-// Fallback used when no Firestore product exists for the given ID
-const FALLBACK: FirestoreProduct = {
+// Fallback shown when no product is found for the given ID
+const FALLBACK: Product = {
   id: "1",
   name: "Women's Sports Wear",
   price: 120,
@@ -69,8 +72,8 @@ const FALLBACK: FirestoreProduct = {
 
 function ProductPage() {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<FirestoreProduct | null>(null);
-  const [related, setRelated] = useState<FirestoreProduct[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const [toast, setToast] = useState(false);
@@ -97,7 +100,7 @@ function ProductPage() {
         } else {
           const product = await fetchProductById(id);
           if (product) {
-            const data = product as FirestoreProduct;
+            const data = product as Product;
             // New schema: images[] = all slots. Legacy: images = slots[1..], prepend imageUrl.
             if (!data.images || data.images.length === 0) {
               data.images = [data.imageUrl];
@@ -107,12 +110,40 @@ function ProductPage() {
             setProduct(data);
             setPrimaryIdx(data.displayImageIndex ?? 0);
 
-            // Fetch related: same category, exclude current
-            const others = (await fetchProducts())
-              .map((p) => p as FirestoreProduct)
-              .filter((p) => p.id !== id && p.category === data.category)
-              .slice(0, 4);
-            setRelated(others);
+            // Fetch related: query Supabase directly by category, exclude current product
+            const cats = data.categories?.length ? data.categories : data.category ? [data.category] : [];
+            if (cats.length > 0) {
+              let { data: relatedData } = await supabase
+                .from("products")
+                .select("id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock")
+                .neq("id", id)
+                .overlaps("categories", cats)
+                .limit(4);
+
+              // Fallback: overlap didn't match, try plain category string
+              if (!relatedData || relatedData.length === 0) {
+                const fb = await supabase
+                  .from("products")
+                  .select("id,name,price,discount_price,image_url,images,display_image_index,colors,category,categories,stock")
+                  .neq("id", id)
+                  .eq("category", cats[0])
+                  .limit(4);
+                relatedData = fb.data;
+              }
+
+              const toRelated = (r: any): Product => ({
+                id: r.id, name: r.name, price: Number(r.price),
+                discountPrice: r.discount_price ?? null,
+                imageUrl: r.image_url ?? "", images: r.images ?? [],
+                displayImageIndex: r.display_image_index ?? 0,
+                colors: r.colors ?? [], category: r.category ?? "",
+                sizes: [], stock: r.stock ?? 0, description: "",
+                colorSizeStock: {},
+              });
+              setRelated((relatedData ?? []).map(toRelated));
+            } else {
+              setRelated([]);
+            }
           } else {
             setProduct(FALLBACK);
             setRelated([]);
@@ -414,22 +445,39 @@ function ProductPage() {
 
       {/* Related products */}
       {related.length > 0 && (
-        <section className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 py-12 border-t border-[#DEDEDE]">
-          <h2 className="raleway-bold text-xl text-[#533113] uppercase tracking-widest mb-6">
-            You May Also Like
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {related.map((rp) => (
-              <ProductCard
-                key={rp.id}
-                id={rp.id}
-                image={rp.imageUrl}
-                name={rp.name}
-                price={rp.price}
-                discountPrice={rp.discountPrice}
-                colors={rp.colors}
-              />
-            ))}
+        <section className="border-t border-[#DEDEDE] bg-[#FFFBF6]">
+          <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 py-12">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-[0.3em] mb-1">More Like This</p>
+                <h2 className="raleway-bold text-2xl text-[#533113]">You May Also Like</h2>
+              </div>
+              <Link
+                to="/new-arrivals"
+                className="hidden sm:flex items-center gap-1.5 raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#533113] pb-0.5 hover:opacity-70 transition-opacity"
+              >
+                View All <ArrowLineUpRightIcon size={14} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {related.map((rp) => (
+                <ProductCard
+                  key={rp.id}
+                  id={rp.id}
+                  image={rp.imageUrl}
+                  name={rp.name}
+                  price={rp.price}
+                  discountPrice={rp.discountPrice}
+                  colors={rp.colors}
+                />
+              ))}
+            </div>
+            <Link
+              to="/new-arrivals"
+              className="sm:hidden mt-6 flex items-center justify-center gap-2 raleway-bold text-sm text-[#533113] uppercase tracking-widest border border-[#533113] py-3"
+            >
+              View All <ArrowLineUpRightIcon size={14} />
+            </Link>
           </div>
         </section>
       )}

@@ -96,6 +96,7 @@ const CATEGORIES = [
   "Clothing",
   "Body Shapers",
   "Accessories",
+  "Sales",
 ];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const UK_SIZE_LABELS: Record<string, string> = {
