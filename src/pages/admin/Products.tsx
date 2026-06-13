@@ -119,11 +119,14 @@ const COLORS: { name: string; hex: string }[] = [
   { name: "Nude",   hex: "#E3BC9A" },
   { name: "Hot Pink", hex: "#FF69B4" },
   { name: "Dark Purple", hex: "#4A0E4E" },
-  { name: "Sea Blue", hex: "#006994" },
+  { name: "Sea Blue", hex: "#a9edff" },
   { name: "Butter Yellow", hex: "#FFF099" },
   { name: "Lilac",  hex: "#C8A2C8" },
   { name: "Mint Green", hex: "#98FF98" },
   { name: "Burgundy", hex: "#800020" },
+  { name: "Baby Pink", hex: "#F4C2C2" },
+  { name: "Pigeon Blue", hex: "#7BA0B4" },
+  { name: "Burnt Orange", hex: "#CC5500" },
 ];
 
 // Map color name → hex for rendering swatches

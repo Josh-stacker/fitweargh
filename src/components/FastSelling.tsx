@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import DirectionButton from "./ui/DirectionButton";
 import ProductCard from "./ProductCard";
 
@@ -18,6 +18,7 @@ interface FastSellingProps {
 
 function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [limit, setLimit] = useState(mobileLimit);
 
   const scrollLeft = () => scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" });
   const scrollRight = () => scrollRef.current?.scrollBy({ left: 400, behavior: "smooth" });
@@ -28,7 +29,7 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
       <div className="md:hidden px-4 py-6">
         <h2 className="text-3xl raleway-black text-[#875A33] mb-5">FAST SELLING</h2>
         <div className="grid grid-cols-2 gap-3">
-          {products.slice(0, mobileLimit).map((p) => (
+          {products.slice(0, limit).map((p) => (
             <ProductCard
               key={p.id}
               id={p.id}
@@ -39,6 +40,14 @@ function FastSelling({ products, mobileLimit = 4 }: FastSellingProps) {
             />
           ))}
         </div>
+        {limit < products.length && (
+          <button
+            onClick={() => setLimit((prev) => prev + 4)}
+            className="w-full mt-5 flex justify-center py-3 border border-[#875A33] text-[#875A33] raleway-bold text-sm uppercase tracking-widest hover:bg-[#875A33] hover:text-white transition-colors"
+          >
+            Load More
+          </button>
+        )}
       </div>
 
       {/* Desktop: side label + horizontal scroll */}

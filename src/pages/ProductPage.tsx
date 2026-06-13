@@ -25,6 +25,10 @@ const COLOR_HEX: Record<string, string> = {
   "Butter Yellow": "#FFF099",
   Lilac: "#C8A2C8",
   "Mint Green": "#98FF98",
+  Burgundy: "#800020",
+  "Baby Pink": "#F4C2C2",
+  "Pigeon Blue": "#7BA0B4",
+  "Burnt Orange": "#CC5500",
 };
 
 import Navbar from "../components/Navbar";

@@ -32,6 +32,13 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Sales": TagIcon,
 };
 
+const TAB_TEXT: Record<string, { heading: string; copy?: string }> = {
+  "New Arrivals": { heading: "NEW ARRIVALS", copy: "PREMIUM LOUNGE / GYM WEAR, AND ACCESORIES" },
+  "Fast Selling": { heading: "FAST SELLING", copy: "" },
+  "Shop By Category": { heading: "SHOP BY CATEGORY", copy: "ALL CATEGORIES SUITABLE FOR YOU" },
+  "Accessories": { heading: "ACCESSORIES", copy: "STYLE WITH ACCESSORIES" },
+};
+
 interface Product {
   id: string;
   name: string;
@@ -82,6 +89,12 @@ function Homepage() {
   const [loading, setLoading] = useState(true);
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [naLimit, setNaLimit] = useState(4);
+  const [dynamicLimit, setDynamicLimit] = useState(6);
+
+  useEffect(() => {
+    setDynamicLimit(6);
+  }, [activeTab]);
 
   useEffect(() => {
     const load = async () => {
@@ -202,21 +215,22 @@ function Homepage() {
       )}
 
       {/* Dynamic Mobile Category Content */}
-      {activeTab !== null && (
-        <section className="md:hidden max-w-[1440px] mx-auto px-4 mt-8 mb-10">
-          <div className="flex flex-col gap-2 w-full mb-6">
-            <h2 className="text-[32px] text-[#533113] raleway-black uppercase leading-[1.1]">
-              {activeTab} <br /> that define you
-            </h2>
-            <p className="raleway-regular text-sm text-[#533113] w-full max-w-[90%]">
-              Discover pieces that redefine bold and confidence.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {allProducts
-              .filter((p) => hasCategory(p, activeTab))
-              .slice(0, 6)
-              .map((p) => (
+      {activeTab !== null && (() => {
+        const filtered = allProducts.filter((p) => hasCategory(p, activeTab!));
+        return (
+          <section className="md:hidden max-w-[1440px] mx-auto px-4 mt-5 mb-10">
+            <div className="flex flex-col gap-1 w-full mb-4">
+              <h3 className="text-2xl font-bold raleway-bold uppercase">
+                {TAB_TEXT[activeTab!]?.heading || activeTab}
+              </h3>
+              {TAB_TEXT[activeTab!]?.copy && (
+                <p className="text-base raleway-regular w-full text-[#533113]">
+                  {TAB_TEXT[activeTab!]?.copy}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {filtered.slice(0, dynamicLimit).map((p) => (
                 <ProductCard
                   key={p.id}
                   id={p.id}
@@ -226,17 +240,26 @@ function Homepage() {
                   colors={p.colors}
                 />
               ))}
-          </div>
-          <div className="mt-8">
-            <Link
-              to={`/${activeTab.toLowerCase().replace(/\s+/g, '-')}`}
-              className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
-            >
-              View All {activeTab}
-            </Link>
-          </div>
-        </section>
-      )}
+            </div>
+            {dynamicLimit < filtered.length && (
+              <button
+                onClick={() => setDynamicLimit((prev) => prev + 6)}
+                className="w-full mt-5 py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+              >
+                Load More
+              </button>
+            )}
+            <div className="mt-6">
+              <Link
+                to={`/${activeTab!.toLowerCase().replace(/\s+/g, '-')}`}
+                className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+              >
+                View All {activeTab}
+              </Link>
+            </div>
+          </section>
+        );
+      })()}
 
       <main
         className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10 ${activeTab !== null ? "hidden md:block" : ""}`}
@@ -266,9 +289,9 @@ function Homepage() {
         <>
           {/* New Arrivals grid */}
           <section
-            className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10 ${activeTab !== null ? "hidden md:grid" : ""}`}
+            className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-4 ${activeTab !== null ? "hidden md:grid" : ""}`}
           >
-            {fallbackNewArrivals.map((p, item) => (
+            {fallbackNewArrivals.slice(0, naLimit).map((p, item) => (
               <div
                 key={p.id}
                 className={`
@@ -288,6 +311,16 @@ function Homepage() {
               </div>
             ))}
           </section>
+          {naLimit < fallbackNewArrivals.length && (
+            <div className={`md:hidden max-w-[1440px] mx-auto px-4 mb-8 ${activeTab !== null ? "hidden" : ""}`}>
+              <button
+                onClick={() => setNaLimit((prev) => prev + 4)}
+                className="w-full py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+              >
+                Load More
+              </button>
+            </div>
+          )}
 
           {fastSellingProducts.length > 0 && (
             <section
