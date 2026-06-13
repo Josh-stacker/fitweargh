@@ -87,7 +87,6 @@ function HeroSlider({ page = "Homepage" }: Props) {
         >
           <PageHero
             bgImage={s.bg_image_url || herobg}
-            mobileBgImage={s.image1_url || undefined}
             bgPosition={s.bg_position || "50% 40%"}
             title={s.title || undefined}
             subtitle={s.subtitle || undefined}

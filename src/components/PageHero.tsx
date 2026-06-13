@@ -3,7 +3,6 @@ import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
 
 interface PageHeroProps {
   bgImage: string;
-  mobileBgImage?: string;
   bgPosition?: string;
   title?: string;
   subtitle?: string;
@@ -15,7 +14,6 @@ interface PageHeroProps {
 
 function PageHero({
   bgImage,
-  mobileBgImage,
   bgPosition = "50% 40%",
   title,
   subtitle,
@@ -27,21 +25,10 @@ function PageHero({
   const hasContent = !!title;
 
   return (
-    <section
-      className="relative w-full h-[85vh] md:h-[85vh] min-[1441px]:h-[80vh] overflow-hidden bg-[#1a0d06]"
-    >
-      {/* Mobile Background */}
+    <section className="relative w-full h-[85vh] md:h-[85vh] min-[1441px]:h-[80vh] overflow-hidden bg-[#1a0d06]">
+      {/* Background — same image, CSS cover handles mobile & desktop */}
       <div
-        className={`absolute inset-0 md:hidden ${hasContent ? "opacity-50" : "opacity-100"}`}
-        style={{
-          backgroundImage: `url(${mobileBgImage || bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: bgPosition,
-        }}
-      />
-      {/* Desktop Background */}
-      <div
-        className={`absolute inset-0 hidden md:block ${hasContent ? "opacity-50" : "opacity-100"}`}
+        className={`absolute inset-0 ${hasContent ? "opacity-50" : "opacity-100"}`}
         style={{
           backgroundImage: `url(${bgImage})`,
           backgroundSize: "cover",
@@ -76,7 +63,7 @@ function PageHero({
             </div>
           </div>
 
-          {/* Right — two portrait images */}
+          {/* Right — two portrait images (desktop only) */}
           {image1 && image2 && (
             <div className="hidden md:flex items-end gap-4 md:w-[45%] lg:w-[40%] h-full pt-8">
               <div className="w-1/2 h-[80%] rounded-t-full overflow-hidden shadow-2xl self-end">
@@ -97,8 +84,6 @@ function PageHero({
           )}
         </div>
       )}
-
-
     </section>
   );
 }
