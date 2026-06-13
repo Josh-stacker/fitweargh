@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo-full.png";
 import CartButton from "./ui/CartButton";
 import { List, X, UserCircle, SignOut } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
+
+const NAV_LINKS = [
+  { to: "/", label: "Home" },
+  { to: "/new-arrivals", label: "New Arrivals" },
+  { to: "/clothing", label: "Clothing" },
+  { to: "/body-shapers", label: "Body Shapers" },
+  { to: "/accessories", label: "Accessories" },
+  { to: "/sales", label: "Sales" },
+];
 
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,21 +35,19 @@ function Navbar() {
 
         {/* Desktop links */}
         <div className="hidden lg:flex gap-6 items-center">
-          {[
-            { to: "/", label: "Home" },
-            { to: "/new-arrivals", label: "New Arrival" },
-            { to: "/clothing", label: "Clothing" },
-            { to: "/body-shapers", label: "Body Shapers" },
-            { to: "/accessories", label: "Accessories" },
-            { to: "/sales", label: "Sales" },
-          ].map(({ to, label }) => (
-            <Link
+          {NAV_LINKS.map(({ to, label }) => (
+            <NavLink
               key={to}
               to={to}
-              className="raleway-regular text-lg text-[#533113] hover:text-[#533113] transition-colors"
+              end={to === "/"}
+              className={({ isActive }) =>
+                `raleway-bold text-lg text-[#533113] underline-offset-8 decoration-2 transition-colors ${
+                  isActive ? "underline" : "no-underline hover:underline"
+                }`
+              }
             >
               {label}
-            </Link>
+            </NavLink>
           ))}
         </div>
 
@@ -124,22 +131,20 @@ function Navbar() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-6">
-            {[
-              { to: "/", label: "Home" },
-              { to: "/new-arrivals", label: "New Arrivals" },
-              { to: "/clothing", label: "Clothing" },
-              { to: "/body-shapers", label: "Body Shapers" },
-              { to: "/accessories", label: "Accessories" },
-              { to: "/sales", label: "Sales" },
-            ].map(({ to, label }) => (
-              <Link
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink
                 key={to}
                 to={to}
+                end={to === "/"}
                 onClick={() => setIsMenuOpen(false)}
-                className="raleway-regular text-2xl text-[#533113] hover:text-[#533113] transition-colors"
+                className={({ isActive }) =>
+                  `raleway-bold text-2xl text-[#533113] underline-offset-8 decoration-2 transition-colors ${
+                    isActive ? "underline" : "no-underline hover:underline"
+                  }`
+                }
               >
                 {label}
-              </Link>
+              </NavLink>
             ))}
 
             <hr className="border-[#DEDEDE] my-2" />

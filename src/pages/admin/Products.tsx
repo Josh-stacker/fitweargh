@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../supabase";
 import {
   PlusIcon,
@@ -156,6 +156,11 @@ const EMPTY_FORM = {
 
 const PRODUCT_IMAGE_BUCKET = "public-assets";
 
+type SortOption = "latest" | "oldest" | "nameAsc" | "nameDesc" | "priceAsc" | "priceDesc" | "stockAsc" | "stockDesc";
+type StockFilter = "all" | "inStock" | "lowStock" | "outOfStock";
+type DiscountFilter = "all" | "onSale" | "fullPrice";
+type ImageFilter = "all" | "withImages" | "withoutImages";
+
 function productFromRow(row: ProductRow): Product {
   return {
     id: row.id,
@@ -199,6 +204,14 @@ export default function Products() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("latest");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
+  const [colorFilter, setColorFilter] = useState("all");
+  const [sizeFilter, setSizeFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [discountFilter, setDiscountFilter] = useState<DiscountFilter>("all");
+  const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Two hidden file inputs: one for adding new images (multiple), one for replacing a single slot
@@ -560,14 +573,115 @@ export default function Products() {
     }
   };
 
-  const filtered = products.filter((p) => {
-    const q = search.toLowerCase();
-    const cats = p.categories?.length ? p.categories : p.category ? [p.category] : [];
-    return (
-      p.name.toLowerCase().includes(q) ||
-      cats.some((c) => c.toLowerCase().includes(q))
-    );
-  });
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.categories?.length ? p.categories : p.category ? [p.category] : []))).sort(),
+    [products],
+  );
+
+  const subcategoryOptions = useMemo(() => {
+    const source = categoryFilter === "all"
+      ? products
+      : products.filter((p) => (p.categories?.length ? p.categories : p.category ? [p.category] : []).includes(categoryFilter));
+    return Array.from(new Set(source.flatMap((p) => p.subcategories ?? []))).sort();
+  }, [categoryFilter, products]);
+
+  const colorOptions = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.colors ?? []))).sort(),
+    [products],
+  );
+
+  const sizeOptions = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.sizes ?? []))).sort((a, b) => SIZES.indexOf(a) - SIZES.indexOf(b)),
+    [products],
+  );
+
+  const hasActiveFilters = Boolean(
+    search ||
+    sortBy !== "latest" ||
+    categoryFilter !== "all" ||
+    subcategoryFilter !== "all" ||
+    colorFilter !== "all" ||
+    sizeFilter !== "all" ||
+    stockFilter !== "all" ||
+    discountFilter !== "all" ||
+    imageFilter !== "all",
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setSortBy("latest");
+    setCategoryFilter("all");
+    setSubcategoryFilter("all");
+    setColorFilter("all");
+    setSizeFilter("all");
+    setStockFilter("all");
+    setDiscountFilter("all");
+    setImageFilter("all");
+  };
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return products
+      .filter((p) => {
+        const cats = p.categories?.length ? p.categories : p.category ? [p.category] : [];
+        const subs = p.subcategories ?? [];
+        const colors = p.colors ?? [];
+        const sizes = p.sizes ?? [];
+        const searchable = [p.name, ...cats, ...subs, ...colors, ...sizes].join(" ").toLowerCase();
+
+        if (q && !searchable.includes(q)) return false;
+        if (categoryFilter !== "all" && !cats.includes(categoryFilter)) return false;
+        if (subcategoryFilter !== "all" && !subs.includes(subcategoryFilter)) return false;
+        if (colorFilter !== "all" && !colors.includes(colorFilter)) return false;
+        if (sizeFilter !== "all" && !sizes.includes(sizeFilter)) return false;
+        if (discountFilter === "onSale" && p.discountPrice == null) return false;
+        if (discountFilter === "fullPrice" && p.discountPrice != null) return false;
+        if (imageFilter === "withImages" && !p.imageUrl && (p.images?.length ?? 0) === 0) return false;
+        if (imageFilter === "withoutImages" && (p.imageUrl || (p.images?.length ?? 0) > 0)) return false;
+
+        if (stockFilter === "inStock" && p.stock <= 0) return false;
+        if (stockFilter === "lowStock" && (p.stock <= 0 || p.stock > 10)) return false;
+        if (stockFilter === "outOfStock" && p.stock > 0) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        const aDate = new Date(String(a.createdAt ?? 0)).getTime() || 0;
+        const bDate = new Date(String(b.createdAt ?? 0)).getTime() || 0;
+
+        switch (sortBy) {
+          case "oldest":
+            return aDate - bDate;
+          case "nameAsc":
+            return a.name.localeCompare(b.name);
+          case "nameDesc":
+            return b.name.localeCompare(a.name);
+          case "priceAsc":
+            return a.price - b.price;
+          case "priceDesc":
+            return b.price - a.price;
+          case "stockAsc":
+            return a.stock - b.stock;
+          case "stockDesc":
+            return b.stock - a.stock;
+          case "latest":
+          default:
+            return bDate - aDate;
+        }
+      });
+  }, [
+    categoryFilter,
+    colorFilter,
+    discountFilter,
+    imageFilter,
+    products,
+    search,
+    sizeFilter,
+    sortBy,
+    stockFilter,
+    subcategoryFilter,
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -588,16 +702,101 @@ export default function Products() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <MagnifyingGlassIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#533113]/40" />
-        <input
-          type="text"
-          placeholder="Search products…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-72 pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
-        />
+      {/* Filters */}
+      <div className="bg-white border border-[#DEDEDE] p-4 flex flex-col gap-4">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+          <div className="relative w-full lg:w-80">
+            <MagnifyingGlassIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#533113]/40" />
+            <input
+              type="text"
+              placeholder="Search name, category, color, size…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 border border-[#DEDEDE] raleway-regular text-base text-[#533113] outline-none focus:border-[#533113] bg-white transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="raleway-regular text-sm text-[#533113]/50">
+              Showing {filtered.length} of {products.length}
+            </span>
+            <button
+              type="button"
+              onClick={resetFilters}
+              disabled={!hasActiveFilters}
+              className="raleway-bold text-xs uppercase tracking-widest px-3 py-2 border border-[#DEDEDE] text-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+          <FilterSelect label="Sort" value={sortBy} onChange={(value) => setSortBy(value as SortOption)}>
+            <option value="latest">Latest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="nameAsc">Name A-Z</option>
+            <option value="nameDesc">Name Z-A</option>
+            <option value="priceAsc">Price low-high</option>
+            <option value="priceDesc">Price high-low</option>
+            <option value="stockAsc">Stock low-high</option>
+            <option value="stockDesc">Stock high-low</option>
+          </FilterSelect>
+
+          <FilterSelect
+            label="Category"
+            value={categoryFilter}
+            onChange={(value) => {
+              setCategoryFilter(value);
+              setSubcategoryFilter("all");
+            }}
+          >
+            <option value="all">All categories</option>
+            {categoryOptions.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect label="Subcategory" value={subcategoryFilter} onChange={setSubcategoryFilter}>
+            <option value="all">All subcategories</option>
+            {subcategoryOptions.map((sub) => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect label="Color" value={colorFilter} onChange={setColorFilter}>
+            <option value="all">All colors</option>
+            {colorOptions.map((color) => (
+              <option key={color} value={color}>{color}</option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect label="Size" value={sizeFilter} onChange={setSizeFilter}>
+            <option value="all">All sizes</option>
+            {sizeOptions.map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect label="Stock" value={stockFilter} onChange={(value) => setStockFilter(value as StockFilter)}>
+            <option value="all">All stock</option>
+            <option value="inStock">In stock</option>
+            <option value="lowStock">Low stock</option>
+            <option value="outOfStock">Out of stock</option>
+          </FilterSelect>
+
+          <FilterSelect label="Pricing" value={discountFilter} onChange={(value) => setDiscountFilter(value as DiscountFilter)}>
+            <option value="all">All pricing</option>
+            <option value="onSale">On sale</option>
+            <option value="fullPrice">Full price</option>
+          </FilterSelect>
+
+          <FilterSelect label="Images" value={imageFilter} onChange={(value) => setImageFilter(value as ImageFilter)}>
+            <option value="all">All images</option>
+            <option value="withImages">With images</option>
+            <option value="withoutImages">No images</option>
+          </FilterSelect>
+        </div>
       </div>
 
       {/* Table */}
@@ -610,14 +809,14 @@ export default function Products() {
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <PackageEmpty />
             <p className="raleway-regular text-base text-[#533113]/40">
-              {search ? "No products match your search." : "No products yet. Add your first one!"}
+              {hasActiveFilters ? "No products match these filters." : "No products yet. Add your first one!"}
             </p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#DEDEDE] bg-[#FFFBF6]">
-                {["Image", "Name", "Category", "Price", "Stock", "Sizes", "Actions"].map((h) => (
+                {["Image", "Name", "Category", "Subcategory", "Price", "Stock", "Sizes", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest text-left px-5 py-3"
@@ -661,6 +860,19 @@ export default function Products() {
                           {cat}
                         </span>
                       ))}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(p.subcategories ?? []).length > 0 ? (
+                        p.subcategories.map((sub) => (
+                          <span key={sub} className="raleway-regular text-xs px-1.5 py-0.5 bg-white text-[#533113]/70 border border-[#DEDEDE]">
+                            {sub}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="raleway-regular text-sm text-[#533113]/30">—</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-5 py-3">
@@ -1190,6 +1402,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">{label}</label>
       {children}
     </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="raleway-bold text-[10px] text-[#533113]/50 uppercase tracking-widest">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full border border-[#DEDEDE] bg-white px-3 py-2 raleway-regular text-sm text-[#533113] outline-none focus:border-[#533113] transition-colors"
+      >
+        {children}
+      </select>
+    </label>
   );
 }
 
