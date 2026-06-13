@@ -24,6 +24,7 @@ function HeroSlider({ page = "Homepage" }: Props) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
   const [heroMode, setHeroMode] = useState<"slider" | "still">("slider");
+  const [heroSliderInterval, setHeroSliderInterval] = useState(5);
   const [stillImageUrl, setStillImageUrl] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -36,6 +37,7 @@ function HeroSlider({ page = "Homepage" }: Props) {
           if (data && data.value) {
             const d = data.value as any;
             setHeroMode(d.heroMode ?? "slider");
+            setHeroSliderInterval(d.heroSliderInterval ?? 5);
             setStillImageUrl(d.heroStillImageUrl ?? "");
           }
         }
@@ -57,12 +59,13 @@ function HeroSlider({ page = "Homepage" }: Props) {
     load();
   }, [page]);
 
-  // Auto-advance every 5s when multiple slides
+  // Auto-advance every interval when multiple slides
   useEffect(() => {
     if (slides.length <= 1) return;
-    const t = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 5000);
+    const ms = heroSliderInterval * 1000;
+    const t = setInterval(() => setCurrent((c) => (c + 1) % slides.length), ms);
     return () => clearInterval(t);
-  }, [slides.length]);
+  }, [slides.length, heroSliderInterval]);
 
   if (!ready) return null;
 

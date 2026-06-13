@@ -4,7 +4,9 @@ import { fetchProducts, hasCategory } from "../lib/products";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import HeroSlider from "../components/HeroSlider";
-import { ArrowLineUpRightIcon, StarIcon, FireIcon } from "@phosphor-icons/react";
+import {
+  ArrowLineUpRightIcon,
+} from "@phosphor-icons/react";
 import ProductCard from "../components/ProductCard";
 import FastSelling from "../components/FastSelling";
 import ShopByCategory from "../components/ShopByCategory";
@@ -30,6 +32,7 @@ interface HomepageSections {
   fastSelling: string[];
   shopByCategory: string[];
   accessories: string[];
+  mobileTabs?: string[];
 }
 
 const MAX_PER_SECTION = 6;
@@ -57,9 +60,11 @@ function Homepage() {
     fastSelling: [],
     shopByCategory: [],
     accessories: [],
+    mobileTabs: [],
   });
   const [loading, setLoading] = useState(true);
-  const [mobileTab, setMobileTab] = useState<"default" | "newArrivals" | "fastSelling">("default");
+  const [mobileTabs, setMobileTabs] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -76,13 +81,17 @@ function Homepage() {
         setAllProducts(products);
 
         if (settingsResult.data) {
-          const d = settingsResult.data.value as { sections?: Partial<HomepageSections> };
+          const d = settingsResult.data.value as {
+            sections?: Partial<HomepageSections>;
+            mobileTabs?: string[];
+          };
           setSections({
             newArrivals: d.sections?.newArrivals ?? [],
             fastSelling: d.sections?.fastSelling ?? [],
             shopByCategory: d.sections?.shopByCategory ?? [],
             accessories: d.sections?.accessories ?? [],
           });
+          setMobileTabs(d.mobileTabs ?? []);
         }
       } catch (err) {
         console.error("Homepage load error:", err);
@@ -93,29 +102,39 @@ function Homepage() {
     load();
   }, []);
 
-  // Resolve each section: pinned IDs → products, or fall back to auto-latest
   const newArrivalsProducts =
     sections.newArrivals.length > 0
       ? resolvePinned(sections.newArrivals, allProducts)
-      : allProducts.filter((p) => hasCategory(p, "New Arrivals")).slice(0, MAX_PER_SECTION);
+      : allProducts
+          .filter((p) => hasCategory(p, "New Arrivals"))
+          .slice(0, MAX_PER_SECTION);
 
   const hasProducts = allProducts.length > 0;
 
-  const fallbackNewArrivals = !hasProducts ? STATIC_PRODUCTS : newArrivalsProducts;
+  const fallbackNewArrivals = !hasProducts
+    ? STATIC_PRODUCTS
+    : newArrivalsProducts;
 
-  const fastSellingProducts = sections.fastSelling.length > 0
-    ? resolvePinned(sections.fastSelling, allProducts)
-    : STATIC_PRODUCTS;
-
-  const shopByCategoryProducts = sections.shopByCategory.length > 0
-    ? resolvePinned(sections.shopByCategory, allProducts)
-    : STATIC_PRODUCTS;
-
-  const accessoriesProducts = sections.accessories.length > 0
-    ? resolvePinned(sections.accessories, allProducts)
-    : allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION).length > 0
-      ? allProducts.filter((p) => hasCategory(p, "Accessories")).slice(0, MAX_PER_SECTION)
+  const fastSellingProducts =
+    sections.fastSelling.length > 0
+      ? resolvePinned(sections.fastSelling, allProducts)
       : STATIC_PRODUCTS;
+
+  const shopByCategoryProducts =
+    sections.shopByCategory.length > 0
+      ? resolvePinned(sections.shopByCategory, allProducts)
+      : STATIC_PRODUCTS;
+
+  const accessoriesProducts =
+    sections.accessories.length > 0
+      ? resolvePinned(sections.accessories, allProducts)
+      : allProducts
+            .filter((p) => hasCategory(p, "Accessories"))
+            .slice(0, MAX_PER_SECTION).length > 0
+        ? allProducts
+            .filter((p) => hasCategory(p, "Accessories"))
+            .slice(0, MAX_PER_SECTION)
+        : STATIC_PRODUCTS;
 
   return (
     <div>
@@ -124,34 +143,77 @@ function Homepage() {
 
       <HeroSlider page="Homepage" />
 
-      {/* Mobile Category Toggle Buttons */}
-      <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto">
-        <button
-          onClick={() => setMobileTab(mobileTab === "newArrivals" ? "default" : "newArrivals")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
-            mobileTab === "newArrivals" ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
-          }`}
-        >
-          <StarIcon size={16} weight={mobileTab === "newArrivals" ? "fill" : "regular"} />
-          New Arrivals
-        </button>
-        <button
-          onClick={() => setMobileTab(mobileTab === "fastSelling" ? "default" : "fastSelling")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
-            mobileTab === "fastSelling" ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
-          }`}
-        >
-          <FireIcon size={16} weight={mobileTab === "fastSelling" ? "fill" : "regular"} />
-          Fast Selling
-        </button>
-      </div>
+      {/* Dynamic Mobile Category Toggle Buttons */}
+      {mobileTabs.length > 0 && mobileTabs.length <= 2 && (
+        <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto">
+          {mobileTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+              className={`flex-1 px-5 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
+                activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <main className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10 ${mobileTab === "fastSelling" ? "hidden md:block" : ""}`}>
+      {mobileTabs.length > 2 && (
+        <div className="md:hidden flex px-4 mt-6 gap-3 max-w-[1440px] mx-auto overflow-x-auto snap-x hide-scrollbar pb-2">
+          {mobileTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+              className={`w-28 h-28 flex-shrink-0 flex items-center justify-center text-center p-2 border border-[#533113] raleway-bold text-sm uppercase transition-colors snap-center ${
+                activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Dynamic Mobile Category Content */}
+      {activeTab !== null && (
+        <section className="md:hidden max-w-[1440px] mx-auto px-4 mt-8 mb-10">
+          <h2 className="text-3xl raleway-black text-[#875A33] mb-5 uppercase">{activeTab}</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {allProducts
+              .filter((p) => hasCategory(p, activeTab))
+              .slice(0, 6)
+              .map((p) => (
+                <ProductCard
+                  key={p.id}
+                  id={p.id}
+                  image={p.imageUrl}
+                  name={p.name}
+                  price={p.discountPrice ?? p.price}
+                  colors={p.colors}
+                />
+              ))}
+          </div>
+          <div className="mt-8">
+            <Link
+              to={`/${activeTab.toLowerCase().replace(/\s+/g, '-')}`}
+              className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+            >
+              View All {activeTab}
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <main
+        className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 mt-10 ${activeTab !== null ? "hidden md:block" : ""}`}
+      >
         <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 md:py-10 py-4">
           <div className="flex flex-col gap-2 w-full md:w-[70%] lg:w-full">
             <h3 className="text-2xl font-bold raleway-bold">NEW ARRIVALS</h3>
             <p className="text-base raleway-regular w-full md:w-[80%] lg:w-[60%]">
-              THE LATEST SPORTS, WOMEN'S AND MANY MORE ACCESORIES
+              PREMIUM LOUNGE / GYM WEAR, AND ACCESORIES
             </p>
           </div>
           <Link
@@ -171,14 +233,17 @@ function Homepage() {
       ) : (
         <>
           {/* New Arrivals grid */}
-          <section className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10 ${mobileTab === "fastSelling" ? "hidden md:grid" : ""}`}>
+          <section
+            className={`max-w-[1440px] 2xl:max-w-[1620px] md:mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 gap-4 md:gap-6 mb-10 ${activeTab !== null ? "hidden md:grid" : ""}`}
+          >
             {fallbackNewArrivals.map((p, item) => (
               <div
                 key={p.id}
                 className={`
+                  ${item === 2 ? "block" : ""}
                   ${item === 3 ? "block md:hidden lg:block" : ""}
-                  ${item === 4 ? (mobileTab === "newArrivals" ? "block md:hidden 2xl:block" : "hidden 2xl:block") : ""}
-                  ${item === 5 ? (mobileTab === "newArrivals" ? "block md:hidden min-[1920px]:block" : "hidden min-[1920px]:block") : ""}
+                  ${item === 4 ? "hidden 2xl:block" : ""}
+                  ${item === 5 ? "hidden min-[1920px]:block" : ""}
                 `}
               >
                 <ProductCard
@@ -192,29 +257,32 @@ function Homepage() {
             ))}
           </section>
 
-          {/* Mobile View More for New Arrivals */}
-          {mobileTab === "newArrivals" && (
-            <div className="md:hidden px-4 mb-10">
-              <Link to="/new-arrivals" className="w-full flex justify-center py-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors">
-                View All New Arrivals
-              </Link>
-            </div>
-          )}
-
           {fastSellingProducts.length > 0 && (
-            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto md:px-10 my-20 ${mobileTab === "newArrivals" ? "hidden md:block" : ""}`}>
-              <FastSelling products={fastSellingProducts} mobileLimit={mobileTab === "fastSelling" ? 6 : 4} />
+            <section
+              className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
+            >
+              <FastSelling
+                products={fastSellingProducts}
+                mobileLimit={4}
+              />
             </section>
           )}
 
           {shopByCategoryProducts.length > 0 && (
-            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${mobileTab !== "default" ? "hidden md:block" : ""}`}>
-              <ShopByCategory products={shopByCategoryProducts} mobileLimit={2} />
+            <section
+              className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
+            >
+              <ShopByCategory
+                products={shopByCategoryProducts}
+                mobileLimit={2}
+              />
             </section>
           )}
 
           {accessoriesProducts.length > 0 && (
-            <section className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${mobileTab !== "default" ? "hidden md:block" : ""}`}>
+            <section
+              className={`max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 my-20 ${activeTab !== null ? "hidden md:block" : ""}`}
+            >
               <Accesories products={accessoriesProducts} mobileLimit={4} />
             </section>
           )}

@@ -60,6 +60,7 @@ export default function HeroSlides() {
 
   // Image state
   const [bgFile, setBgFile] = useState<File | null>(null);
+  const [originalBgFile, setOriginalBgFile] = useState<File | null>(null);
   const [bgPreview, setBgPreview] = useState("");
   const [img1File, setImg1File] = useState<File | null>(null);
   const [img1Preview, setImg1Preview] = useState("");
@@ -106,7 +107,7 @@ export default function HeroSlides() {
     setEditing(null);
     const nextOrder = getNextOrder(EMPTY_FORM.page);
     setForm({ ...EMPTY_FORM, display_order: nextOrder });
-    setBgFile(null); setBgPreview("");
+    setBgFile(null); setOriginalBgFile(null); setBgPreview("");
     setImg1File(null); setImg1Preview("");
     setImg2File(null); setImg2Preview("");
     setModalOpen(true);
@@ -124,7 +125,7 @@ export default function HeroSlides() {
       active: s.active ?? true,
       page: s.page ?? "Homepage",
     });
-    setBgFile(null); setBgPreview(s.bg_image_url ?? "");
+    setBgFile(null); setOriginalBgFile(null); setBgPreview(s.bg_image_url ?? "");
     setImg1File(null); setImg1Preview(s.image1_url ?? "");
     setImg2File(null); setImg2Preview(s.image2_url ?? "");
     setModalOpen(true);
@@ -150,9 +151,10 @@ export default function HeroSlides() {
     e.preventDefault();
     setSaving(true);
     try {
+      const isHome = form.page === "Homepage";
       const [bg, img1, img2] = await Promise.all([
         uploadIfNew(bgFile, editing?.bg_image_url ?? "", editing?.bg_image_path ?? "", "bg"),
-        uploadIfNew(img1File, editing?.image1_url ?? "", editing?.image1_path ?? "", "img1"),
+        uploadIfNew(isHome ? originalBgFile : img1File, editing?.image1_url ?? "", editing?.image1_path ?? "", "img1"),
         uploadIfNew(img2File, editing?.image2_url ?? "", editing?.image2_path ?? "", "img2"),
       ]);
 
@@ -207,6 +209,7 @@ export default function HeroSlides() {
   ) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (target === "bg") setOriginalBgFile(file);
     setCropImageUrl(URL.createObjectURL(file));
     setCropTarget(target);
     setCrop({ x: 0, y: 0 });

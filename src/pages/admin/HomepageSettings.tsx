@@ -13,6 +13,8 @@ interface HomepageDoc {
   heroMode: "slider" | "still";
   heroStillImageUrl: string;
   heroStillImagePath: string;
+  heroSliderInterval?: number;
+  mobileTabs?: string[];
   sections: {
     newArrivals: string[];    // product IDs, empty = auto latest
     fastSelling: string[];
@@ -57,6 +59,7 @@ const DEFAULT_SECTIONS = {
 
 export default function HomepageSettings() {
   const [heroMode, setHeroMode] = useState<"slider" | "still">("slider");
+  const [heroSliderInterval, setHeroSliderInterval] = useState(5);
   const [stillImageUrl, setStillImageUrl] = useState("");
   const [stillImagePath, setStillImagePath] = useState("");
   const [stillFile, setStillFile] = useState<File | null>(null);
@@ -67,6 +70,9 @@ export default function HomepageSettings() {
   const [search, setSearch] = useState("");
   const [activeSection, setActiveSection] = useState<SectionKey>("newArrivals");
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [mobileTabs, setMobileTabs] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,18 +85,22 @@ export default function HomepageSettings() {
       setLoading(true);
       const [
         { data: settingsData },
-        { data: productsData }
+        { data: productsData },
+        { data: catsData }
       ] = await Promise.all([
         supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
-        supabase.from("products").select("*").order("created_at", { ascending: false })
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
+        supabase.from("categories").select("id, name").order("name", { ascending: true })
       ]);
 
       if (settingsData?.value) {
         const d = settingsData.value as HomepageDoc;
         setHeroMode(d.heroMode ?? "slider");
+        setHeroSliderInterval(d.heroSliderInterval ?? 5);
         setStillImageUrl(d.heroStillImageUrl ?? "");
         setStillImagePath(d.heroStillImagePath ?? "");
         setStillPreview(d.heroStillImageUrl ?? "");
+        setMobileTabs(d.mobileTabs ?? []);
         setSections({
           newArrivals: d.sections?.newArrivals ?? [],
           fastSelling: d.sections?.fastSelling ?? [],
@@ -101,6 +111,9 @@ export default function HomepageSettings() {
 
       if (productsData) {
         setProducts(productsData as Product[]);
+      }
+      if (catsData) {
+        setCategories(catsData as { id: string; name: string }[]);
       }
       setLoading(false);
     };
@@ -154,6 +167,8 @@ export default function HomepageSettings() {
           heroMode,
           heroStillImageUrl: imageUrl,
           heroStillImagePath: imagePath,
+          heroSliderInterval,
+          mobileTabs,
           sections,
         },
         updated_at: new Date().toISOString()
@@ -233,6 +248,28 @@ export default function HomepageSettings() {
           </p>
         </div>
 
+        {/* Slider Interval — only shown in slider mode */}
+        {heroMode === "slider" && (
+          <div className="flex flex-col gap-2 border-t border-[#DEDEDE] pt-4 mt-2">
+            <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+              Slider Auto-Play Duration (seconds)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="2"
+                max="30"
+                value={heroSliderInterval}
+                onChange={(e) => setHeroSliderInterval(Number(e.target.value))}
+                className="w-24 px-3 py-2 border border-[#DEDEDE] focus:border-[#533113] outline-none text-sm raleway-bold"
+              />
+              <span className="raleway-regular text-sm text-[#533113]/50">
+                Time each slide is shown before transitioning
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Still image upload — only shown in still mode */}
         {heroMode === "still" && (
           <div className="flex flex-col gap-2">
@@ -270,6 +307,41 @@ export default function HomepageSettings() {
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Mobile Tabs Manager ── */}
+      <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-5">
+        <div>
+          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#DEDEDE] pb-3">
+            Mobile Homepage Tabs
+          </h3>
+          <p className="raleway-regular text-sm text-[#533113]/50 mt-2">
+            Select up to 4 categories to appear as quick-access tabs under the hero slider on mobile phones.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {categories.map((cat) => {
+            const isSelected = mobileTabs.includes(cat.name);
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  if (isSelected) setMobileTabs(prev => prev.filter(t => t !== cat.name));
+                  else setMobileTabs(prev => [...prev, cat.name]);
+                }}
+                className={`px-4 py-2 border transition-all text-sm raleway-bold uppercase tracking-widest ${
+                  isSelected
+                    ? "bg-[#533113] text-white border-[#533113]"
+                    : "bg-transparent text-[#533113] border-[#DEDEDE] hover:border-[#533113]"
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Section Product Manager ── */}

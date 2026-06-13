@@ -26,11 +26,20 @@ function PageHero({
 
   return (
     <section className="relative w-full h-[60vh] md:h-[85vh] min-[1441px]:h-[75vh] overflow-hidden bg-[#1a0d06]">
-      {/* Background — same image, CSS cover handles mobile & desktop */}
+      {/* Desktop Background */}
       <div
-        className={`absolute inset-0 ${hasContent ? "opacity-50" : "opacity-100"}`}
+        className={`absolute inset-0 hidden md:block ${hasContent ? "opacity-50" : "opacity-100"}`}
         style={{
           backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: bgPosition,
+        }}
+      />
+      {/* Mobile Background (uncropped original) */}
+      <div
+        className={`absolute inset-0 md:hidden ${hasContent ? "opacity-50" : "opacity-100"}`}
+        style={{
+          backgroundImage: `url(${image1 || bgImage})`,
           backgroundSize: "cover",
           backgroundPosition: bgPosition,
         }}
