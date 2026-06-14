@@ -27,6 +27,7 @@ interface Order {
 }
 
 const STATUS_COLORS: Record<string, string> = {
+  payment_pending: "bg-orange-100 text-orange-700",
   pending: "bg-yellow-100 text-yellow-700",
   processing: "bg-blue-100 text-blue-700",
   shipped: "bg-purple-100 text-purple-700",

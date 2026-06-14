@@ -34,9 +34,10 @@ interface Order {
   updated_at: string;
 }
 
-const STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const STATUSES = ["payment_pending", "pending", "processing", "shipped", "delivered", "cancelled"];
 
 const STATUS_COLORS: Record<string, string> = {
+  payment_pending: "bg-orange-100 text-orange-700 border-orange-200",
   pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
   processing: "bg-blue-100 text-blue-700 border-blue-200",
   shipped: "bg-purple-100 text-purple-700 border-purple-200",
