@@ -4,6 +4,7 @@ import { supabase } from "../supabase";
 import { orderConfirmHtml } from "../emails/orderConfirmEmail";
 import { orderAdminHtml } from "../emails/orderAdminEmail";
 import { queueAndSendMail } from "../lib/mail";
+import { getOrderAdminEmails } from "../lib/adminEmails";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
@@ -11,11 +12,13 @@ import { useAuth } from "../context/AuthContext";
 
 const COLOR_HEX: Record<string, string> = {
   Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
-  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
-  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#800080",
+  "Olive Green": "#808000", "Army Green": "#4B5320",
+  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", "Pure Orange": "#FFA500", Pink: "#ec4899",
+  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", "Curry Yellow": "#D4A017", Purple: "#800080",
   Nude: "#E3BC9A", "Hot Pink": "#FF69B4", "Dark Purple": "#4A0E4E",
   "Sea Blue": "#006994", "Butter Yellow": "#FFF099", Lilac: "#C8A2C8",
-  "Mint Green": "#98FF98",
+  "Mint Green": "#98FF98", Burgundy: "#800020", "Baby Pink": "#F4C2C2",
+  "Pigeon Blue": "#7BA0B4", "Burnt Orange": "#CC5500",
 };
 import {
   MinusIcon,
@@ -110,17 +113,18 @@ export default function CartPage() {
       const orderId = ref.id;
       setOrderId(orderId);
 
+      const adminEmails = await getOrderAdminEmails();
       await queueAndSendMail([
         {
           to: form.email,
           subject: `FitwearGH — Order Confirmed #${orderId.slice(0, 8).toUpperCase()}`,
           html: orderConfirmHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
         },
-        {
-          to: "nerdosey@gmail.com",
+        ...adminEmails.map((email) => ({
+          to: email,
           subject: `New Order #${orderId.slice(0, 8).toUpperCase()} — ${form.name} (GH₵${grandTotal.toFixed(2)})`,
           html: orderAdminHtml({ orderId: orderId, form, items, total, deliveryFee, grandTotal, shippingMethod: selectedShipping?.name }),
-        },
+        })),
       ]);
 
       clearCart();

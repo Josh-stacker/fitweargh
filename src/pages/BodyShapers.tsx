@@ -12,7 +12,7 @@ import product1 from "../assets/prod-1.webp";
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
 const SUBCATEGORIES = ["Waist Trainers"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL", "6XL", "7XL"];
-const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6", "#f97316", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
+const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#808000", "#4B5320", "#533113", "#3b82f6", "#f97316", "#FFA500", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#D4A017", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
 
 interface Product {
   id: string;

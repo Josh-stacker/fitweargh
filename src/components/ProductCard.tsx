@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 
 const COLOR_HEX: Record<string, string> = {
   Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
-  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", Pink: "#ec4899",
-  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", Purple: "#800080",
+  "Olive Green": "#808000", "Army Green": "#4B5320",
+  Brown: "#533113", Blue: "#3b82f6", Orange: "#f97316", "Pure Orange": "#FFA500", Pink: "#ec4899",
+  Navy: "#1e3a5f", Grey: "#6b7280", Yellow: "#eab308", "Curry Yellow": "#D4A017", Purple: "#800080",
   Nude: "#E3BC9A", "Hot Pink": "#FF69B4", "Dark Purple": "#4A0E4E",
   "Sea Blue": "#006994", "Butter Yellow": "#FFF099", Lilac: "#C8A2C8",
-  "Mint Green": "#98FF98",
+  "Mint Green": "#98FF98", Burgundy: "#800020", "Baby Pink": "#F4C2C2",
+  "Pigeon Blue": "#7BA0B4", "Burnt Orange": "#CC5500",
 };
 import Button from "./ui/Button";
 import { Toast } from "./ui/Toast";

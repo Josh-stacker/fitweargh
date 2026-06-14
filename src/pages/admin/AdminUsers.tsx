@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
 import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon } from "@phosphor-icons/react";
 import { useAuth } from "../../context/AuthContext";
+import { syncOrderAdminEmails } from "../../lib/adminEmails";
 
 interface AdminUser {
   uid: string;
@@ -25,11 +26,17 @@ export default function AdminUsers() {
     setLoading(true);
     const { data } = await supabase.from("admin_users").select("*");
     if (data) {
-      setAdmins(data.map((d: any) => ({
+      const nextAdmins = data.map((d: any) => ({
         uid: d.user_id,
         email: d.email ?? "—",
         name: d.name ?? "—",
-      })));
+      }));
+      setAdmins(nextAdmins);
+      try {
+        await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email).filter((email) => email !== "—"));
+      } catch (syncError) {
+        console.error("Could not sync order admin emails:", syncError);
+      }
     }
     setLoading(false);
   };
@@ -69,7 +76,9 @@ export default function AdminUsers() {
         return;
       }
 
-      setAdmins((prev) => [...prev, { uid: profile.id, email: profile.email, name: profile.name }]);
+      const nextAdmins = [...admins, { uid: profile.id, email: profile.email, name: profile.name }];
+      setAdmins(nextAdmins);
+      await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setForm(EMPTY_FORM);
       setSuccess(`Admin access granted to ${profile.email}.`);
     } catch {
@@ -89,7 +98,9 @@ export default function AdminUsers() {
     setRemovingUid(uid);
     try {
       await supabase.from("admin_users").delete().eq("user_id", uid);
-      setAdmins((prev) => prev.filter((a) => a.uid !== uid));
+      const nextAdmins = admins.filter((a) => a.uid !== uid);
+      setAdmins(nextAdmins);
+      await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setSuccess("Admin removed.");
     } catch {
       setError("Failed to remove admin.");
@@ -103,7 +114,7 @@ export default function AdminUsers() {
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Admin Users</h2>
         <p className="raleway-regular text-base text-[#533113]/50 mt-1">
-          Invite new admins and manage existing access.
+          Invite new admins and manage existing access. Order alert emails are sent to these admin email addresses.
         </p>
       </div>
 
