@@ -1085,7 +1085,7 @@ export default function Products() {
                 {["Image", "Name", "Category", "Subcategory", "Price", "Stock", "Sizes", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest text-left px-5 py-3"
+                    className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest text-left px-3 py-2.5"
                   >
                     {h}
                   </th>
@@ -1095,7 +1095,7 @@ export default function Products() {
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors">
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="relative">
                       {p.imageUrl ? (
                         <img
@@ -1116,10 +1116,10 @@ export default function Products() {
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3 raleway-bold text-[#533113] max-w-[180px] truncate">
+                  <td className="px-3 py-2.5 raleway-bold text-[#533113] max-w-[150px] truncate">
                     {p.name}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(p.categories?.length ? p.categories : p.category ? [p.category] : []).map((cat) => (
                         <span key={cat} className="raleway-regular text-xs px-1.5 py-0.5 bg-[#F5EDE1] text-[#533113] border border-[#DEDEDE]">
@@ -1128,7 +1128,7 @@ export default function Products() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(p.subcategories ?? []).length > 0 ? (
                         p.subcategories.map((sub) => (
@@ -1141,7 +1141,7 @@ export default function Products() {
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     {p.discountPrice != null ? (
                       <div className="flex flex-col">
                         <span className="raleway-bold text-[#533113]">gh₵ {Number(p.discountPrice).toFixed(2)}</span>
@@ -1151,7 +1151,7 @@ export default function Products() {
                       <span className="raleway-bold text-[#533113]">gh₵ {Number(p.price).toFixed(2)}</span>
                     )}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     <span
                       className={`raleway-regular text-sm px-2.5 py-1 ${
                         p.stock > 10
@@ -1164,10 +1164,10 @@ export default function Products() {
                       {p.stock ?? 0}
                     </span>
                   </td>
-                  <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
+                  <td className="px-3 py-2.5 raleway-regular text-[#533113]/60 text-sm">
                     {p.sizes?.join(", ") || "—"}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEdit(p)}

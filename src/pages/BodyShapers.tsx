@@ -10,7 +10,8 @@ import product1 from "../assets/prod-1.webp";
 
 
 const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low", "Best Selling"];
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const SUBCATEGORIES = ["Waist Trainers"];
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL", "6XL", "7XL"];
 const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#533113", "#3b82f6", "#f97316", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
 
 interface Product {
@@ -18,6 +19,7 @@ interface Product {
   name: string;
   price: number;
   category: string;
+  subcategories?: string[];
   imageUrl?: string;
   colors?: string[];
 }
@@ -35,6 +37,7 @@ function BodyShapers() {
   const [loading, setLoading] = useState(true);
   const [activeSort, setActiveSort] = useState("Newest First");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
@@ -56,7 +59,16 @@ function BodyShapers() {
 
   const display = loading ? FALLBACK : products;
 
-  const filtered = display.filter((p) => p.price >= priceMin && p.price <= priceMax);
+  const filtered = display.filter((p) => {
+    if (p.price < priceMin || p.price > priceMax) return false;
+    if (
+      selectedSubcategories.length > 0 &&
+      !selectedSubcategories.some((sub) => (p.subcategories ?? []).includes(sub))
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     if (activeSort === "Price: Low to High") return a.price - b.price;
@@ -66,6 +78,9 @@ function BodyShapers() {
 
   const toggleSize = (s: string) =>
     setSelectedSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
+  const toggleSubcategory = (sub: string) =>
+    setSelectedSubcategories((prev) => (prev.includes(sub) ? prev.filter((x) => x !== sub) : [...prev, sub]));
 
   const toggleColor = (c: string) =>
     setSelectedColors((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
@@ -121,7 +136,27 @@ function BodyShapers() {
 
         {/* Filter panel */}
         {filterPanelOpen && (
-          <div className="border border-[#DEDEDE] bg-white p-5 md:p-6 mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="border border-[#DEDEDE] bg-white p-5 md:p-6 mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {/* Subcategory */}
+            <div className="flex flex-col gap-3">
+              <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Subcategory</p>
+              <div className="flex flex-wrap gap-2">
+                {SUBCATEGORIES.map((sub) => (
+                  <button
+                    key={sub}
+                    onClick={() => toggleSubcategory(sub)}
+                    className={`border px-3 py-1.5 raleway-regular text-sm transition-all ${
+                      selectedSubcategories.includes(sub)
+                        ? "bg-[#533113] text-white border-[#533113]"
+                        : "text-[#533113] border-[#533113] hover:bg-[#533113]/10"
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Size */}
             <div className="flex flex-col gap-3">
               <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Size</p>
