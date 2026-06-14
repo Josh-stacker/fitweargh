@@ -41,7 +41,7 @@ const TAB_TEXT: Record<string, { heading: string; copy?: string }> = {
 
 const SECTION_LINKS: Record<string, string> = {
   "New Arrivals": "/new-arrivals",
-  "Fast Selling": "/new-arrivals",
+  "Fast Selling": "/fast-selling",
   "Shop By Category": "/clothing",
   "Clothing": "/clothing",
   "Body Shapers": "/body-shapers",
@@ -205,7 +205,7 @@ function Homepage() {
     () => limitProducts(
       sections.fastSelling.length > 0
         ? resolvePinned(sections.fastSelling, allProducts)
-        : STATIC_PRODUCTS
+        : allProducts.filter((p) => hasCategory(p, "Fast Selling"))
     ),
     [allProducts, sections.fastSelling],
   );
@@ -248,6 +248,7 @@ function Homepage() {
       },
       fastSelling: {
         pinnedIds: sections.fastSelling,
+        taggedCount: allProducts.filter((p) => hasCategory(p, "Fast Selling")).length,
         renderedCount: fastSellingProducts.length,
         renderedIds: fastSellingProducts.map((p) => p.id),
       },
@@ -418,7 +419,7 @@ function Homepage() {
               <FastSelling
                 products={fastSellingProducts}
                 mobileLimit={8}
-                viewAllHref="/new-arrivals"
+                viewAllHref="/fast-selling"
                 viewAllLabel="View All Fast Selling"
               />
             </section>

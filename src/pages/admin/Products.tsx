@@ -8,6 +8,8 @@ import {
   ImageIcon,
   MagnifyingGlassIcon,
   ArrowsOutIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
 } from "@phosphor-icons/react";
 import { BUILT_IN_SIZE_CHARTS, DEFAULT_SIZE_CHART, mergeBuiltInSizeCharts, type SizeChart } from "../../lib/sizeCharts";
 
@@ -171,6 +173,8 @@ type StockFilter = "all" | "inStock" | "lowStock" | "outOfStock";
 type DiscountFilter = "all" | "onSale" | "fullPrice";
 type ImageFilter = "all" | "withImages" | "withoutImages";
 
+const PRODUCTS_PER_PAGE = 25;
+
 function productFromRow(row: ProductRow): Product {
   return {
     id: row.id,
@@ -228,6 +232,7 @@ export default function Products() {
   const [discountFilter, setDiscountFilter] = useState<DiscountFilter>("all");
   const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Two hidden file inputs: one for adding new images (multiple), one for replacing a single slot
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -771,6 +776,21 @@ export default function Products() {
     subcategoryFilter,
   ]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categoryFilter, colorFilter, discountFilter, imageFilter, search, sizeFilter, sortBy, stockFilter, subcategoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const pageStartIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  const paginatedProducts = filtered.slice(pageStartIndex, pageStartIndex + PRODUCTS_PER_PAGE);
+  const showingStart = filtered.length === 0 ? 0 : pageStartIndex + 1;
+  const showingEnd = Math.min(pageStartIndex + paginatedProducts.length, filtered.length);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -988,7 +1008,7 @@ export default function Products() {
 
           <div className="flex items-center justify-between gap-3">
             <span className="raleway-regular text-sm text-[#533113]/50">
-              Showing {filtered.length} of {products.length}
+              Showing {showingStart}-{showingEnd} of {filtered.length}
             </span>
             <button
               type="button"
@@ -1097,7 +1117,7 @@ export default function Products() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
+              {paginatedProducts.map((p) => (
                 <tr key={p.id} className="border-b border-[#DEDEDE]/60 hover:bg-[#FFFBF6] transition-colors">
                   <td className="px-3 py-2.5">
                     <div className="relative">
@@ -1196,6 +1216,66 @@ export default function Products() {
           </table>
         )}
       </div>
+
+      {!loading && filtered.length > PRODUCTS_PER_PAGE && (
+        <div className="bg-white border border-[#DEDEDE] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="raleway-regular text-sm text-[#533113]/60">
+            Showing {showingStart}-{showingEnd} of {filtered.length} products
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="h-9 w-9 flex items-center justify-center border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Previous page"
+            >
+              <CaretLeftIcon size={16} weight="bold" />
+            </button>
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const page = index + 1;
+              const isNearCurrent = Math.abs(page - currentPage) <= 1;
+              const isEdge = page === 1 || page === totalPages;
+              const showPage = isNearCurrent || isEdge;
+              const showGap =
+                (page === currentPage - 2 && page > 1) ||
+                (page === currentPage + 2 && page < totalPages);
+
+              if (!showPage) {
+                return showGap ? (
+                  <span key={page} className="px-1 raleway-regular text-sm text-[#533113]/40">
+                    ...
+                  </span>
+                ) : null;
+              }
+
+              return (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-9 min-w-9 px-3 border raleway-bold text-sm transition-colors ${
+                    currentPage === page
+                      ? "bg-[#533113] text-white border-[#533113]"
+                      : "bg-white text-[#533113] border-[#DEDEDE] hover:border-[#533113] hover:bg-[#533113]/5"
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+              className="h-9 w-9 flex items-center justify-center border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Next page"
+            >
+              <CaretRightIcon size={16} weight="bold" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Hidden inputs */}
       <input ref={addInputRef} type="file" accept="image/*" multiple onChange={handleAddFiles} className="hidden" />
