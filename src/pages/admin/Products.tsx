@@ -167,6 +167,9 @@ const EMPTY_FORM = {
 };
 
 const PRODUCT_IMAGE_BUCKET = "public-assets";
+const STOCK_ALL_KEY = "__all__";
+const COLOR_STOCK_PREFIX = "color::";
+const SIZE_STOCK_PREFIX = "size::";
 
 type SortOption = "latest" | "oldest" | "nameAsc" | "nameDesc" | "priceAsc" | "priceDesc" | "stockAsc" | "stockDesc";
 type StockFilter = "all" | "inStock" | "lowStock" | "outOfStock";
@@ -452,10 +455,19 @@ export default function Products() {
   };
 
   const toggleSize = (s: string) =>
-    setForm((f) => ({
-      ...f,
-      sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s],
-    }));
+    setForm((f) => {
+      const isSelected = f.sizes.includes(s);
+      if (!isSelected) return { ...f, sizes: [...f.sizes, s] };
+
+      const nextStock = Object.fromEntries(
+        Object.entries(f.colorSizeStock).filter(([key]) => key !== `${SIZE_STOCK_PREFIX}${s}` && !key.endsWith(`_${s}`)),
+      );
+      return {
+        ...f,
+        sizes: f.sizes.filter((x) => x !== s),
+        colorSizeStock: nextStock,
+      };
+    });
 
   const toggleColor = (name: string) =>
     setForm((f) => {
@@ -463,7 +475,7 @@ export default function Products() {
       if (!isSelected) return { ...f, colors: [...f.colors, name] };
 
       const nextStock = Object.fromEntries(
-        Object.entries(f.colorSizeStock).filter(([key]) => !key.startsWith(`${name}_`)),
+        Object.entries(f.colorSizeStock).filter(([key]) => key !== `${COLOR_STOCK_PREFIX}${name}` && !key.startsWith(`${name}_`)),
       );
       const nextColorImageMap = { ...f.colorImageMap };
       delete nextColorImageMap[name];
@@ -529,7 +541,47 @@ export default function Products() {
     }));
   };
 
-  const totalStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
+  const setStockValue = (key: string, qty: number) => {
+    setForm((f) => ({
+      ...f,
+      colorSizeStock: { ...f.colorSizeStock, [key]: qty },
+    }));
+  };
+
+  const normalizedStock = useMemo(() => {
+    if (form.colors.length === 0 && form.sizes.length === 0) {
+      return { [STOCK_ALL_KEY]: form.colorSizeStock[STOCK_ALL_KEY] ?? 0 };
+    }
+
+    if (form.colors.length > 0 && form.sizes.length === 0) {
+      return Object.fromEntries(
+        form.colors.map((colorName) => {
+          const key = `${COLOR_STOCK_PREFIX}${colorName}`;
+          return [key, form.colorSizeStock[key] ?? 0];
+        }),
+      );
+    }
+
+    if (form.colors.length === 0 && form.sizes.length > 0) {
+      return Object.fromEntries(
+        form.sizes.map((sizeName) => {
+          const key = `${SIZE_STOCK_PREFIX}${sizeName}`;
+          return [key, form.colorSizeStock[key] ?? 0];
+        }),
+      );
+    }
+
+    return Object.fromEntries(
+      form.colors.flatMap((colorName) =>
+        form.sizes.map((sizeName) => {
+          const key = `${colorName}_${sizeName}`;
+          return [key, form.colorSizeStock[key] ?? 0] as const;
+        }),
+      ),
+    );
+  }, [form.colorSizeStock, form.colors, form.sizes]);
+
+  const totalStock = Object.values(normalizedStock).reduce((a, b) => a + (b || 0), 0);
 
   const uploadSlot = async (slot: ImageSlot, index: number): Promise<{ url: string; path: string }> => {
     if (slot.file) {
@@ -589,7 +641,7 @@ export default function Products() {
       const allUrls = uploaded.map((u) => u.url);
       const allPaths = uploaded.map((u) => u.path);
 
-      const computedStock = Object.values(form.colorSizeStock).reduce((a, b) => a + (b || 0), 0);
+      const computedStock = Object.values(normalizedStock).reduce((a, b) => a + (b || 0), 0);
       const colorImageMap = Object.fromEntries(
         Object.entries(form.colorImageMap)
           .map(([color, value]) => {
@@ -612,7 +664,7 @@ export default function Products() {
         category: form.categories[0] ?? "",
         sizes: form.sizes,
         colors: form.colors,
-        color_size_stock: form.colorSizeStock,
+        color_size_stock: normalizedStock,
         color_image_map: colorImageMap,
         stock: computedStock,
         description: form.description,
@@ -1670,17 +1722,88 @@ export default function Products() {
                 </div>
               )}
 
-              {/* Stock by Color × Size */}
-              {form.colors.length > 0 && form.sizes.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
-                      Stock by Color &amp; Size
-                    </label>
-                    <span className="raleway-regular text-sm text-[#533113]/50">
-                      Total: {totalStock} pcs
-                    </span>
+              {/* Stock */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                    Stock
+                  </label>
+                  <span className="raleway-regular text-sm text-[#533113]/50">
+                    Total: {totalStock} pcs
+                  </span>
+                </div>
+
+                {form.colors.length === 0 && form.sizes.length === 0 && (
+                  <div className="border border-[#DEDEDE] p-4 bg-[#FFFBF6]">
+                    <Field label="Quantity">
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.colorSizeStock[STOCK_ALL_KEY] ?? ""}
+                        onChange={(e) => setStockValue(STOCK_ALL_KEY, Number(e.target.value))}
+                        placeholder="0"
+                        className="input-base"
+                      />
+                    </Field>
                   </div>
+                )}
+
+                {form.colors.length > 0 && form.sizes.length === 0 && (
+                  <div className="border border-[#DEDEDE] divide-y divide-[#DEDEDE]">
+                    {form.colors.map((colorName) => {
+                      const key = `${COLOR_STOCK_PREFIX}${colorName}`;
+                      return (
+                        <div key={colorName} className="grid grid-cols-[1fr_110px] gap-3 items-center px-3 py-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="w-4 h-4 rounded-full border border-black/10 shrink-0"
+                              style={{ backgroundColor: COLOR_HEX[colorName] ?? "#ccc" }}
+                            />
+                            <span className="raleway-bold text-sm text-[#533113] truncate">{colorName}</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={form.colorSizeStock[key] ?? ""}
+                            onChange={(e) => setStockValue(key, Number(e.target.value))}
+                            placeholder="0"
+                            className="w-full text-center border border-[#DEDEDE] raleway-regular text-base text-[#533113] py-2 px-2 outline-none focus:border-[#533113] bg-white"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {form.colors.length === 0 && form.sizes.length > 0 && (
+                  <div className="border border-[#DEDEDE] divide-y divide-[#DEDEDE]">
+                    {form.sizes.map((sizeName) => {
+                      const key = `${SIZE_STOCK_PREFIX}${sizeName}`;
+                      return (
+                        <div key={sizeName} className="grid grid-cols-[1fr_110px] gap-3 items-center px-3 py-3">
+                          <div>
+                            <span className="raleway-bold text-sm text-[#533113]">{sizeName}</span>
+                            {UK_SIZE_LABELS[sizeName] && (
+                              <span className="block raleway-regular text-xs text-[#533113]/40">
+                                UK {UK_SIZE_LABELS[sizeName]}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={form.colorSizeStock[key] ?? ""}
+                            onChange={(e) => setStockValue(key, Number(e.target.value))}
+                            placeholder="0"
+                            className="w-full text-center border border-[#DEDEDE] raleway-regular text-base text-[#533113] py-2 px-2 outline-none focus:border-[#533113] bg-white"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {form.colors.length > 0 && form.sizes.length > 0 && (
                   <div className="overflow-x-auto border border-[#DEDEDE]">
                     <table className="w-full text-sm">
                       <thead>
@@ -1732,8 +1855,8 @@ export default function Products() {
                       </tbody>
                     </table>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Description */}
               <Field label="Description">

@@ -87,6 +87,7 @@ export default function CartPage() {
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
   const verifyingPaymentRef = useRef("");
+  const initializingPaymentRef = useRef(false);
   const clearCartRef = useRef(clearCart);
 
   useEffect(() => {
@@ -207,6 +208,13 @@ export default function CartPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (initializingPaymentRef.current || placing) return;
+    if (items.length === 0) {
+      setPaymentError("Your cart is empty.");
+      return;
+    }
+
+    initializingPaymentRef.current = true;
     setPlacing(true);
     setPaymentError("");
     try {
@@ -249,6 +257,7 @@ export default function CartPage() {
     } catch (err) {
       console.error("Order error:", err);
       setPaymentError(err instanceof Error ? err.message : "Could not start Paystack payment.");
+      initializingPaymentRef.current = false;
     } finally {
       setPlacing(false);
     }
