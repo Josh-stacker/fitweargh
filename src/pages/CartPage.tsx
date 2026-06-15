@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import { orderConfirmHtml } from "../emails/orderConfirmEmail";
@@ -86,6 +86,12 @@ export default function CartPage() {
 
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
+  const verifyingPaymentRef = useRef("");
+  const clearCartRef = useRef(clearCart);
+
+  useEffect(() => {
+    clearCartRef.current = clearCart;
+  }, [clearCart]);
 
   useEffect(() => {
     supabase.from("shipping_methods").select("*").eq("enabled", true).then(({ data }) => {
@@ -153,11 +159,16 @@ export default function CartPage() {
     const callbackOrderId = searchParams.get("order_id");
     if (!shouldVerify || !reference || !callbackOrderId) return;
 
+    const verificationKey = `${callbackOrderId}:${reference}`;
+    if (verifyingPaymentRef.current === verificationKey) return;
+    verifyingPaymentRef.current = verificationKey;
+
     let active = true;
     const verifyPayment = async () => {
       setPlacing(true);
       setPaymentError("");
       setStep("checkout");
+      setSearchParams({}, { replace: true });
 
       try {
         const { data, error } = await supabase.functions.invoke("verify-paystack", {
@@ -175,12 +186,12 @@ export default function CartPage() {
 
         if (!active) return;
         setOrderId(verifiedOrder.id);
-        clearCart();
+        clearCartRef.current();
         setStep("success");
-        setSearchParams({}, { replace: true });
       } catch (err) {
         console.error("Paystack verification error:", err);
         if (!active) return;
+        verifyingPaymentRef.current = "";
         setPaymentError(err instanceof Error ? err.message : "Payment could not be verified.");
         setStep("checkout");
       } finally {
@@ -192,7 +203,7 @@ export default function CartPage() {
     return () => {
       active = false;
     };
-  }, [clearCart, searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
