@@ -13,6 +13,8 @@ interface OrderRow {
   address: string | null;
   city: string | null;
   total: number | string | null;
+  delivery_area?: string | null;
+  delivery_fee?: number | string | null;
   status: string | null;
   line_items: unknown[];
   items: number | null;
@@ -41,7 +43,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { data: order, error } = await supabase
       .from("orders")
-      .select("id,customer_name,customer_email,customer_phone,address,city,total,status,line_items,items,payment_status")
+      .select("id,customer_name,customer_email,customer_phone,address,city,total,delivery_area,delivery_fee,status,line_items,items,payment_status")
       .eq("id", order_id)
       .eq("payment_reference", reference)
       .maybeSingle();
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
         paid_at: paidAt,
       })
       .eq("id", row.id)
-      .select("id,customer_name,customer_email,customer_phone,address,city,total,status,line_items,items,payment_status")
+      .select("id,customer_name,customer_email,customer_phone,address,city,total,delivery_area,delivery_fee,status,line_items,items,payment_status")
       .single();
 
     if (updateError) throw updateError;

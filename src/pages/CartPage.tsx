@@ -57,6 +57,8 @@ interface VerifiedOrder {
   address: string;
   city: string;
   total: number;
+  delivery_area?: string | null;
+  delivery_fee?: number | null;
   line_items: VerifiedOrderItem[];
 }
 
@@ -100,13 +102,11 @@ export default function CartPage() {
         const methods = data as ShippingMethod[];
         methods.sort((a, b) => a.price - b.price);
         setShippingMethods(methods);
-        if (methods.length > 0) setSelectedShipping(methods[0]);
       }
     });
   }, []);
 
-  // Fall back to GH₵15 if no shipping methods are configured yet
-  const deliveryFee = selectedShipping?.price ?? 15;
+  const deliveryFee = selectedShipping?.price ?? 0;
   const grandTotal = total + deliveryFee;
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -115,7 +115,7 @@ export default function CartPage() {
     const orderItems = order.line_items ?? [];
     const subtotal = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
     const orderTotal = Number(order.total ?? 0);
-    const orderDeliveryFee = Math.max(0, orderTotal - subtotal);
+    const orderDeliveryFee = Number(order.delivery_fee ?? Math.max(0, orderTotal - subtotal));
     const orderForm = {
       name: order.customer_name ?? "",
       email: order.customer_email ?? "",
@@ -137,6 +137,7 @@ export default function CartPage() {
           total: subtotal,
           deliveryFee: orderDeliveryFee,
           grandTotal: orderTotal,
+          shippingMethod: order.delivery_area ?? undefined,
         }),
       },
       ...adminEmails.map((email) => ({
@@ -149,6 +150,7 @@ export default function CartPage() {
           total: subtotal,
           deliveryFee: orderDeliveryFee,
           grandTotal: orderTotal,
+          shippingMethod: order.delivery_area ?? undefined,
         }),
       })),
     ]);
@@ -213,6 +215,10 @@ export default function CartPage() {
       setPaymentError("Your cart is empty.");
       return;
     }
+    if (!selectedShipping) {
+      setPaymentError("Select a delivery area to continue.");
+      return;
+    }
 
     initializingPaymentRef.current = true;
     setPlacing(true);
@@ -235,6 +241,8 @@ export default function CartPage() {
           imageUrl: i.imageUrl,
         })),
         total: grandTotal,
+        delivery_area: selectedShipping.name,
+        delivery_fee: deliveryFee,
         status: "payment_pending",
         payment_provider: "paystack",
         payment_status: "unpaid",
@@ -406,36 +414,10 @@ export default function CartPage() {
                     <span>{fmt(total)}</span>
                   </div>
 
-                  {shippingMethods.length > 1 ? (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[#533113]/60">Delivery</span>
-                      <div className="flex flex-col gap-1">
-                        {shippingMethods.map((m) => (
-                          <label key={m.id} className="flex items-center justify-between cursor-pointer gap-2 px-3 py-2 border border-[#DEDEDE] hover:border-[#533113]/40 transition-colors">
-                            <span className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="shipping"
-                                checked={selectedShipping?.id === m.id}
-                                onChange={() => setSelectedShipping(m)}
-                                className="accent-[#533113]"
-                              />
-                              <span>
-                                <span className="raleway-bold text-sm">{m.name}</span>
-                                {m.description && <span className="block raleway-regular text-base text-[#533113]/50">{m.description}</span>}
-                              </span>
-                            </span>
-                            <span className="raleway-bold text-sm shrink-0">{fmt(m.price)}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span>{selectedShipping?.name ?? "Delivery"}</span>
-                      <span>{fmt(deliveryFee)}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span>{selectedShipping ? `Delivery (${selectedShipping.name})` : "Delivery"}</span>
+                    <span>{selectedShipping ? fmt(deliveryFee) : "Select at checkout"}</span>
+                  </div>
 
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-xl">
@@ -520,6 +502,32 @@ export default function CartPage() {
                   />
                 </Field>
 
+                <Field label="Delivery Area">
+                  <select
+                    required
+                    value={selectedShipping?.id ?? ""}
+                    onChange={(e) => {
+                      const area = shippingMethods.find((method) => method.id === e.target.value) ?? null;
+                      setSelectedShipping(area);
+                      setPaymentError("");
+                    }}
+                    className="input-base"
+                  >
+                    <option value="">Select delivery area</option>
+                    {shippingMethods.map((method) => (
+                      <option key={method.id} value={method.id}>
+                        {method.name} — {fmt(method.price)}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedShipping?.description && (
+                    <p className="raleway-regular text-sm text-[#533113]/50">{selectedShipping.description}</p>
+                  )}
+                  {!shippingMethods.length && (
+                    <p className="raleway-regular text-sm text-red-500">No delivery areas are available yet.</p>
+                  )}
+                </Field>
+
                 <Field label="Order Notes (optional)">
                   <textarea
                     value={form.notes}
@@ -560,8 +568,8 @@ export default function CartPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={placing}
-                  className="flex-1 bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  disabled={placing || !selectedShipping || shippingMethods.length === 0}
+                  className="flex-1 bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {placing ? (
                     <span className="flex items-center gap-2">
@@ -615,8 +623,8 @@ export default function CartPage() {
                     <span>{fmt(total)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>{selectedShipping?.name ?? "Delivery"}</span>
-                    <span>{fmt(deliveryFee)}</span>
+                    <span>{selectedShipping ? `Delivery (${selectedShipping.name})` : "Delivery"}</span>
+                    <span>{selectedShipping ? fmt(deliveryFee) : "Select area"}</span>
                   </div>
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-base">

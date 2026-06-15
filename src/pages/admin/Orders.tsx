@@ -26,6 +26,8 @@ interface Order {
   customer_phone: string;
   address: string;
   city: string;
+  delivery_area?: string | null;
+  delivery_fee?: number | null;
   total: number;
   status: string;
   line_items: LineItem[];
@@ -287,6 +289,11 @@ export default function Orders() {
                   <p className="raleway-regular text-xs text-[#533113]/50 uppercase tracking-widest mb-1">Shipping Address</p>
                   <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.address}</p>
                   <p className="raleway-regular text-sm text-[#533113]/70">{selectedOrder.city}</p>
+                  {selectedOrder.delivery_area && (
+                    <p className="raleway-regular text-sm text-[#533113]/70 mt-2">
+                      Area: <span className="raleway-bold">{selectedOrder.delivery_area}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -320,9 +327,17 @@ export default function Orders() {
               </div>
 
               {/* Total */}
-              <div className="flex items-center justify-between border-t border-[#DEDEDE] pt-4">
-                <p className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">Total</p>
-                <p className="raleway-bold text-lg text-[#533113]">{fmt(selectedOrder.total ?? 0)}</p>
+              <div className="border-t border-[#DEDEDE] pt-4 flex flex-col gap-2">
+                {selectedOrder.delivery_fee != null && (
+                  <div className="flex items-center justify-between">
+                    <p className="raleway-regular text-sm text-[#533113]/60">Delivery Fee</p>
+                    <p className="raleway-bold text-sm text-[#533113]">{fmt(selectedOrder.delivery_fee)}</p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <p className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">Total</p>
+                  <p className="raleway-bold text-lg text-[#533113]">{fmt(selectedOrder.total ?? 0)}</p>
+                </div>
               </div>
 
               {/* Date */}

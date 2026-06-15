@@ -113,9 +113,9 @@ export default function ShippingMethods() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="raleway-bold text-2xl text-[#533113]">Shipping Methods</h2>
+          <h2 className="raleway-bold text-2xl text-[#533113]">Delivery Areas</h2>
           <p className="raleway-regular text-base text-[#533113]/50 mt-1">
-            Configure delivery options shown to customers at checkout.
+            Set delivery areas and the fee customers pay at checkout.
           </p>
         </div>
         <button
@@ -123,7 +123,7 @@ export default function ShippingMethods() {
           className="flex items-center gap-2 bg-[#533113] text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2.5 hover:bg-[#3d2409] transition-colors"
         >
           <PlusIcon size={15} />
-          Add Method
+          Add Area
         </button>
       </div>
 
@@ -133,21 +133,21 @@ export default function ShippingMethods() {
           onSubmit={handleAdd}
           className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4"
         >
-          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">New Shipping Method</h3>
+          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">New Delivery Area</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Name</label>
+              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Area</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Standard Delivery"
+                placeholder="East Legon"
                 className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Price (GH₵)</label>
+              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Delivery Fee (GH₵)</label>
               <input
                 required
                 type="number"
@@ -166,7 +166,7 @@ export default function ShippingMethods() {
             <input
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Delivered within 2–4 business days"
+              placeholder="Optional notes for this area"
               className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
             />
           </div>
@@ -211,7 +211,7 @@ export default function ShippingMethods() {
           </div>
         ) : methods.length === 0 ? (
           <div className="py-14 text-center raleway-regular text-base text-[#533113]/40">
-            No shipping methods yet. Add one above.
+            No delivery areas yet. Add one above.
           </div>
         ) : (
           <div className="divide-y divide-[#DEDEDE]">
@@ -316,7 +316,7 @@ export default function ShippingMethods() {
       </div>
 
       <p className="raleway-regular text-sm text-[#533113]/40">
-        Only enabled methods appear at checkout. Disable rather than delete to preserve order history.
+        Only enabled areas appear at checkout. Disable rather than delete to preserve order history.
       </p>
     </div>
   );
