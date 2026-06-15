@@ -296,7 +296,7 @@ export default function CartPage() {
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-6 md:py-10">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60 mb-6">
+        <div className="flex items-center gap-2 raleway-regular text-lg text-[#533113]/60 mb-6">
           <Link to="/" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
             <ArrowLeftIcon size={14} />
             Home
@@ -307,7 +307,7 @@ export default function CartPage() {
           </span>
         </div>
 
-        <h1 className="raleway-bold text-2xl md:text-3xl text-[#533113] mb-8">
+        <h1 className="raleway-bold text-3xl md:text-4xl text-[#533113] mb-8">
           {step === "cart" ? `Your Cart (${count})` : "Checkout"}
         </h1>
 
@@ -329,9 +329,9 @@ export default function CartPage() {
               {items.map((item) => (
                 <div
                   key={`${item.id}_${item.size}_${item.color}`}
-                  className="bg-white border border-[#DEDEDE] flex gap-4 p-4"
+                  className="bg-white border border-[#DEDEDE] flex gap-4 p-4 md:p-5"
                 >
-                  <div className="w-20 h-24 shrink-0 bg-[#F5EDE0] overflow-hidden">
+                  <div className="w-24 h-28 md:w-28 md:h-32 shrink-0 bg-[#F5EDE0] overflow-hidden">
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
@@ -341,9 +341,9 @@ export default function CartPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-1.5">
-                    <p className="raleway-bold text-sm text-[#533113] leading-snug">{item.name}</p>
-                    <div className="flex items-center gap-3 raleway-regular text-sm text-[#533113]/60">
+                  <div className="flex flex-1 flex-col gap-2 min-w-0">
+                    <p className="raleway-bold text-lg md:text-xl text-[#533113] leading-snug">{item.name}</p>
+                    <div className="flex flex-wrap items-center gap-3 raleway-regular text-base md:text-lg text-[#533113]/60">
                       {item.size && <span>Size: {item.size}</span>}
                       {item.color && (
                         <span className="flex items-center gap-1">
@@ -356,37 +356,39 @@ export default function CartPage() {
                         </span>
                       )}
                     </div>
-                    <p className="raleway-bold text-sm text-[#533113]">{fmt(item.price)}</p>
 
                     <div className="flex items-center justify-between mt-auto">
                       <div className="flex items-stretch border border-[#533113]">
                         <button
                           onClick={() => updateQty(item.id, item.size, item.color, item.quantity - 1)}
-                          className="px-2 py-1.5 text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                          className="px-3 py-2 text-[#533113] hover:bg-[#533113]/10 transition-colors"
                         >
-                          <MinusIcon size={13} />
+                          <MinusIcon size={15} />
                         </button>
-                        <span className="raleway-bold text-xs w-8 flex items-center justify-center text-[#533113] border-l border-r border-[#533113]">
+                        <span className="raleway-bold text-base w-10 flex items-center justify-center text-[#533113] border-l border-r border-[#533113]">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQty(item.id, item.size, item.color, item.quantity + 1)}
-                          className="px-2 py-1.5 text-[#533113] hover:bg-[#533113]/10 transition-colors"
+                          className="px-3 py-2 text-[#533113] hover:bg-[#533113]/10 transition-colors"
                         >
-                          <PlusIcon size={13} />
+                          <PlusIcon size={15} />
                         </button>
                       </div>
-                      <button
-                        onClick={() => removeItem(item.id, item.size, item.color)}
-                        className="p-2 text-red-400 hover:bg-red-50 transition-colors"
-                      >
-                        <TrashIcon size={16} />
-                      </button>
                     </div>
                   </div>
 
-                  <div className="hidden sm:block shrink-0 raleway-bold text-sm text-[#533113] pt-1">
-                    {fmt(item.price * item.quantity)}
+                  <div className="shrink-0 min-w-[120px] flex flex-col items-end gap-3">
+                    <p className="raleway-bold text-lg md:text-xl text-[#533113] text-right">
+                      {fmt(item.price * item.quantity)}
+                    </p>
+                    <button
+                      onClick={() => removeItem(item.id, item.size, item.color)}
+                      className="flex items-center justify-center gap-2 border border-red-200 text-red-600 raleway-bold text-xs md:text-sm uppercase tracking-widest px-4 py-2.5 hover:bg-red-50 transition-colors"
+                    >
+                      <TrashIcon size={14} />
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
@@ -395,10 +397,10 @@ export default function CartPage() {
             {/* Summary */}
             <div className="w-full lg:w-80 shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
-                <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
+                <h2 className="raleway-bold text-base text-[#533113] uppercase tracking-widest">
                   Order Summary
                 </h2>
-                <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
+                <div className="flex flex-col gap-2 raleway-regular text-lg text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal ({count} items)</span>
                     <span>{fmt(total)}</span>
@@ -419,11 +421,11 @@ export default function CartPage() {
                                 className="accent-[#533113]"
                               />
                               <span>
-                                <span className="raleway-bold text-xs">{m.name}</span>
-                                {m.description && <span className="block raleway-regular text-sm text-[#533113]/50">{m.description}</span>}
+                                <span className="raleway-bold text-sm">{m.name}</span>
+                                {m.description && <span className="block raleway-regular text-base text-[#533113]/50">{m.description}</span>}
                               </span>
                             </span>
-                            <span className="raleway-bold text-xs shrink-0">{fmt(m.price)}</span>
+                            <span className="raleway-bold text-sm shrink-0">{fmt(m.price)}</span>
                           </label>
                         ))}
                       </div>
@@ -436,21 +438,21 @@ export default function CartPage() {
                   )}
 
                   <hr className="border-[#DEDEDE] my-1" />
-                  <div className="flex justify-between raleway-bold text-base">
+                  <div className="flex justify-between raleway-bold text-xl">
                     <span>Total</span>
                     <span>{fmt(grandTotal)}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStep("checkout")}
-                  className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                  className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
                 >
                   Proceed to Checkout
                   <ArrowLineUpRightIcon size={16} />
                 </button>
                 <Link
                   to="/new-arrivals"
-                  className="text-center raleway-regular text-sm text-[#533113]/60 hover:text-[#533113] transition-colors"
+                  className="text-center raleway-regular text-base text-[#533113]/60 hover:text-[#533113] transition-colors"
                 >
                   Continue Shopping
                 </Link>

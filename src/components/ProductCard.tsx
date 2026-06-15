@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const COLOR_HEX: Record<string, string> = {
@@ -12,7 +11,6 @@ const COLOR_HEX: Record<string, string> = {
   "Pigeon Blue": "#7BA0B4", "Burnt Orange": "#CC5500",
 };
 import Button from "./ui/Button";
-import { Toast } from "./ui/Toast";
 import { ArrowLineUpRightIcon, ImageIcon } from "@phosphor-icons/react";
 import { useCart } from "../context/CartContext";
 
@@ -27,7 +25,6 @@ interface ProductCardProps {
 
 function ProductCard({ image, name, price, discountPrice, id = 1, colors }: ProductCardProps) {
   const { addItem } = useCart();
-  const [toast, setToast] = useState(false);
 
   const numericPrice = typeof price === "number" ? price : parseFloat(String(price)) || 0;
   const priceStr = typeof price === "number" ? `gh₵ ${price.toFixed(2)}` : price;
@@ -43,7 +40,6 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
       color: colors?.[0] ?? "",
       quantity: 1,
     });
-    setToast(true);
   };
 
   return (
@@ -115,10 +111,6 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
           />
         </div>
       </div>
-
-      {toast && (
-        <Toast message={`${name} added to cart`} onDone={() => setToast(false)} />
-      )}
     </section>
   );
 }

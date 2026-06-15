@@ -16,10 +16,13 @@ interface CartContextType {
   items: CartItem[];
   count: number;
   total: number;
+  cartOpen: boolean;
   addItem: (item: CartItem) => void;
   removeItem: (id: string, size: string, color: string) => void;
   updateQty: (id: string, size: string, color: string, qty: number) => void;
   clearCart: () => void;
+  openCart: () => void;
+  closeCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -42,6 +45,7 @@ function itemKey(item: Pick<CartItem, "id" | "size" | "color">) {
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>(loadLocal);
+  const [cartOpen, setCartOpen] = useState(false);
   // Track whether we've loaded from Firestore for this user session
   const loadedForUser = useRef<string | null>(null);
 
@@ -110,6 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, incoming];
     });
+    setCartOpen(true);
   };
 
   const removeItem = (id: string, size: string, color: string) => {
@@ -139,9 +144,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const openCart = () => setCartOpen(true);
+  const closeCart = () => setCartOpen(false);
 
   return (
-    <CartContext.Provider value={{ items, count, total, addItem, removeItem, updateQty, clearCart }}>
+    <CartContext.Provider value={{ items, count, total, cartOpen, addItem, removeItem, updateQty, clearCart, openCart, closeCart }}>
       {children}
     </CartContext.Provider>
   );

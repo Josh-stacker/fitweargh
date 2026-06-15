@@ -30,6 +30,7 @@ import HomepageSettings from "./pages/admin/HomepageSettings";
 import PopupSettings from "./pages/admin/PopupSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import ShippingMethods from "./pages/admin/ShippingMethods";
+import CartDrawer from "./components/CartDrawer";
 
 import "./index.css";
 
@@ -38,6 +39,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
+          <CartDrawer />
           <Routes>
             {/* ── Storefront ── */}
             <Route path="/" element={<Homepage />} />
