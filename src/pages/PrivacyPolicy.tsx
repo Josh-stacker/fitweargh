@@ -14,7 +14,7 @@ function PrivacyPolicy() {
           <p className="mt-4">
             FitwearGH<br />
             Ghana<br />
-            Email: fitweargh@gmail.com
+            Email: fitweargh1@gmail.com
           </p>
         </>
       ),
@@ -143,7 +143,7 @@ function PrivacyPolicy() {
       content: (
         <p>
           For privacy questions or data subject requests, contact us at:<br />
-          Email: fitweargh@gmail.com<br />
+          Email: fitweargh1@gmail.com<br />
           You may also contact the Data Protection Commission of Ghana if you are not satisfied with our response.
         </p>
       ),

@@ -73,7 +73,7 @@ function ContactUs() {
       setSent(true);
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
     } catch (err) {
-      setError("Failed to send message. Please try again or email us directly at fitweargh@gmail.com.");
+      setError("Failed to send message. Please try again or email us directly at fitweargh1@gmail.com.");
     } finally {
       setSending(false);
     }
@@ -108,10 +108,10 @@ function ContactUs() {
                   Email
                 </p>
                 <a
-                  href="mailto:fitweargh@gmail.com"
+                  href="mailto:fitweargh1@gmail.com"
                   className="text-sm raleway-regular text-[#533113] hover:underline"
                 >
-                  fitweargh@gmail.com
+                  fitweargh1@gmail.com
                 </a>
               </div>
               <div>

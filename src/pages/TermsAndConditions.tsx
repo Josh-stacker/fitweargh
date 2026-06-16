@@ -13,7 +13,7 @@ function TermsAndConditions() {
           FitwearGH sells fitness wear, activewear, clothing, body shapers, accessories, sale items, fast-selling items, and related products online.<br /><br />
           FitwearGH<br />
           Ghana<br />
-          Email: fitweargh@gmail.com
+          Email: fitweargh1@gmail.com
         </p>
       ),
     },
@@ -147,7 +147,7 @@ function TermsAndConditions() {
         <p>
           For questions about these Terms, orders, delivery, returns, or complaints, contact:<br /><br />
           FitwearGH<br />
-          Email: fitweargh@gmail.com
+          Email: fitweargh1@gmail.com
         </p>
       ),
     },
