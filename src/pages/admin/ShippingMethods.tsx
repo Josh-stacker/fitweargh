@@ -273,7 +273,7 @@ export default function ShippingMethods() {
                         title={m.enabled ? "Disable" : "Enable"}
                       >
                         <span
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${m.enabled ? "translate-x-5" : "translate-x-0.5"}`}
+                          className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${m.enabled ? "translate-x-5" : "translate-x-0"}`}
                         />
                       </button>
                       <div className="min-w-0">

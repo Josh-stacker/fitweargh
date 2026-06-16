@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Button from "./ui/Button";
 import { ArrowLineUpRightIcon } from "@phosphor-icons/react";
-import CatCards from "./CatCards";
+import ProductCard from "./ProductCard";
 
 interface Product {
   id: string;
@@ -57,10 +57,12 @@ function ShopByCategory({
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 auto-rows-fr gap-4 md:gap-6 lg:gap-12">
         {visibleCards.slice(0, mobileLimit).map((card) => (
           <div key={card.name} className="h-full">
-            <CatCards
+            <ProductCard
               image={card.imageUrl}
               name={card.name}
               href={card.href}
+              hideAddToCart
+              actionText="Shop Now"
             />
           </div>
         ))}

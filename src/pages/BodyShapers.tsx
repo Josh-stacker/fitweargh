@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import Button from "../components/ui/Button";
 import HeroSlider from "../components/HeroSlider";
+import ProductPagination from "../components/ProductPagination";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
 
@@ -13,12 +14,15 @@ const SORT_OPTIONS = ["Newest First", "Price: Low to High", "Price: High to Low"
 const SUBCATEGORIES = ["Waist Trainers"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL", "6XL", "7XL"];
 const COLORS = ["#000000", "#FFFFFF", "#ef4444", "#00864A", "#808000", "#4B5320", "#533113", "#3b82f6", "#f97316", "#FFA500", "#ec4899", "#1e3a5f", "#6b7280", "#eab308", "#D4A017", "#800080", "#E3BC9A", "#FF69B4", "#4A0E4E", "#a9edff", "#FFF099", "#C8A2C8", "#98FF98", "#800020", "#F4C2C2", "#7BA0B4", "#CC5500"];
+const MOBILE_PAGE_SIZE = 10;
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  discountPrice?: number | null;
   category: string;
+  categories?: string[];
   subcategories?: string[];
   imageUrl?: string;
   colors?: string[];
@@ -42,6 +46,9 @@ function BodyShapers() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(500);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
 
   useEffect(() => {
     const fetch = async () => {
@@ -60,7 +67,8 @@ function BodyShapers() {
   const display = loading ? FALLBACK : products;
 
   const filtered = display.filter((p) => {
-    if (p.price < priceMin || p.price > priceMax) return false;
+    const effectivePrice = p.discountPrice ?? p.price;
+    if (effectivePrice < priceMin || effectivePrice > priceMax) return false;
     if (
       selectedSubcategories.length > 0 &&
       !selectedSubcategories.some((sub) => (p.subcategories ?? []).includes(sub))
@@ -71,10 +79,29 @@ function BodyShapers() {
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    if (activeSort === "Price: Low to High") return a.price - b.price;
-    if (activeSort === "Price: High to Low") return b.price - a.price;
+    const ap = a.discountPrice ?? a.price;
+    const bp = b.discountPrice ?? b.price;
+    if (activeSort === "Price: Low to High") return ap - bp;
+    if (activeSort === "Price: High to Low") return bp - ap;
     return 0;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setMobileVisible(MOBILE_PAGE_SIZE);
+  }, [activeSort, priceMin, priceMax, selectedColors, selectedSizes, selectedSubcategories]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const paginatedProducts = sorted.slice(pageStartIndex, pageStartIndex + pageSize);
+  const mobileProducts = sorted.slice(0, mobileVisible);
+  const showingStart = sorted.length === 0 ? 0 : pageStartIndex + 1;
+  const showingEnd = Math.min(pageStartIndex + paginatedProducts.length, sorted.length);
 
   const toggleSize = (s: string) =>
     setSelectedSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -241,22 +268,63 @@ function BodyShapers() {
             <p className="raleway-regular text-lg text-[#533113]/50">No body shapers found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
-            {sorted.map((product) => (
+          <>
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+            {paginatedProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
                 image={product.imageUrl}
                 name={product.name}
                 price={product.price}
+                discountPrice={product.discountPrice}
                 colors={product.colors}
+                category={product.category}
+                categories={product.categories}
               />
             ))}
           </div>
+          <div className="grid grid-cols-2 md:hidden gap-4">
+            {mobileProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                image={product.imageUrl}
+                name={product.name}
+                price={product.price}
+                discountPrice={product.discountPrice}
+                colors={product.colors}
+                category={product.category}
+                categories={product.categories}
+              />
+            ))}
+          </div>
+          </>
         )}
 
-        <div className="flex justify-center mt-12">
-          <Button text="Load More" width="w-48 md:w-56" icon={<ArrowLineUpRightIcon size={20} />} />
+        <ProductPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={sorted.length}
+          showingStart={showingStart}
+          showingEnd={showingEnd}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            setCurrentPage(1);
+          }}
+        />
+
+        <div className="flex md:hidden justify-center mt-12">
+          {mobileVisible < sorted.length && (
+            <Button
+              text="Load More"
+              width="w-48 md:w-56"
+              icon={<ArrowLineUpRightIcon size={20} />}
+              onClick={() => setMobileVisible((count) => count + MOBILE_PAGE_SIZE)}
+            />
+          )}
         </div>
       </main>
 

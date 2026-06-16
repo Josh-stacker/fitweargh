@@ -33,6 +33,7 @@ interface HeroSlide {
 const PAGES = [
   "Homepage",
   "New Arrivals",
+  "Fast Selling",
   "Clothing",
   "Body Shapers",
   "Accessories",
@@ -542,9 +543,9 @@ export default function HeroSlides() {
                 <button
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, active: !f.active }))}
-                  className={`w-10 h-6 rounded-full transition-colors relative ${form.active ? "bg-[#533113]" : "bg-gray-300"}`}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${form.active ? "bg-[#533113]" : "bg-gray-300"}`}
                 >
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${form.active ? "translate-x-5" : "translate-x-1"}`} />
+                  <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${form.active ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
                 <span className="raleway-regular text-base text-[#533113]">
                   {form.active ? "Active — visible to visitors" : "Inactive — hidden from visitors"}

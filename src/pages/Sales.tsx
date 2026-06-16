@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { fetchProducts } from "../lib/products";
+import { fetchProducts, isSaleProduct } from "../lib/products";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import Button from "../components/ui/Button";
 import HeroSlider from "../components/HeroSlider";
+import ProductPagination from "../components/ProductPagination";
 import { ArrowLineUpRightIcon, FunnelIcon, XIcon } from "@phosphor-icons/react";
 import product1 from "../assets/prod-1.webp";
 
@@ -44,6 +45,7 @@ const COLORS = [
   "#7BA0B4",
   "#CC5500",
 ];
+const MOBILE_PAGE_SIZE = 10;
 
 interface Product {
   id: string;
@@ -51,6 +53,7 @@ interface Product {
   price: number;
   discountPrice?: number | null;
   category: string;
+  categories?: string[];
   imageUrl?: string;
   colors?: string[];
 }
@@ -73,14 +76,15 @@ function Sales() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(500);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
 
   useEffect(() => {
     const fetch = async () => {
       try {
         const all = await fetchProducts();
-        const onSale = all.filter(
-          (p) => p.discountPrice != null && p.discountPrice < p.price,
-        );
+        const onSale = all.filter(isSaleProduct);
         setProducts(onSale.length > 0 ? onSale : FALLBACK);
       } catch {
         setProducts(FALLBACK);
@@ -105,6 +109,23 @@ function Sales() {
     if (activeSort === "Price: High to Low") return bp - ap;
     return 0;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setMobileVisible(MOBILE_PAGE_SIZE);
+  }, [activeSort, priceMin, priceMax, selectedColors, selectedSizes]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const paginatedProducts = sorted.slice(pageStartIndex, pageStartIndex + pageSize);
+  const mobileProducts = sorted.slice(0, mobileVisible);
+  const showingStart = sorted.length === 0 ? 0 : pageStartIndex + 1;
+  const showingEnd = Math.min(pageStartIndex + paginatedProducts.length, sorted.length);
 
   const toggleSize = (s: string) =>
     setSelectedSizes((prev) =>
@@ -302,8 +323,9 @@ function Sales() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
-            {sorted.map((product) => (
+          <>
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+            {paginatedProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
@@ -311,18 +333,55 @@ function Sales() {
                 name={product.name}
                 price={product.price}
                 discountPrice={product.discountPrice}
+                badge="Sale"
                 colors={product.colors}
+                category={product.category}
+                categories={product.categories}
               />
             ))}
           </div>
+          <div className="grid grid-cols-2 md:hidden gap-4">
+            {mobileProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                image={product.imageUrl}
+                name={product.name}
+                price={product.price}
+                discountPrice={product.discountPrice}
+                badge="Sale"
+                colors={product.colors}
+                category={product.category}
+                categories={product.categories}
+              />
+            ))}
+          </div>
+          </>
         )}
 
-        <div className="flex justify-center mt-12">
-          <Button
-            text="Load More"
-            width="w-48 md:w-56"
-            icon={<ArrowLineUpRightIcon size={20} />}
-          />
+        <ProductPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={sorted.length}
+          showingStart={showingStart}
+          showingEnd={showingEnd}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            setCurrentPage(1);
+          }}
+        />
+
+        <div className="flex md:hidden justify-center mt-12">
+          {mobileVisible < sorted.length && (
+            <Button
+              text="Load More"
+              width="w-48 md:w-56"
+              icon={<ArrowLineUpRightIcon size={20} />}
+              onClick={() => setMobileVisible((count) => count + MOBILE_PAGE_SIZE)}
+            />
+          )}
         </div>
       </main>
 

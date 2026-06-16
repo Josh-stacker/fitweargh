@@ -83,6 +83,7 @@ interface HomepageSections {
   shopByCategory: string[];
   accessories: string[];
   mobileTabs?: string[];
+  fastSellingEnabled?: boolean;
 }
 
 interface CategoryCardSettings {
@@ -127,6 +128,7 @@ function Homepage() {
   const [mobileTabs, setMobileTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [categoryCardSettings, setCategoryCardSettings] = useState<CategoryCardSettings>({});
+  const [fastSellingEnabled, setFastSellingEnabled] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -157,6 +159,7 @@ function Homepage() {
             sections?: Partial<HomepageSections>;
             mobileTabs?: string[];
             categoryCards?: CategoryCardSettings;
+            fastSellingEnabled?: boolean;
           };
           console.info("[Homepage] Settings loaded", {
             pinnedSections: d.sections,
@@ -168,7 +171,11 @@ function Homepage() {
             shopByCategory: d.sections?.shopByCategory ?? [],
             accessories: d.sections?.accessories ?? [],
           });
-          setMobileTabs((d.mobileTabs ?? []).filter((tab) => HOMEPAGE_TAB_CATEGORIES.includes(tab)));
+          const isFastSellingEnabled = d.fastSellingEnabled ?? true;
+          setFastSellingEnabled(isFastSellingEnabled);
+          setMobileTabs((d.mobileTabs ?? []).filter((tab) =>
+            HOMEPAGE_TAB_CATEGORIES.includes(tab) && (tab !== "Fast Selling" || isFastSellingEnabled)
+          ));
           setCategoryCardSettings(d.categoryCards ?? {});
         }
       } catch (err) {
@@ -203,11 +210,13 @@ function Homepage() {
 
   const fastSellingProducts = useMemo(
     () => limitProducts(
-      sections.fastSelling.length > 0
-        ? resolvePinned(sections.fastSelling, allProducts)
-        : allProducts.filter((p) => hasCategory(p, "Fast Selling"))
+      !fastSellingEnabled
+        ? []
+        : sections.fastSelling.length > 0
+          ? resolvePinned(sections.fastSelling, allProducts)
+          : allProducts.filter((p) => hasCategory(p, "Fast Selling"))
     ),
-    [allProducts, sections.fastSelling],
+    [allProducts, fastSellingEnabled, sections.fastSelling],
   );
 
   const shopByCategoryCards = useMemo(
@@ -344,8 +353,11 @@ function Homepage() {
                   id={p.id}
                   image={p.imageUrl}
                   name={p.name}
-                  price={p.discountPrice ?? p.price}
+                  price={p.price}
+                  discountPrice={p.discountPrice}
                   colors={p.colors}
+                  category={p.category}
+                  categories={p.categories}
                 />
               ))}
             </div>
@@ -397,8 +409,11 @@ function Homepage() {
                 id={p.id}
                 image={p.imageUrl}
                 name={p.name}
-                price={p.discountPrice ?? p.price}
+                price={p.price}
+                discountPrice={p.discountPrice}
                 colors={p.colors}
+                category={p.category}
+                categories={p.categories}
               />
             ))}
           </section>

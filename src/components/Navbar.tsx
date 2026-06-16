@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo-full.png";
 import CartButton from "./ui/CartButton";
 import { List, X, UserCircle, SignOut } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabase";
 
-const NAV_LINKS = [
+const NAV_LINKS: { to: string; label: string; setting?: "fastSelling" }[] = [
   { to: "/", label: "Home" },
   { to: "/new-arrivals", label: "New Arrivals" },
+  { to: "/fast-selling", label: "Fast Selling", setting: "fastSelling" },
   { to: "/clothing", label: "Clothing" },
   { to: "/body-shapers", label: "Body Shapers" },
   { to: "/accessories", label: "Accessories" },
@@ -17,8 +19,25 @@ const NAV_LINKS = [
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [fastSellingEnabled, setFastSellingEnabled] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "homepage")
+        .maybeSingle();
+      if (error) return;
+      const settings = data?.value as { fastSellingEnabled?: boolean } | null;
+      setFastSellingEnabled(settings?.fastSellingEnabled ?? true);
+    };
+    loadSettings();
+  }, []);
+
+  const navLinks = NAV_LINKS.filter((link) => link.setting !== "fastSelling" || fastSellingEnabled);
 
   const handleLogout = async () => {
     await logout();
@@ -35,7 +54,7 @@ function Navbar() {
 
         {/* Desktop links */}
         <div className="hidden lg:flex gap-6 items-center">
-          {NAV_LINKS.map(({ to, label }) => (
+          {navLinks.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -131,7 +150,7 @@ function Navbar() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-6">
-            {NAV_LINKS.map(({ to, label }) => (
+            {navLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}

@@ -105,6 +105,7 @@ const CATEGORIES = [
   "Clothing",
   "Body Shapers",
   "Accessories",
+  "Sale",
   "Sales",
 ];
 
@@ -176,7 +177,8 @@ type StockFilter = "all" | "inStock" | "lowStock" | "outOfStock";
 type DiscountFilter = "all" | "onSale" | "fullPrice";
 type ImageFilter = "all" | "withImages" | "withoutImages";
 
-const PRODUCTS_PER_PAGE = 25;
+const DEFAULT_PRODUCTS_PER_PAGE = 25;
+const PRODUCTS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 function productFromRow(row: ProductRow): Product {
   return {
@@ -236,6 +238,7 @@ export default function Products() {
   const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [productsPerPage, setProductsPerPage] = useState(DEFAULT_PRODUCTS_PER_PAGE);
 
   // Two hidden file inputs: one for adding new images (multiple), one for replacing a single slot
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -774,14 +777,17 @@ export default function Products() {
         const colors = p.colors ?? [];
         const sizes = p.sizes ?? [];
         const searchable = [p.name, ...cats, ...subs, ...colors, ...sizes].join(" ").toLowerCase();
+        const taggedForSale = cats.some((cat) => ["sale", "sales"].includes(cat.toLowerCase()));
+        const discounted = p.discountPrice != null && p.discountPrice < p.price;
+        const onSale = taggedForSale || discounted;
 
         if (q && !searchable.includes(q)) return false;
         if (categoryFilter !== "all" && !cats.includes(categoryFilter)) return false;
         if (subcategoryFilter !== "all" && !subs.includes(subcategoryFilter)) return false;
         if (colorFilter !== "all" && !colors.includes(colorFilter)) return false;
         if (sizeFilter !== "all" && !sizes.includes(sizeFilter)) return false;
-        if (discountFilter === "onSale" && p.discountPrice == null) return false;
-        if (discountFilter === "fullPrice" && p.discountPrice != null) return false;
+        if (discountFilter === "onSale" && !onSale) return false;
+        if (discountFilter === "fullPrice" && onSale) return false;
         if (imageFilter === "withImages" && !p.imageUrl && (p.images?.length ?? 0) === 0) return false;
         if (imageFilter === "withoutImages" && (p.imageUrl || (p.images?.length ?? 0) > 0)) return false;
 
@@ -832,14 +838,14 @@ export default function Products() {
     setCurrentPage(1);
   }, [categoryFilter, colorFilter, discountFilter, imageFilter, search, sizeFilter, sortBy, stockFilter, subcategoryFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / productsPerPage));
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
 
-  const pageStartIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-  const paginatedProducts = filtered.slice(pageStartIndex, pageStartIndex + PRODUCTS_PER_PAGE);
+  const pageStartIndex = (currentPage - 1) * productsPerPage;
+  const paginatedProducts = filtered.slice(pageStartIndex, pageStartIndex + productsPerPage);
   const showingStart = filtered.length === 0 ? 0 : pageStartIndex + 1;
   const showingEnd = Math.min(pageStartIndex + paginatedProducts.length, filtered.length);
 
@@ -1269,20 +1275,38 @@ export default function Products() {
         )}
       </div>
 
-      {!loading && filtered.length > PRODUCTS_PER_PAGE && (
+      {!loading && filtered.length > 0 && (
         <div className="bg-white border border-[#DEDEDE] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="raleway-regular text-sm text-[#533113]/60">
-            Showing {showingStart}-{showingEnd} of {filtered.length} products
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <p className="raleway-regular text-sm text-[#533113]/60">
+              Showing {showingStart}-{showingEnd} of {filtered.length} products
+            </p>
+            <label className="flex items-center gap-2 raleway-regular text-sm text-[#533113]/60">
+              View
+              <select
+                value={productsPerPage}
+                onChange={(e) => {
+                  setProductsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-[#DEDEDE] bg-white px-2 py-1.5 text-[#533113] outline-none focus:border-[#533113]"
+              >
+                {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
               disabled={currentPage === 1}
-              className="h-9 w-9 flex items-center justify-center border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-9 px-3 flex items-center gap-1.5 border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed raleway-bold text-xs uppercase tracking-widest"
               title="Previous page"
             >
               <CaretLeftIcon size={16} weight="bold" />
+              Previous
             </button>
             {Array.from({ length: totalPages }).map((_, index) => {
               const page = index + 1;
@@ -1320,9 +1344,10 @@ export default function Products() {
               type="button"
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
               disabled={currentPage === totalPages}
-              className="h-9 w-9 flex items-center justify-center border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-9 px-3 flex items-center gap-1.5 border border-[#DEDEDE] text-[#533113] hover:border-[#533113] hover:bg-[#533113]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed raleway-bold text-xs uppercase tracking-widest"
               title="Next page"
             >
+              Next
               <CaretRightIcon size={16} weight="bold" />
             </button>
           </div>

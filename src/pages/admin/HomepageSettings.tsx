@@ -14,6 +14,7 @@ interface HomepageDoc {
   heroStillImageUrl: string;
   heroStillImagePath: string;
   heroSliderInterval?: number;
+  fastSellingEnabled?: boolean;
   mobileTabs?: string[];
   categoryCards?: Record<string, {
     imageUrl?: string;
@@ -101,6 +102,7 @@ export default function HomepageSettings() {
   const [stillImagePath, setStillImagePath] = useState("");
   const [stillFile, setStillFile] = useState<File | null>(null);
   const [stillPreview, setStillPreview] = useState("");
+  const [fastSellingEnabled, setFastSellingEnabled] = useState(true);
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
   const [categoryCards, setCategoryCards] = useState(EMPTY_CATEGORY_CARDS);
 
@@ -143,6 +145,7 @@ export default function HomepageSettings() {
         setStillImageUrl(d.heroStillImageUrl ?? "");
         setStillImagePath(d.heroStillImagePath ?? "");
         setStillPreview(d.heroStillImageUrl ?? "");
+        setFastSellingEnabled(d.fastSellingEnabled ?? true);
         setMobileTabs((d.mobileTabs ?? []).filter((tab) => CATEGORIES.includes(tab)));
         setSections({
           newArrivals: d.sections?.newArrivals ?? [],
@@ -300,6 +303,7 @@ export default function HomepageSettings() {
           heroStillImageUrl: imageUrl,
           heroStillImagePath: imagePath,
           heroSliderInterval,
+          fastSellingEnabled,
           mobileTabs,
           categoryCards: savedCategoryCards,
           sections,
@@ -440,6 +444,29 @@ export default function HomepageSettings() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest border-b border-[#DEDEDE] pb-3">
+            Fast Selling Page
+          </h3>
+          <p className="raleway-regular text-sm text-[#533113]/50 mt-2">
+            Toggle the public Fast Selling page and navigation link.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setFastSellingEnabled((enabled) => !enabled)}
+            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${fastSellingEnabled ? "bg-[#533113]" : "bg-gray-300"}`}
+          >
+            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${fastSellingEnabled ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+          <span className="raleway-regular text-base text-[#533113]">
+            {fastSellingEnabled ? "Enabled" : "Disabled"}
+          </span>
+        </div>
       </div>
 
       {/* ── Mobile Tabs Manager ── */}

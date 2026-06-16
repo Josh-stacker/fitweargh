@@ -17,18 +17,42 @@ import { useCart } from "../context/CartContext";
 interface ProductCardProps {
   image?: string;
   name: string;
-  price: string | number;
+  price?: string | number | null;
   discountPrice?: number | null;
   id?: string | number;
   colors?: string[];
+  category?: string;
+  categories?: string[];
+  href?: string;
+  badge?: string;
+  hideAddToCart?: boolean;
+  actionText?: string;
 }
 
-function ProductCard({ image, name, price, discountPrice, id = 1, colors }: ProductCardProps) {
+function ProductCard({
+  image,
+  name,
+  price,
+  discountPrice,
+  id = 1,
+  colors,
+  category = "",
+  categories = [],
+  href,
+  badge,
+  hideAddToCart = false,
+  actionText = "Add to cart",
+}: ProductCardProps) {
   const { addItem } = useCart();
 
   const numericPrice = typeof price === "number" ? price : parseFloat(String(price)) || 0;
+  const hasPrice = price != null && price !== "";
   const priceStr = typeof price === "number" ? `gh₵ ${price.toFixed(2)}` : price;
   const hasDiscount = discountPrice != null && discountPrice < numericPrice;
+  const productHref = href ?? `/product/${id}`;
+  const showAddToCart = !hideAddToCart && hasPrice;
+  const hasSaleTag = [category, ...categories].some((cat) => ["sale", "sales"].includes(cat.toLowerCase()));
+  const displayBadge = badge || (hasDiscount || hasSaleTag ? "Sale" : "");
 
   const handleAddToCart = () => {
     addItem({
@@ -45,7 +69,12 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
   return (
     <section className="w-full h-full bg-white flex flex-col border border-[#DEDEDE]">
       {/* Image */}
-      <Link to={`/product/${id}`} className="block overflow-hidden bg-[#F5EDE0]">
+      <Link to={productHref} className="block overflow-hidden bg-[#F5EDE0] relative">
+        {displayBadge && (
+          <span className="absolute left-2 top-2 z-10 bg-red-600 text-white raleway-bold text-[10px] uppercase tracking-widest px-2 py-1">
+            {displayBadge}
+          </span>
+        )}
         {image ? (
           <img
             src={image}
@@ -60,22 +89,25 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
       </Link>
 
       {/* Mobile add-to-cart button */}
+      {showAddToCart && (
       <div className="block md:hidden w-full">
         <Button
-          text="Add to cart"
+          text={actionText}
           width="w-full"
           icon={<ArrowLineUpRightIcon size={14} />}
           onClick={handleAddToCart}
         />
       </div>
+      )}
 
       <div className="flex flex-col p-3 md:p-4 gap-2 flex-grow">
-        <Link to={`/product/${id}`}>
+        <Link to={productHref}>
           <p className="raleway-bold text-sm md:text-base text-[#533113] hover:text-[#533113] transition-colors leading-snug">
             {name}
           </p>
         </Link>
 
+        {(hasPrice || (colors && colors.length > 0)) && (
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             {hasDiscount ? (
@@ -100,16 +132,27 @@ function ProductCard({ image, name, price, discountPrice, id = 1, colors }: Prod
             </div>
           )}
         </div>
+        )}
 
         {/* Desktop add-to-cart */}
+        {showAddToCart ? (
         <div className="hidden md:block w-full mt-auto pt-2">
           <Button
-            text="Add to cart"
+            text={actionText}
             width="w-full"
             icon={<ArrowLineUpRightIcon size={14} />}
             onClick={handleAddToCart}
           />
         </div>
+        ) : (
+          <Link
+            to={productHref}
+            className="hidden md:flex w-full mt-auto pt-2 items-center justify-center gap-2 border border-[#533113] text-[#533113] py-2.5 px-3 raleway-bold text-xs uppercase tracking-widest hover:bg-[#533113] hover:text-white transition-colors"
+          >
+            {actionText}
+            <ArrowLineUpRightIcon size={14} />
+          </Link>
+        )}
       </div>
     </section>
   );

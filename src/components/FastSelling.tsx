@@ -11,6 +11,8 @@ interface Product {
   price: number;
   discountPrice?: number | null;
   colors?: string[];
+  category?: string;
+  categories?: string[];
 }
 
 interface FastSellingProps {
@@ -53,8 +55,11 @@ function FastSelling({
               id={p.id}
               image={p.imageUrl}
               name={p.name}
-              price={p.discountPrice ?? p.price}
+              price={p.price}
+              discountPrice={p.discountPrice}
               colors={p.colors}
+              category={p.category}
+              categories={p.categories}
             />
           ))}
         </div>
@@ -103,8 +108,11 @@ function FastSelling({
                   id={p.id}
                   image={p.imageUrl}
                   name={p.name}
-                  price={p.discountPrice ?? p.price}
+                  price={p.price}
+                  discountPrice={p.discountPrice}
                   colors={p.colors}
+                  category={p.category}
+                  categories={p.categories}
                 />
               </div>
             ))}

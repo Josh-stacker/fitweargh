@@ -110,3 +110,10 @@ export function hasCategory(
   }
   return product.category.toLowerCase() === category.toLowerCase();
 }
+
+export function isSaleProduct(
+  product: { price: number; discountPrice?: number | null; category: string; categories?: string[] }
+): boolean {
+  const hasDiscount = product.discountPrice != null && product.discountPrice < product.price;
+  return hasDiscount || hasCategory(product, "Sales") || hasCategory(product, "Sale");
+}
