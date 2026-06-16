@@ -1,8 +1,8 @@
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { ArrowLeftIcon, PaperPlaneRightIcon, CheckCircleIcon, SpinnerIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, PaperPlaneRightIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import { queueMail } from "../lib/mail";
 import { getOrderAdminEmails } from "../lib/adminEmails";
 
