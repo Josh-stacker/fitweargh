@@ -28,6 +28,8 @@ const COLOR_HEX: Record<string, string> = {
   "Dark Purple": "#4A0E4E",
   "Sea Blue": "#a9edff",
   "Butter Yellow": "#FFF099",
+  "Turquoise Green": "#00E5C0",
+  Cream: "#FFFDD0",
   Lilac: "#C8A2C8",
   "Mint Green": "#98FF98",
   Burgundy: "#800020",

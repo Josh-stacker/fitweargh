@@ -146,6 +146,8 @@ const COLORS: { name: string; hex: string }[] = [
   { name: "Baby Pink", hex: "#F4C2C2" },
   { name: "Pigeon Blue", hex: "#7BA0B4" },
   { name: "Burnt Orange", hex: "#CC5500" },
+  { name: "Turquoise Green", hex: "#00E5C0" },
+  { name: "Cream", hex: "#FFFDD0" },
 ];
 
 // Map color name → hex for rendering swatches
