@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { DebugProvider } from "./context/DebugContext";
+import DebugToggle from "./components/DebugToggle";
 import { seedBuiltInSizeCharts } from "./lib/sizeCharts";
 import { supabase } from "./supabase";
 import RequireAuth from "./components/admin/RequireAuth";
@@ -48,6 +50,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <DebugProvider>
       <CartProvider>
         <BrowserRouter>
           <CartDrawer />
@@ -107,6 +110,8 @@ function App() {
           </Routes>
         </BrowserRouter>
       </CartProvider>
+      <DebugToggle />
+      </DebugProvider>
     </AuthProvider>
   );
 }

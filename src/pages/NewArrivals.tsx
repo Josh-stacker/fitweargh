@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchProducts, hasCategory } from "../lib/products";
+import { useDebug } from "../context/DebugContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -76,6 +77,7 @@ const FALLBACK: Product[] = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function NewArrivals() {
+  const debug = useDebug();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
@@ -93,7 +95,7 @@ function NewArrivals() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        console.info("[NewArrivals] Loading products");
+        debug.log("[NewArrivals] Loading products");
         const docs = await fetchProducts();
         // Filter to only New Arrivals category products
         const newArrivals = docs.filter((p) => hasCategory(p, "New Arrivals"));
@@ -107,7 +109,7 @@ function NewArrivals() {
           500,
           ...resolvedProducts.map((p) => Number(p.price) || 0),
         );
-        console.info("[NewArrivals] Products loaded", {
+        debug.log("[NewArrivals] Products loaded", {
           total: docs.length,
           newArrivals: newArrivals.length,
           rendered: resolvedProducts.length,
@@ -117,7 +119,7 @@ function NewArrivals() {
         setPriceMax(highestPrice);
         setProducts(resolvedProducts);
       } catch (err) {
-        console.error("[NewArrivals] Product load error:", err);
+        debug.log("[NewArrivals] Product load error:", err);
         setProducts(FALLBACK);
       } finally {
         setLoading(false);
@@ -162,7 +164,7 @@ function NewArrivals() {
 
   useEffect(() => {
     if (loading) return;
-    console.info("[NewArrivals] Filtered products", {
+    debug.log("[NewArrivals] Filtered products", {
       loaded: products.length,
       activeFilter,
       priceMin,

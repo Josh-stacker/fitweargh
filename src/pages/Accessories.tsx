@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchProducts, hasCategory } from "../lib/products";
+import { useDebug } from "../context/DebugContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -34,6 +35,7 @@ const FALLBACK: Product[] = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function Accessories() {
+  const debug = useDebug();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSort, setActiveSort] = useState("Newest First");
@@ -50,6 +52,7 @@ function Accessories() {
     const fetch = async () => {
       try {
         const docs = (await fetchProducts()).filter((p) => hasCategory(p, "Accessories"));
+        debug.log("[Accessories] filtered:", docs.map(p => ({ id: p.id, name: p.name, price: p.price, categories: p.categories })));
         const highest = Math.max(500, ...docs.map((p) => Number(p.discountPrice ?? p.price) || 0));
         setMaxAvailablePrice(highest);
         setPriceMax(highest);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchProducts, isSaleProduct } from "../lib/products";
+import { useDebug } from "../context/DebugContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -68,6 +69,7 @@ const FALLBACK: Product[] = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function Sales() {
+  const debug = useDebug();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSort, setActiveSort] = useState("Newest First");
@@ -86,6 +88,7 @@ function Sales() {
       try {
         const all = await fetchProducts();
         const onSale = all.filter(isSaleProduct);
+        debug.log("[Sales] all fetched:", all.length, "on sale:", onSale.map(p => ({ id: p.id, name: p.name, price: p.price, discountPrice: p.discountPrice })));
         const highest = Math.max(500, ...onSale.map((p) => Number(p.discountPrice ?? p.price) || 0));
         setMaxAvailablePrice(highest);
         setPriceMax(highest);
