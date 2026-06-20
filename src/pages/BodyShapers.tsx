@@ -46,6 +46,7 @@ function BodyShapers() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(500);
+  const [maxAvailablePrice, setMaxAvailablePrice] = useState(500);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
@@ -54,6 +55,9 @@ function BodyShapers() {
     const fetch = async () => {
       try {
         const docs = (await fetchProducts()).filter((p) => hasCategory(p, "Body Shapers"));
+        const highest = Math.max(500, ...docs.map((p) => Number(p.discountPrice ?? p.price) || 0));
+        setMaxAvailablePrice(highest);
+        setPriceMax(highest);
         setProducts(docs.length > 0 ? docs : FALLBACK);
       } catch {
         setProducts(FALLBACK);
@@ -232,7 +236,7 @@ function BodyShapers() {
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMin}</span>
                 </div>
                 <input
-                  type="range" min={0} max={500} step={10} value={priceMin}
+                  type="range" min={0} max={maxAvailablePrice} step={10} value={priceMin}
                   onChange={(e) => setPriceMin(Math.min(Number(e.target.value), priceMax - 10))}
                   className="w-full accent-[#533113] cursor-pointer"
                 />
@@ -243,7 +247,7 @@ function BodyShapers() {
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMax}</span>
                 </div>
                 <input
-                  type="range" min={0} max={500} step={10} value={priceMax}
+                  type="range" min={0} max={maxAvailablePrice} step={10} value={priceMax}
                   onChange={(e) => setPriceMax(Math.max(Number(e.target.value), priceMin + 10))}
                   className="w-full accent-[#533113] cursor-pointer"
                 />

@@ -76,6 +76,7 @@ function Sales() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(500);
+  const [maxAvailablePrice, setMaxAvailablePrice] = useState(500);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
@@ -85,6 +86,9 @@ function Sales() {
       try {
         const all = await fetchProducts();
         const onSale = all.filter(isSaleProduct);
+        const highest = Math.max(500, ...onSale.map((p) => Number(p.discountPrice ?? p.price) || 0));
+        setMaxAvailablePrice(highest);
+        setPriceMax(highest);
         setProducts(onSale.length > 0 ? onSale : FALLBACK);
       } catch {
         setProducts(FALLBACK);
@@ -262,7 +266,7 @@ function Sales() {
                 <input
                   type="range"
                   min={0}
-                  max={500}
+                  max={maxAvailablePrice}
                   step={10}
                   value={priceMin}
                   onChange={(e) =>
@@ -283,7 +287,7 @@ function Sales() {
                 <input
                   type="range"
                   min={0}
-                  max={500}
+                  max={maxAvailablePrice}
                   step={10}
                   value={priceMax}
                   onChange={(e) =>

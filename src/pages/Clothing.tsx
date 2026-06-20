@@ -46,6 +46,7 @@ function Clothing() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(500);
+  const [maxAvailablePrice, setMaxAvailablePrice] = useState(500);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
@@ -55,8 +56,9 @@ function Clothing() {
       try {
         const all = await fetchProducts();
         const clothing = all.filter((p) => hasCategory(p, "Clothing"));
-        console.log("[Clothing] all products:", all.map(p => ({ id: p.id, name: p.name, category: p.category, categories: p.categories })));
-        console.log("[Clothing] filtered clothing:", clothing.map(p => ({ id: p.id, name: p.name })));
+        const highest = Math.max(500, ...clothing.map((p) => Number(p.discountPrice ?? p.price) || 0));
+        setMaxAvailablePrice(highest);
+        setPriceMax(highest);
         setProducts(clothing.length > 0 ? clothing : FALLBACK);
       } catch {
         setProducts(FALLBACK);
@@ -243,7 +245,7 @@ function Clothing() {
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMin}</span>
                 </div>
                 <input
-                  type="range" min={0} max={500} step={10} value={priceMin}
+                  type="range" min={0} max={maxAvailablePrice} step={10} value={priceMin}
                   onChange={(e) => setPriceMin(Math.min(Number(e.target.value), priceMax - 10))}
                   className="w-full accent-[#533113] cursor-pointer"
                 />
@@ -254,7 +256,7 @@ function Clothing() {
                   <span className="raleway-bold text-xs text-[#533113]">gh₵ {priceMax}</span>
                 </div>
                 <input
-                  type="range" min={0} max={500} step={10} value={priceMax}
+                  type="range" min={0} max={maxAvailablePrice} step={10} value={priceMax}
                   onChange={(e) => setPriceMax(Math.max(Number(e.target.value), priceMin + 10))}
                   className="w-full accent-[#533113] cursor-pointer"
                 />
