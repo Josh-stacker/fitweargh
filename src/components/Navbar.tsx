@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo-full.png";
 import CartButton from "./ui/CartButton";
-import { List, X, UserCircle, SignOut } from "@phosphor-icons/react";
+import { List, X, UserCircle, SignOut, MagnifyingGlass } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabase";
 
@@ -20,6 +20,9 @@ function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [fastSellingEnabled, setFastSellingEnabled] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -43,6 +46,20 @@ function Navbar() {
     await logout();
     setAccountMenuOpen(false);
     navigate("/");
+  };
+
+  const handleSearchOpen = () => {
+    setSearchOpen(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setSearchOpen(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -72,6 +89,14 @@ function Navbar() {
 
         {/* Desktop account + cart */}
         <div className="hidden lg:flex items-center gap-6">
+          {/* Search button */}
+          <button
+            onClick={handleSearchOpen}
+            className="flex items-center gap-1.5 raleway-regular text-lg text-[#533113] hover:underline underline-offset-8 decoration-2 transition-colors"
+            aria-label="Search"
+          >
+            <MagnifyingGlass size={22} />
+          </button>
           {/* Account dropdown */}
           <div className="relative">
             {user ? (
@@ -121,7 +146,7 @@ function Navbar() {
           <CartButton />
         </div>
 
-        {/* Mobile: hamburger + cart */}
+        {/* Mobile: hamburger + search + cart */}
         <div className="flex lg:hidden items-center gap-3 bg-[#E5D8C7] px-4 py-2 rounded-full">
           <button
             className="flex items-center gap-1"
@@ -130,9 +155,45 @@ function Navbar() {
             <List size={26} color="#533113" />
             <span className="raleway-regular text-base text-[#533113]">Menu</span>
           </button>
+          <button onClick={handleSearchOpen} aria-label="Search">
+            <MagnifyingGlass size={22} color="#533113" />
+          </button>
           <CartButton />
         </div>
       </nav>
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setSearchOpen(false)} />
+          <div className="fixed top-0 left-0 right-0 z-50 bg-[#FDF1E1] px-4 md:px-10 py-5 shadow-md">
+            <form onSubmit={handleSearchSubmit} className="flex items-stretch gap-0 max-w-2xl mx-auto">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for products…"
+                className="input-base flex-1"
+              />
+              <button
+                type="submit"
+                className="bg-[#533113] text-white px-5 flex items-center justify-center hover:bg-[#3d2409] transition-colors shrink-0"
+                aria-label="Search"
+              >
+                <MagnifyingGlass size={20} weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="ml-3 flex items-center text-[#533113] hover:underline raleway-regular text-sm shrink-0"
+              >
+                <X size={20} />
+              </button>
+            </form>
+          </div>
+        </>
+      )}
 
       {/* Mobile fullscreen menu */}
       {isMenuOpen && (

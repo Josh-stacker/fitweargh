@@ -52,9 +52,26 @@ export const WAIST_TRAINER_SIZE_CHART: SizeChart = {
   ],
 };
 
+export const KNEE_SLEEVE_SIZE_CHART: SizeChart = {
+  id: "knee-sleeve-brace",
+  name: "Knee Sleeve / Brace",
+  labelHeading: "Circumference (in)",
+  valueHeading: "Circumference (cm)",
+  categories: ["Accessories"],
+  subcategories: ["Knee Sleeves", "Knee Braces"],
+  rows: [
+    { size: "S",   label: "11.8 – 13.0 in", value: "30 – 33 cm" },
+    { size: "M",   label: "13.0 – 14.2 in", value: "33 – 36 cm" },
+    { size: "L",   label: "14.2 – 15.7 in", value: "36 – 40 cm" },
+    { size: "XL",  label: "15.7 – 17.0 in", value: "40 – 44 cm" },
+    { size: "XXL", label: "17.0 – 18.3 in", value: "44 – 47 cm" },
+  ],
+};
+
 export const BUILT_IN_SIZE_CHARTS = [
   DEFAULT_SIZE_CHART,
   WAIST_TRAINER_SIZE_CHART,
+  KNEE_SLEEVE_SIZE_CHART,
 ];
 
 export function mergeBuiltInSizeCharts(charts?: SizeChart[]) {
@@ -92,4 +109,30 @@ export function resolveSizeChart({
   if (categoryMatch) return categoryMatch;
 
   return activeCharts[0] ?? DEFAULT_SIZE_CHART;
+}
+
+/**
+ * Ensures all BUILT_IN_SIZE_CHARTS are present in the Supabase site_settings
+ * size_charts record. Safe to call on every app load — only writes if a chart
+ * is missing (identified by id).
+ */
+export async function seedBuiltInSizeCharts(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+) {
+  const { data } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", "size_charts")
+    .maybeSingle();
+
+  const existing: SizeChart[] = (data?.value as { charts?: SizeChart[] } | null)?.charts ?? [];
+  const existingIds = new Set(existing.map((c) => c.id));
+  const missing = BUILT_IN_SIZE_CHARTS.filter((c) => !existingIds.has(c.id));
+  if (missing.length === 0) return;
+
+  const merged = [...existing, ...missing];
+  await supabase
+    .from("site_settings")
+    .upsert({ key: "size_charts", value: { charts: merged } }, { onConflict: "key" });
 }

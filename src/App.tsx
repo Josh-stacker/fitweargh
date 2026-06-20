@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { seedBuiltInSizeCharts } from "./lib/sizeCharts";
+import { supabase } from "./supabase";
 import RequireAuth from "./components/admin/RequireAuth";
 import RequireCustomerAuth from "./components/account/RequireCustomerAuth";
 
@@ -16,6 +19,7 @@ import CartPage from "./pages/CartPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import ContactUs from "./pages/ContactUs";
+import SearchResults from "./pages/SearchResults";
 
 import Login from "./pages/account/Login";
 import Register from "./pages/account/Register";
@@ -38,6 +42,10 @@ import CartDrawer from "./components/CartDrawer";
 import "./index.css";
 
 function App() {
+  useEffect(() => {
+    seedBuiltInSizeCharts(supabase);
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>
@@ -57,6 +65,7 @@ function App() {
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/contact-us" element={<ContactUs />} />
+            <Route path="/search" element={<SearchResults />} />
 
             {/* ── Customer auth ── */}
             <Route path="/account/login" element={<Login />} />
