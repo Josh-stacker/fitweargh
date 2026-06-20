@@ -55,6 +55,8 @@ function Clothing() {
       try {
         const all = await fetchProducts();
         const clothing = all.filter((p) => hasCategory(p, "Clothing"));
+        console.log("[Clothing] all products:", all.map(p => ({ id: p.id, name: p.name, category: p.category, categories: p.categories })));
+        console.log("[Clothing] filtered clothing:", clothing.map(p => ({ id: p.id, name: p.name })));
         setProducts(clothing.length > 0 ? clothing : FALLBACK);
       } catch {
         setProducts(FALLBACK);

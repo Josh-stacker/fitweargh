@@ -92,7 +92,7 @@ function Navbar() {
           {/* Search button */}
           <button
             onClick={handleSearchOpen}
-            className="flex items-center gap-1.5 raleway-regular text-lg text-[#533113] hover:underline underline-offset-8 decoration-2 transition-colors"
+            className="flex items-center gap-1.5 raleway-regular text-lg text-[#533113] hover:underline underline-offset-8 decoration-2 transition-colors cursor-pointer"
             aria-label="Search"
           >
             <MagnifyingGlass size={22} />
