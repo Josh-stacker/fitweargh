@@ -93,7 +93,8 @@ interface CategoryCardSettings {
   };
 }
 
-const MAX_PER_SECTION = 8;
+const MAX_PER_SECTION = 10;
+const MAX_PER_SECTION_MOBILE = 8;
 
 const STATIC_PRODUCTS: Product[] = [1, 2, 3, 4, 5, 6].map((i) => ({
   id: `static-${i}`,
@@ -129,6 +130,7 @@ function Homepage() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [categoryCardSettings, setCategoryCardSettings] = useState<CategoryCardSettings>({});
   const [fastSellingEnabled, setFastSellingEnabled] = useState(true);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -298,7 +300,7 @@ function Homepage() {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+                onClick={() => { setActiveTab(activeTab === tab ? null : tab); setMobileExpanded(false); }}
                 className={`flex-1 flex items-center justify-center gap-2 px-5 py-3 border border-[#533113] raleway-bold text-sm uppercase transition-colors ${
                   activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
                 }`}
@@ -318,7 +320,7 @@ function Homepage() {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(activeTab === tab ? null : tab)}
+                onClick={() => { setActiveTab(activeTab === tab ? null : tab); setMobileExpanded(false); }}
                 className={`w-[85px] h-[85px] flex-shrink-0 flex flex-col items-center justify-center gap-1.5 p-1 border border-[#533113] uppercase transition-colors snap-center ${
                   activeTab === tab ? "bg-[#533113] text-white" : "bg-transparent text-[#533113]"
                 }`}
@@ -347,7 +349,7 @@ function Homepage() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {filtered.slice(0, MAX_PER_SECTION).map((p) => (
+              {filtered.slice(0, mobileExpanded ? MAX_PER_SECTION_MOBILE : 4).map((p) => (
                 <ProductCard
                   key={p.id}
                   id={p.id}
@@ -362,6 +364,14 @@ function Homepage() {
               ))}
             </div>
             <div className="mt-6 grid grid-cols-2 gap-4">
+              {!mobileExpanded && filtered.length > 4 && (
+                <button
+                  onClick={() => setMobileExpanded(true)}
+                  className="w-full flex justify-center py-3 px-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest text-center hover:bg-[#533113] hover:text-white transition-colors"
+                >
+                  Load More
+                </button>
+              )}
               <Link
                 to={SECTION_LINKS[activeTab!] ?? `/${activeTab!.toLowerCase().replace(/\s+/g, '-')}`}
                 className="w-full flex justify-center py-3 px-3 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest text-center hover:bg-[#533113] hover:text-white transition-colors"
