@@ -1,6 +1,6 @@
 import { supabase } from "../supabase";
 
-const FALLBACK_ADMIN_EMAILS = ["nerdosey@gmail.com"];
+const PRIMARY_ADMIN_EMAIL = "fitweargh1@gmail.com";
 
 export async function getOrderAdminEmails() {
   const { data, error } = await supabase
@@ -9,17 +9,15 @@ export async function getOrderAdminEmails() {
     .eq("key", "order_notifications")
     .maybeSingle();
 
-  if (error) {
-    console.error("Could not load order notification emails:", error);
-    return FALLBACK_ADMIN_EMAILS;
+  const extra: string[] = [];
+  if (!error) {
+    const value = data?.value as { emails?: string[] } | null;
+    extra.push(
+      ...(value?.emails ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean)
+    );
   }
 
-  const value = data?.value as { emails?: string[] } | null;
-  const emails = (value?.emails ?? [])
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-
-  return emails.length > 0 ? Array.from(new Set(emails)) : FALLBACK_ADMIN_EMAILS;
+  return Array.from(new Set([PRIMARY_ADMIN_EMAIL, ...extra]));
 }
 
 export async function syncOrderAdminEmails(emails: string[]) {

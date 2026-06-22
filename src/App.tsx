@@ -21,6 +21,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import ContactUs from "./pages/ContactUs";
 import SearchResults from "./pages/SearchResults";
+import About from "./pages/About";
 
 import Login from "./pages/account/Login";
 import Register from "./pages/account/Register";
@@ -68,6 +69,7 @@ function App() {
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/contact-us" element={<ContactUs />} />
             <Route path="/search" element={<SearchResults />} />
+            <Route path="/about" element={<About />} />
 
             {/* ── Customer auth ── */}
             <Route path="/account/login" element={<Login />} />

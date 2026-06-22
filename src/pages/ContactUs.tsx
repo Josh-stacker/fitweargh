@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { ArrowLeftIcon, PaperPlaneRightIcon, CheckCircleIcon } from "@phosphor-icons/react";
-import { queueMail } from "../lib/mail";
+import { queueAndSendMail } from "../lib/mail";
 import { getOrderAdminEmails } from "../lib/adminEmails";
 
 function ContactUs() {
@@ -23,6 +23,31 @@ function ContactUs() {
 
     try {
       const adminEmails = await getOrderAdminEmails();
+      const userConfirmHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="margin:0;padding:0;background:#FFFBF6;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBF6;padding:40px 16px;">
+            <tr><td align="center">
+              <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #DEDEDE;">
+                <tr><td style="background:#533113;padding:28px 40px;text-align:center;">
+                  <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:6px;font-weight:normal;">FITWEARGH</h1>
+                </td></tr>
+                <tr><td style="padding:36px 40px 24px;">
+                  <p style="margin:0 0 12px;color:#533113;font-size:18px;">We received your message!</p>
+                  <p style="margin:0 0 20px;color:#533113;font-size:14px;line-height:1.7;">Hi ${form.name}, thank you for reaching out. We'll get back to you as soon as possible.</p>
+                  <p style="margin:0;color:#533113;font-size:14px;opacity:0.6;">Your message subject: <strong>${form.subject}</strong></p>
+                </td></tr>
+                <tr><td style="padding:20px 40px;border-top:1px solid #DEDEDE;text-align:center;">
+                  <p style="margin:0;color:#533113;font-size:12px;opacity:0.5;">FitwearGH &bull; fitweargh1@gmail.com</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+      `;
       const html = `
         <!DOCTYPE html>
         <html>
@@ -60,15 +85,18 @@ function ContactUs() {
         </html>
       `;
 
-      await Promise.all(
-        adminEmails.map((email) =>
-          queueMail({
-            to: email,
-            subject: `Contact Form: ${form.subject || "New Message"} from ${form.name}`,
-            html,
-          })
-        )
-      );
+      await queueAndSendMail([
+        ...adminEmails.map((email) => ({
+          to: email,
+          subject: `Contact Form: ${form.subject || "New Message"} from ${form.name}`,
+          html,
+        })),
+        {
+          to: form.email,
+          subject: "We received your message – FitwearGH",
+          html: userConfirmHtml,
+        },
+      ]);
 
       setSent(true);
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
@@ -113,6 +141,40 @@ function ContactUs() {
                 >
                   fitweargh1@gmail.com
                 </a>
+              </div>
+              <div>
+                <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest mb-2">
+                  Phone
+                </p>
+                <a
+                  href="tel:0559506998"
+                  className="text-sm raleway-regular text-[#533113] hover:underline"
+                >
+                  0559506998
+                </a>
+              </div>
+              <div>
+                <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest mb-2">
+                  Social
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <a
+                    href="https://www.instagram.com/fitwearghana"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm raleway-regular text-[#533113] hover:underline"
+                  >
+                    Instagram
+                  </a>
+                  <a
+                    href="https://www.facebook.com/share/1Dj77MGvkx/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm raleway-regular text-[#533113] hover:underline"
+                  >
+                    Facebook
+                  </a>
+                </div>
               </div>
               <div>
                 <p className="raleway-bold text-xs text-[#533113] uppercase tracking-widest mb-2">
