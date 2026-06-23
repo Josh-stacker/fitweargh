@@ -19,6 +19,7 @@ import FastSelling from "../components/FastSelling";
 import ShopByCategory from "../components/ShopByCategory";
 import Accesories from "../components/Accesories";
 import Footer from "../components/Footer";
+import FAQ from "../components/FAQ";
 import SalePopup from "../components/SalePopup";
 import product1 from "../assets/prod-1.webp";
 
@@ -477,6 +478,7 @@ function Homepage() {
         </>
       )}
 
+      <FAQ />
       <Footer />
     </div>
   );
