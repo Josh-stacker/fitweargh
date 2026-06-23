@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 const FAQS = [
   {
@@ -90,21 +92,22 @@ function FAQItem({
   );
 }
 
-function FAQ() {
+function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-[#FDF1E1] py-16 md:py-20">
-      <div className="max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10">
+    <div className="min-h-screen flex flex-col bg-white">
+      <Navbar />
+
+      <section className="flex-1 max-w-[1440px] 2xl:max-w-[1620px] mx-auto px-4 md:px-10 py-12 md:py-16 w-full">
         <div className="flex flex-col gap-2 mb-10">
-          <h2 className="text-2xl md:text-3xl raleway-bold uppercase">
+          <h1 className="text-3xl md:text-4xl raleway-bold uppercase text-[#533113]">
             Frequently Asked Questions
-          </h2>
+          </h1>
           <p className="raleway-regular text-base text-[#533113]/70">
             Everything you need to know about shopping with Fitweargh.
           </p>
         </div>
-
         <div className="max-w-3xl">
           {FAQS.map((faq, i) => (
             <FAQItem
@@ -116,9 +119,11 @@ function FAQ() {
             />
           ))}
         </div>
-      </div>
-    </section>
+      </section>
+
+      <Footer />
+    </div>
   );
 }
 
-export default FAQ;
+export default FAQPage;

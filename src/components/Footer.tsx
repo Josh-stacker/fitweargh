@@ -17,6 +17,9 @@ function Footer() {
         <Link to="/terms-and-conditions" className="text-base raleway-regular underline">
           Terms of Service
         </Link>
+        <Link to="/faq" className="text-base raleway-regular underline">
+          FAQ
+        </Link>
       </div>
     </section>
   );
