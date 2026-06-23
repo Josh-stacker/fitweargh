@@ -12,7 +12,7 @@ const FAQS = [
   {
     question: "What payment methods do you accept?",
     answer:
-      "We accept mobile money (MTN, Vodafone, AirtelTigo), bank transfers, and card payments through our secure payment gateway.",
+      "We accept mobile money (MTN, Vodafone, AirtelTigo) and card payments through our secure payment gateway.",
   },
   {
     question: "How long does delivery take?",
@@ -28,11 +28,6 @@ const FAQS = [
     question: "What sizes do you carry?",
     answer:
       "We carry sizes XS through 3XL across most of our collections. Size guides are available on each product page to help you find the perfect fit.",
-  },
-  {
-    question: "Can I exchange an item?",
-    answer:
-      "Yes, exchanges are accepted within 7 days of delivery provided the item is unworn, unwashed, and in original packaging with tags intact. Contact us to initiate an exchange.",
   },
   {
     question: "What is your refund policy?",
