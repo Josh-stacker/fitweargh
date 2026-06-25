@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabase";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   PlusIcon,
   PencilSimpleIcon,
@@ -137,16 +138,11 @@ export default function HeroSlides() {
     file: File | null,
     existing: string,
     existingPath: string,
-    folder: string
+    _folder: string
   ): Promise<{ url: string; path: string }> => {
     if (!file) return { url: existing, path: existingPath };
-    const path = `heroSlides/${folder}/${Date.now()}_${file.name}`;
-    await supabase.storage.from("public-assets").upload(path, file);
-    const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
-    if (existingPath) {
-      try { await supabase.storage.from("public-assets").remove([existingPath]); } catch {}
-    }
-    return { url: data.publicUrl, path };
+    const url = await uploadToCloudinary(file, "fitweargh/hero");
+    return { url, path: url };
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -197,9 +193,6 @@ export default function HeroSlides() {
     setDeleteId(s.id);
     try {
       await supabase.from("hero_slides").delete().eq("id", s.id);
-      for (const path of [s.bg_image_path, s.image1_path, s.image2_path]) {
-        if (path) { try { await supabase.storage.from("public-assets").remove([path]); } catch {} }
-      }
       setSlides((prev) => prev.filter((x) => x.id !== s.id));
     } finally {
       setDeleteId(null);
