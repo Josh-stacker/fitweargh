@@ -1,70 +1,62 @@
-import { StandardWebhooks } from "https://esm.sh/standardwebhooks@1.0.0";
-
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const MAIL_FROM = Deno.env.get("MAIL_FROM")!;
-const HOOK_SECRET = Deno.env.get("SEND_AUTH_EMAIL_HOOK_SECRET")!;
+const MAIL_FROM = Deno.env.get("MAIL_AUTH_FROM") ?? Deno.env.get("MAIL_FROM")!;
 
 Deno.serve(async (req) => {
-  const body = await req.text();
-
-  // Verify Standard Webhooks signature
-  const wh = new StandardWebhooks(HOOK_SECRET);
   try {
-    wh.verify(body, {
-      "webhook-id": req.headers.get("webhook-id") ?? "",
-      "webhook-timestamp": req.headers.get("webhook-timestamp") ?? "",
-      "webhook-signature": req.headers.get("webhook-signature") ?? "",
+    const payload = await req.json();
+    const { user, email_data } = payload;
+
+    const email = user?.email;
+    const name = user?.user_metadata?.full_name ?? "there";
+    const token = email_data?.token;
+    const actionType: string = email_data?.email_action_type ?? "signup";
+
+    if (!email || !token) {
+      return json({ error: "Missing email or token" }, 400);
+    }
+
+    let subject = "";
+    let html = "";
+
+    if (actionType === "signup" || actionType === "email_change_new") {
+      subject = "Your FitwearGH verification code";
+      html = otpEmailHtml(name, token, "Verify your email", "Enter this code to confirm your FitwearGH account:");
+    } else if (actionType === "recovery") {
+      subject = "Reset your FitwearGH password";
+      html = otpEmailHtml(name, token, "Reset your password", "Enter this code to reset your FitwearGH password:");
+    } else {
+      subject = "Your FitwearGH code";
+      html = otpEmailHtml(name, token, "FitwearGH", "Your code:");
+    }
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: MAIL_FROM, to: email, subject, html }),
     });
-  } catch {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Resend error:", text);
+      return json({ error: text }, 500);
+    }
+
+    return json({ ok: true });
+  } catch (err) {
+    console.error("Hook error:", err);
+    return json({ error: String(err) }, 500);
   }
-
-  const payload = JSON.parse(body);
-  const { user, email_data } = payload;
-
-  const email = user?.email;
-  const name = user?.user_metadata?.full_name ?? "there";
-  const token = email_data?.token;
-  const actionType: string = email_data?.email_action_type ?? "signup";
-
-  if (!email || !token) {
-    return new Response(JSON.stringify({ error: "Missing email or token" }), { status: 400 });
-  }
-
-  let subject = "";
-  let html = "";
-
-  if (actionType === "signup" || actionType === "email_change_new") {
-    subject = "Your FitwearGH verification code";
-    html = otpEmailHtml(name, token, "Verify your email", "Enter this code to confirm your FitwearGH account:");
-  } else if (actionType === "recovery") {
-    subject = "Reset your FitwearGH password";
-    html = otpEmailHtml(name, token, "Reset your password", "Enter this code to reset your FitwearGH password:");
-  } else if (actionType === "magiclink") {
-    subject = "Your FitwearGH sign-in code";
-    html = otpEmailHtml(name, token, "Sign in to FitwearGH", "Enter this code to sign in:");
-  } else {
-    subject = "Your FitwearGH code";
-    html = otpEmailHtml(name, token, "FitwearGH", "Your code:");
-  }
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: MAIL_FROM, to: email, subject, html }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Resend error:", text);
-    return new Response(JSON.stringify({ error: text }), { status: 500 });
-  }
-
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 function otpEmailHtml(name: string, token: string, heading: string, body: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
