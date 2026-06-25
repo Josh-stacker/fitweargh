@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const syncSession = async (sessionUser: User | null) => {
+    const syncSession = async (sessionUser: User | null, event?: AuthChangeEvent) => {
       try {
         if (!sessionUser) {
           if (!mounted) return;
@@ -57,6 +57,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAdmin(false);
           setLoading(false);
           return;
+        }
+
+        // On first confirmed signup, create profile and send welcome email
+        if (event === "SIGNED_IN" && sessionUser.email_confirmed_at) {
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", sessionUser.id)
+            .maybeSingle();
+
+          if (!existing) {
+            const meta = sessionUser.user_metadata ?? {};
+            const name = typeof meta.full_name === "string" ? meta.full_name : "";
+            await supabase.from("profiles").insert({
+              id: sessionUser.id,
+              name,
+              email: sessionUser.email ?? "",
+              phone: "",
+              order_count: 0,
+              total_spent: 0,
+            });
+            await queueAndSendMail([{
+              to: sessionUser.email ?? "",
+              subject: "Welcome to FitwearGH!",
+              html: welcomeEmailHtml(name),
+            }]);
+          }
         }
 
         const admin = await checkAdmin(sessionUser.id);
@@ -77,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void syncSession(sessionData.session?.user ?? null);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-      void syncSession(session?.user ?? null);
+    const { data } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      void syncSession(session?.user ?? null, event);
     });
 
     return () => {
@@ -125,26 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     if (!data.user) throw new Error("No user returned from Supabase.");
-
-    await supabase.from("profiles").upsert({
-      id: data.user.id,
-      name,
-      email,
-      phone: "",
-      order_count: 0,
-      total_spent: 0,
-    });
-
-    await queueAndSendMail([
-      {
-        to: email,
-        subject: "Welcome to FitwearGH!",
-        html: welcomeEmailHtml(name),
-      },
-    ]);
-
-    setUser(toAppUser(data.user));
-    setIsAdmin(false);
+    // Profile creation and welcome email happen after OTP verification via onAuthStateChange
   };
 
   const logout = async () => {

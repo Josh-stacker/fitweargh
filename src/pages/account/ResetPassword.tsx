@@ -1,21 +1,20 @@
 import { useState, useRef, type FormEvent, type KeyboardEvent, type ClipboardEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import PasswordInput from "../../components/ui/PasswordInput";
 
-export default function Register() {
-  const { register } = useAuth();
+export default function ResetPassword() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const emailFromState = (location.state as { email?: string })?.email ?? "";
 
-  const [step, setStep] = useState<"form" | "otp">("form");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"otp" | "password">("otp");
+  const [email, setEmail] = useState(emailFromState);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -28,27 +27,6 @@ export default function Register() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
   ];
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
-    if (password !== confirm) { setError("Passwords do not match."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-    setLoading(true);
-    try {
-      await register(name, email, password);
-      setStep("otp");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("already registered") || msg.includes("already-in-use")) {
-        setError("An account with this email already exists.");
-      } else {
-        setError(msg || "Something went wrong. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOtpChange = (index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -73,33 +51,50 @@ export default function Register() {
     otpRefs[Math.min(digits.length, 5)].current?.focus();
   };
 
-  const handleVerify = async (e: FormEvent) => {
+  const handleVerifyOtp = async (e: FormEvent) => {
     e.preventDefault();
     const token = otp.join("");
     if (token.length < 6) { setError("Enter the 6-digit code."); return; }
+    if (!email) { setError("Email is required."); return; }
     setError("");
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "recovery" });
       if (error) throw error;
-      navigate("/account", { replace: true });
+      setStep("password");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("expired") || msg.includes("invalid")) {
-        setError("Invalid or expired code. Request a new one.");
-      } else {
-        setError(msg || "Verification failed. Please try again.");
-      }
+      setError(msg.includes("expired") || msg.includes("invalid")
+        ? "Invalid or expired code. Request a new one."
+        : msg || "Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setError("");
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      navigate("/account/login", { replace: true, state: { message: "Password updated. Please sign in." } });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update password. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
+    if (!email) return;
     setResending(true);
     setError("");
     try {
-      const { error } = await supabase.auth.resend({ type: "signup", email });
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
       setOtp(["", "", "", "", "", ""]);
       otpRefs[0].current?.focus();
@@ -117,12 +112,15 @@ export default function Register() {
       <main className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md">
 
-          {step === "form" ? (
+          {step === "otp" ? (
             <>
               <div className="mb-8">
-                <h1 className="raleway-bold text-3xl text-[#533113]">Create account</h1>
+                <h1 className="raleway-bold text-3xl text-[#533113]">Enter reset code</h1>
                 <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
-                  Join FitwearGH for a better shopping experience
+                  We sent a 6-digit code to{" "}
+                  {email
+                    ? <span className="raleway-bold text-[#533113]">{email}</span>
+                    : "your email"}
                 </p>
               </div>
 
@@ -132,20 +130,8 @@ export default function Register() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Full name</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ama Mensah"
-                    className="input-base"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
+              {!emailFromState && (
+                <div className="flex flex-col gap-2 mb-5">
                   <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Email address</label>
                   <input
                     type="email"
@@ -156,58 +142,9 @@ export default function Register() {
                     className="input-base"
                   />
                 </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Password</label>
-                  <PasswordInput
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Confirm password</label>
-                  <PasswordInput
-                    required
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3.5 mt-1 hover:bg-[#3d2409] transition-colors disabled:opacity-60"
-                >
-                  {loading ? "Creating account…" : "Create account"}
-                </button>
-              </form>
-
-              <p className="raleway-regular text-base text-[#533113]/70 text-center mt-6">
-                Already have an account?{" "}
-                <Link to="/account/login" className="raleway-bold text-[#533113] underline underline-offset-2">
-                  Sign in
-                </Link>
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="mb-8">
-                <h1 className="raleway-bold text-3xl text-[#533113]">Verify your email</h1>
-                <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
-                  We sent a 6-digit code to <span className="raleway-bold text-[#533113]">{email}</span>
-                </p>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3 mb-6">
-                  {error}
-                </div>
               )}
 
-              <form onSubmit={handleVerify} className="flex flex-col gap-6">
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6">
                 <div className="flex gap-3 justify-between">
                   {otp.map((digit, i) => (
                     <input
@@ -230,7 +167,7 @@ export default function Register() {
                   disabled={loading}
                   className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3.5 hover:bg-[#3d2409] transition-colors disabled:opacity-60"
                 >
-                  {loading ? "Verifying…" : "Verify email"}
+                  {loading ? "Verifying…" : "Verify code"}
                 </button>
               </form>
 
@@ -245,8 +182,55 @@ export default function Register() {
                 </button>
               </p>
             </>
+          ) : (
+            <>
+              <div className="mb-8">
+                <h1 className="raleway-bold text-3xl text-[#533113]">New password</h1>
+                <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
+                  Choose a new password for your account
+                </p>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3 mb-6">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleResetPassword} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">New password</label>
+                  <PasswordInput
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Confirm password</label>
+                  <PasswordInput
+                    required
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3.5 mt-1 hover:bg-[#3d2409] transition-colors disabled:opacity-60"
+                >
+                  {loading ? "Updating…" : "Update password"}
+                </button>
+              </form>
+            </>
           )}
 
+          <p className="raleway-regular text-base text-[#533113]/70 text-center mt-6">
+            <Link to="/account/login" className="raleway-bold text-[#533113] underline underline-offset-2">
+              Back to sign in
+            </Link>
+          </p>
         </div>
       </main>
 

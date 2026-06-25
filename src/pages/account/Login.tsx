@@ -87,6 +87,12 @@ export default function Login() {
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
+
+            <p className="raleway-regular text-sm text-[#533113]/70 text-center">
+              <Link to="/account/forgot-password" className="raleway-bold text-[#533113] underline underline-offset-2">
+                Forgot password?
+              </Link>
+            </p>
           </form>
 
           <p className="raleway-regular text-base text-[#533113]/70 text-center mt-6">

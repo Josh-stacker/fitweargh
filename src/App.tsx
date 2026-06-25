@@ -26,6 +26,8 @@ import FAQPage from "./pages/FAQPage";
 
 import Login from "./pages/account/Login";
 import Register from "./pages/account/Register";
+import ForgotPassword from "./pages/account/ForgotPassword";
+import ResetPassword from "./pages/account/ResetPassword";
 import AccountDashboard from "./pages/account/AccountDashboard";
 
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -76,6 +78,8 @@ function App() {
             {/* ── Customer auth ── */}
             <Route path="/account/login" element={<Login />} />
             <Route path="/account/register" element={<Register />} />
+            <Route path="/account/forgot-password" element={<ForgotPassword />} />
+            <Route path="/account/reset-password" element={<ResetPassword />} />
 
             {/* ── Customer dashboard (protected) ── */}
             <Route
