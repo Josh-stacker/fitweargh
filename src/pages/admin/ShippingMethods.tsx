@@ -269,11 +269,11 @@ export default function ShippingMethods() {
                     <div className="flex items-center gap-3 min-w-0">
                       <button
                         onClick={() => toggleEnabled(m)}
-                        className={`w-10 h-5 rounded-full transition-colors shrink-0 relative ${m.enabled ? "bg-[#533113]" : "bg-[#DEDEDE]"}`}
+                        className={`w-10 h-5 rounded-full transition-colors shrink-0 relative flex items-center ${m.enabled ? "bg-[#533113]" : "bg-[#DEDEDE]"}`}
                         title={m.enabled ? "Disable" : "Enable"}
                       >
                         <span
-                          className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${m.enabled ? "translate-x-5" : "translate-x-0"}`}
+                          className={`absolute left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${m.enabled ? "translate-x-5" : "translate-x-0"}`}
                         />
                       </button>
                       <div className="min-w-0">

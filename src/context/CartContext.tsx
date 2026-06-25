@@ -55,7 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const merge = async () => {
       try {
-        const { data } = await supabase.from("carts").select("items").eq("id", user.uid).maybeSingle();
+        const { data } = await supabase.from("carts").select("items").eq("user_id", user.uid).maybeSingle();
         const remoteItems: CartItem[] = data ? (data.items ?? []) : [];
         const localItems = loadLocal();
 
@@ -94,10 +94,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user && loadedForUser.current === user.uid) {
       void supabase.from("carts").upsert({
-        id: user.uid,
+        user_id: user.uid,
         items,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: "user_id" });
     } else if (!user) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }
@@ -136,7 +136,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => {
     setItems([]);
     if (user) {
-      void supabase.from("carts").upsert({ id: user.uid, items: [], updated_at: new Date().toISOString() });
+      void supabase.from("carts").upsert({ user_id: user.uid, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }

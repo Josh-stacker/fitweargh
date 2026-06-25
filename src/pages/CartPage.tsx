@@ -84,6 +84,7 @@ export default function CartPage() {
     email: user?.email ?? "",
   });
   const [placing, setPlacing] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [orderId, setOrderId] = useState("");
 
@@ -170,6 +171,7 @@ export default function CartPage() {
     let active = true;
     const verifyPayment = async () => {
       setPlacing(true);
+      setVerifying(true);
       setPaymentError("");
       setStep("checkout");
       setSearchParams({}, { replace: true });
@@ -199,7 +201,7 @@ export default function CartPage() {
         setPaymentError(err instanceof Error ? err.message : "Payment could not be verified.");
         setStep("checkout");
       } finally {
-        if (active) setPlacing(false);
+        if (active) { setPlacing(false); setVerifying(false); }
       }
     };
 
@@ -426,13 +428,32 @@ export default function CartPage() {
                     <span>{fmt(grandTotal)}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setStep("checkout")}
-                  className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
-                >
-                  Proceed to Checkout
-                  <ArrowLineUpRightIcon size={16} />
-                </button>
+                {user ? (
+                  <button
+                    onClick={() => setStep("checkout")}
+                    className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                  >
+                    Proceed to Checkout
+                    <ArrowLineUpRightIcon size={16} />
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      to="/account/login?next=/cart"
+                      className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                    >
+                      Sign In to Checkout
+                      <ArrowLineUpRightIcon size={16} />
+                    </Link>
+                    <Link
+                      to="/account/register?next=/cart"
+                      className="w-full border border-[#533113] text-[#533113] raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#533113]/5 transition-colors flex items-center justify-between px-4"
+                    >
+                      Create Account
+                      <ArrowLineUpRightIcon size={16} />
+                    </Link>
+                  </div>
+                )}
                 <Link
                   to="/new-arrivals"
                   className="text-center raleway-regular text-base text-[#533113]/60 hover:text-[#533113] transition-colors"
@@ -546,7 +567,7 @@ export default function CartPage() {
                 </h2>
                 <div className="flex flex-col gap-2">
                   <p className="raleway-regular text-base text-[#533113]/70">
-                    Pay securely with Paystack. Test mode is enabled by the Paystack test secret key on the server.
+                    Pay securely with mobile money or Visa card via Paystack.
                   </p>
                   <p className="raleway-regular text-sm text-[#533113]/50">
                     You will be redirected to Paystack, then returned here once payment is complete.
@@ -575,10 +596,10 @@ export default function CartPage() {
                   {placing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      {searchParams.get("paystack") === "verify" ? "Verifying Payment…" : "Starting Payment…"}
+                      {verifying ? "Verifying Payment…" : "Starting Payment…"}
                     </span>
                   ) : (
-                    <>Pay with Paystack <ArrowLineUpRightIcon size={16} /></>
+                    <>Pay Securely <ArrowLineUpRightIcon size={16} /></>
                   )}
                 </button>
               </div>
