@@ -198,7 +198,12 @@ export default function CartPage() {
         console.error("Paystack verification error:", err);
         if (!active) return;
         verifyingPaymentRef.current = "";
-        setPaymentError(err instanceof Error ? err.message : "Payment could not be verified.");
+        const msg = err instanceof Error ? err.message : "";
+        setPaymentError(
+          msg && !msg.toLowerCase().includes("edge function") && !msg.toLowerCase().includes("non-2xx")
+            ? msg
+            : "We could not verify your payment. If you were charged, please contact us with your order reference and we'll sort it out."
+        );
         setStep("checkout");
       } finally {
         if (active) { setPlacing(false); setVerifying(false); }
@@ -267,7 +272,12 @@ export default function CartPage() {
       window.location.href = payment.authorization_url;
     } catch (err) {
       console.error("Order error:", err);
-      setPaymentError(err instanceof Error ? err.message : "Could not start Paystack payment.");
+      const msg = err instanceof Error ? err.message : "";
+      setPaymentError(
+        msg && !msg.toLowerCase().includes("edge function") && !msg.toLowerCase().includes("non-2xx")
+          ? msg
+          : "We could not start your payment. Please try again or contact us if the problem persists."
+      );
       initializingPaymentRef.current = false;
     } finally {
       setPlacing(false);

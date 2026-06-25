@@ -13,8 +13,18 @@ export async function uploadToCloudinary(file: File, folder = "fitweargh"): Prom
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Cloudinary upload failed: ${body}`);
+    let reason = "Upload failed.";
+    try {
+      const json = await res.json();
+      reason = json?.error?.message ?? reason;
+    } catch {}
+    if (reason.toLowerCase().includes("file size too large")) {
+      throw new Error("Image is too large. Please use an image under 10MB.");
+    }
+    if (reason.toLowerCase().includes("upload preset")) {
+      throw new Error("Image upload is misconfigured. Please contact support.");
+    }
+    throw new Error(`Image upload failed: ${reason}`);
   }
 
   const json = await res.json();
