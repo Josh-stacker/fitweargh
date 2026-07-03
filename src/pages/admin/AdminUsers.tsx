@@ -67,7 +67,7 @@ export default function AdminUsers() {
       const { error: insertError } = await supabase.from("admin_users").insert({
         user_id: profile.id,
         email: profile.email,
-        name: profile.name,
+        name: profile.full_name,
       });
 
       if (insertError) {
@@ -76,7 +76,7 @@ export default function AdminUsers() {
         return;
       }
 
-      const nextAdmins = [...admins, { uid: profile.id, email: profile.email, name: profile.name }];
+      const nextAdmins = [...admins, { uid: profile.id, email: profile.email, name: profile.full_name }];
       setAdmins(nextAdmins);
       await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setForm(EMPTY_FORM);

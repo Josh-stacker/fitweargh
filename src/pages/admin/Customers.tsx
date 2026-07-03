@@ -4,7 +4,7 @@ import { MagnifyingGlassIcon, UserIcon, EnvelopeIcon, PhoneIcon } from "@phospho
 
 interface Customer {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
   phone: string;
   order_count: number;
@@ -39,7 +39,7 @@ export default function Customers() {
 
   const filtered = customers.filter(
     (c) =>
-      c.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       c.email?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search)
   );
@@ -106,10 +106,10 @@ export default function Customers() {
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#533113]/10 flex items-center justify-center shrink-0">
                         <span className="raleway-bold text-xs text-[#533113]">
-                          {c.name?.charAt(0).toUpperCase() ?? "?"}
+                          {c.full_name?.charAt(0).toUpperCase() ?? "?"}
                         </span>
                       </div>
-                      <p className="raleway-bold text-[#533113] text-sm">{c.name ?? "—"}</p>
+                      <p className="raleway-bold text-[#533113] text-sm">{c.full_name ?? "—"}</p>
                     </div>
                   </td>
                   <td className="px-5 py-3">

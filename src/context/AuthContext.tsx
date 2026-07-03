@@ -60,30 +60,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // On first confirmed signup, create profile and send welcome email
+        // On first confirmed signup, create profile and send welcome email.
+        // Insert (not select-then-insert) so the profiles PK conflict is the
+        // single source of truth for "already handled" — avoids a race where
+        // two near-simultaneous SIGNED_IN events both pass a pre-check select
+        // and both send the welcome email.
         if (event === "SIGNED_IN" && sessionUser.email_confirmed_at) {
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", sessionUser.id)
-            .maybeSingle();
+          const meta = sessionUser.user_metadata ?? {};
+          const name = typeof meta.full_name === "string" ? meta.full_name : "";
+          const { error: insertError } = await supabase.from("profiles").insert({
+            id: sessionUser.id,
+            full_name: name,
+            email: sessionUser.email ?? "",
+            phone: "",
+          });
 
-          if (!existing) {
-            const meta = sessionUser.user_metadata ?? {};
-            const name = typeof meta.full_name === "string" ? meta.full_name : "";
-            await supabase.from("profiles").insert({
-              id: sessionUser.id,
-              name,
-              email: sessionUser.email ?? "",
-              phone: "",
-              order_count: 0,
-              total_spent: 0,
-            });
+          if (!insertError) {
             await queueAndSendMail([{
               to: sessionUser.email ?? "",
               subject: "Welcome to FitwearGH!",
               html: welcomeEmailHtml(name),
             }]);
+          } else if (insertError.code !== "23505") {
+            throw insertError;
           }
         }
 

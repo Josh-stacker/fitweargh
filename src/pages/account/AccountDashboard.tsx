@@ -73,7 +73,7 @@ export default function AccountDashboard() {
       if (data) {
         setPhone(data.phone ?? "");
         setAddress(data.address ?? "");
-        if (data.name) setName(data.name);
+        if (data.full_name) setName(data.full_name);
       }
     };
 
@@ -90,7 +90,7 @@ export default function AccountDashboard() {
     if (!user) return;
     setSavingProfile(true);
     try {
-      await supabase.from("profiles").update({ name, phone, address }).eq("id", user.uid);
+      await supabase.from("profiles").update({ full_name: name, phone, address }).eq("id", user.uid);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
     } finally {

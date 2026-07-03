@@ -42,6 +42,31 @@ const EMPTY_FORM = {
 
 type FormData = typeof EMPTY_FORM;
 
+const GUEST_BILLING_KEY = "fitweargh_guest_billing";
+
+function loadGuestBilling(): Partial<FormData> {
+  try {
+    const raw = localStorage.getItem(GUEST_BILLING_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGuestBilling(form: FormData) {
+  try {
+    localStorage.setItem(GUEST_BILLING_KEY, JSON.stringify({
+      name: form.name,
+      phone: form.phone,
+      email: form.email,
+      address: form.address,
+      city: form.city,
+    }));
+  } catch {
+    // ignore storage failures (private mode, quota, etc.)
+  }
+}
+
 interface VerifiedOrderItem {
   name: string;
   size: string;
@@ -97,6 +122,27 @@ export default function CartPage() {
   useEffect(() => {
     clearCartRef.current = clearCart;
   }, [clearCart]);
+
+  useEffect(() => {
+    if (!user) return;
+    const loadSavedBilling = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name,phone,address,city")
+        .eq("id", user.uid)
+        .single();
+      if (data) {
+        setForm((f) => ({
+          ...f,
+          name: f.name || data.full_name || "",
+          phone: f.phone || data.phone || "",
+          address: f.address || data.address || "",
+          city: f.city || data.city || "",
+        }));
+      }
+    };
+    loadSavedBilling();
+  }, [user]);
 
   useEffect(() => {
     supabase.from("shipping_methods").select("*").eq("enabled", true).then(({ data }) => {
@@ -258,9 +304,18 @@ export default function CartPage() {
       }).select("id").single();
       
       if (error) throw error;
-      
+
       const orderId = ref.id;
       setOrderId(orderId);
+
+      if (user) {
+        await supabase.from("profiles").update({
+          full_name: form.name,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+        }).eq("id", user.uid);
+      }
 
       const callbackUrl = `${window.location.origin}/cart?paystack=verify&order_id=${orderId}`;
       const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-paystack", {
