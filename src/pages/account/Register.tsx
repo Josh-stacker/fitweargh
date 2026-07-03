@@ -7,7 +7,7 @@ import Footer from "../../components/Footer";
 import PasswordInput from "../../components/ui/PasswordInput";
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, confirmSignup } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<"form" | "otp">("form");
@@ -82,8 +82,7 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
-      if (error) throw error;
+      await confirmSignup(email, token);
       navigate("/account", { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";

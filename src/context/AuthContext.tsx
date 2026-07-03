@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  confirmSignup: (email: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -155,6 +156,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Profile creation and welcome email happen after OTP verification via onAuthStateChange
   };
 
+  const confirmSignup = async (email: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (error) throw error;
+    if (!data.user) throw new Error("No user returned from Supabase.");
+    setUser(toAppUser(data.user));
+    setIsAdmin(false);
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -162,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Expose loginAdmin so AdminLogin can call it directly
-  const ctx = { user, isAdmin, loading, login, register, logout, loginAdmin } as AuthContextType & { loginAdmin: typeof loginAdmin };
+  const ctx = { user, isAdmin, loading, login, register, confirmSignup, logout, loginAdmin } as AuthContextType & { loginAdmin: typeof loginAdmin };
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
 }
