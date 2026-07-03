@@ -12,7 +12,7 @@ export default function ResetPassword() {
 
   const [step, setStep] = useState<"otp" | "password">("otp");
   const [email, setEmail] = useState(emailFromState);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", "", "", ""]);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -26,6 +26,8 @@ export default function ResetPassword() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
   ];
 
   const handleOtpChange = (index: number, value: string) => {
@@ -33,7 +35,7 @@ export default function ResetPassword() {
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
-    if (digit && index < 5) otpRefs[index + 1].current?.focus();
+    if (digit && index < 7) otpRefs[index + 1].current?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -44,17 +46,17 @@ export default function ResetPassword() {
 
   const handleOtpPaste = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split("");
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8).split("");
     const next = [...otp];
     digits.forEach((d, i) => { next[i] = d; });
     setOtp(next);
-    otpRefs[Math.min(digits.length, 5)].current?.focus();
+    otpRefs[Math.min(digits.length, 7)].current?.focus();
   };
 
   const handleVerifyOtp = async (e: FormEvent) => {
     e.preventDefault();
     const token = otp.join("");
-    if (token.length < 6) { setError("Enter the 6-digit code."); return; }
+    if (token.length < 8) { setError("Enter the 8-digit code."); return; }
     if (!email) { setError("Email is required."); return; }
     setError("");
     setLoading(true);
@@ -96,7 +98,7 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(["", "", "", "", "", "", "", ""]);
       otpRefs[0].current?.focus();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to resend code.");
@@ -117,7 +119,7 @@ export default function ResetPassword() {
               <div className="mb-8">
                 <h1 className="raleway-bold text-3xl text-[#533113]">Enter reset code</h1>
                 <p className="raleway-regular text-lg text-[#533113]/70 mt-2">
-                  We sent a 6-digit code to{" "}
+                  We sent an 8-digit code to{" "}
                   {email
                     ? <span className="raleway-bold text-[#533113]">{email}</span>
                     : "your email"}
