@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   ImageIcon,
@@ -129,8 +129,8 @@ export default function HomepageSettings() {
         settingsResult,
         productsResult
       ] = await Promise.all([
-        supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
-        supabase.from("products").select("*").order("created_at", { ascending: false })
+        adminSupabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
+        adminSupabase.from("products").select("*").order("created_at", { ascending: false })
       ]);
 
       if (settingsResult.error) console.error("Settings error:", settingsResult.error);
@@ -280,7 +280,7 @@ export default function HomepageSettings() {
         ) as Record<string, CategoryCardForm>,
       );
 
-      await supabase.from("site_settings").upsert({
+      await adminSupabase.from("site_settings").upsert({
         key: "homepage",
         value: {
           heroMode,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -58,7 +58,7 @@ export default function Orders() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const { data } = await adminSupabase.from("orders").select("*").order("created_at", { ascending: false });
     if (data) setOrders(data as Order[]);
     setLoading(false);
   };
@@ -68,7 +68,7 @@ export default function Orders() {
   const updateStatus = async (orderId: string, status: string) => {
     setUpdatingId(orderId);
     try {
-      await supabase.from("orders").update({ status }).eq("id", orderId);
+      await adminSupabase.from("orders").update({ status }).eq("id", orderId);
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       );

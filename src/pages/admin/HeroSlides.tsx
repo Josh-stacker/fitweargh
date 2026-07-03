@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   PlusIcon,
@@ -87,7 +87,7 @@ export default function HeroSlides() {
 
   const fetchSlides = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await adminSupabase
       .from("hero_slides")
       .select("*")
       .order("page", { ascending: true })
@@ -175,9 +175,9 @@ export default function HeroSlides() {
       };
 
       if (editing) {
-        await supabase.from("hero_slides").update(data).eq("id", editing.id);
+        await adminSupabase.from("hero_slides").update(data).eq("id", editing.id);
       } else {
-        await supabase.from("hero_slides").insert(data);
+        await adminSupabase.from("hero_slides").insert(data);
       }
 
       setModalOpen(false);
@@ -192,7 +192,7 @@ export default function HeroSlides() {
   const handleDelete = async (s: HeroSlide) => {
     setDeleteId(s.id);
     try {
-      await supabase.from("hero_slides").delete().eq("id", s.id);
+      await adminSupabase.from("hero_slides").delete().eq("id", s.id);
       setSlides((prev) => prev.filter((x) => x.id !== s.id));
     } finally {
       setDeleteId(null);

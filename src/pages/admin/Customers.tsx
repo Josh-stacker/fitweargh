@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { MagnifyingGlassIcon, UserIcon, EnvelopeIcon, PhoneIcon } from "@phosphor-icons/react";
 
 interface Customer {
@@ -20,7 +20,7 @@ export default function Customers() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      const { data } = await adminSupabase.from("profiles").select("*").order("created_at", { ascending: false });
       if (data) setCustomers(data as Customer[]);
       setLoading(false);
     };

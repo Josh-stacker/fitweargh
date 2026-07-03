@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon } from "@phosphor-icons/react";
-import { useAuth } from "../../context/AuthContext";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 import { syncOrderAdminEmails } from "../../lib/adminEmails";
 
 interface AdminUser {
@@ -13,7 +13,7 @@ interface AdminUser {
 const EMPTY_FORM = { email: "" };
 
 export default function AdminUsers() {
-  const { user } = useAuth();
+  const { user } = useAdminAuth();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -24,7 +24,7 @@ export default function AdminUsers() {
 
   const fetchAdmins = async () => {
     setLoading(true);
-    const { data } = await supabase.from("admin_users").select("*");
+    const { data } = await adminSupabase.from("admin_users").select("*");
     if (data) {
       const nextAdmins = data.map((d: any) => ({
         uid: d.user_id,
@@ -53,7 +53,7 @@ export default function AdminUsers() {
 
     setAdding(true);
     try {
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await adminSupabase
         .from("profiles")
         .select("*")
         .eq("email", email)
@@ -64,7 +64,7 @@ export default function AdminUsers() {
         return;
       }
 
-      const { error: insertError } = await supabase.from("admin_users").insert({
+      const { error: insertError } = await adminSupabase.from("admin_users").insert({
         user_id: profile.id,
         email: profile.email,
         name: profile.full_name,
@@ -97,7 +97,7 @@ export default function AdminUsers() {
     setSuccess("");
     setRemovingUid(uid);
     try {
-      await supabase.from("admin_users").delete().eq("user_id", uid);
+      await adminSupabase.from("admin_users").delete().eq("user_id", uid);
       const nextAdmins = admins.filter((a) => a.uid !== uid);
       setAdmins(nextAdmins);
       await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));

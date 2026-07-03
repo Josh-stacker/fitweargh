@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, TagIcon } from "@phosphor-icons/react";
 
 interface Category {
@@ -24,7 +24,7 @@ export default function Categories() {
 
   const fetchCats = async () => {
     setLoading(true);
-    const { data } = await supabase.from("categories").select("*").order("name", { ascending: true });
+    const { data } = await adminSupabase.from("categories").select("*").order("name", { ascending: true });
     if (data) {
       setCats(data as Category[]);
     }
@@ -56,9 +56,9 @@ export default function Categories() {
         updated_at: new Date().toISOString(),
       };
       if (editing) {
-        await supabase.from("categories").update(data).eq("id", editing.id);
+        await adminSupabase.from("categories").update(data).eq("id", editing.id);
       } else {
-        await supabase.from("categories").insert({ ...data, product_count: 0 });
+        await adminSupabase.from("categories").insert({ ...data, product_count: 0 });
       }
       setModalOpen(false);
       fetchCats();
@@ -70,7 +70,7 @@ export default function Categories() {
   const handleDelete = async (id: string) => {
     setDeleteId(id);
     try {
-      await supabase.from("categories").delete().eq("id", id);
+      await adminSupabase.from("categories").delete().eq("id", id);
       setCats((prev) => prev.filter((c) => c.id !== id));
     } finally {
       setDeleteId(null);

@@ -6,7 +6,6 @@ import { queueAndSendMail } from "../lib/mail";
 
 interface AuthContextType {
   user: AppUser | null;
-  isAdmin: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -42,9 +41,12 @@ function toAppUser(user: User): AppUser {
   };
 }
 
+// This context is for the storefront/customer session only (uses the
+// "customer" Supabase client). Admin sign-in lives in AdminAuthContext with
+// its own client/storageKey, so a customer and an admin can be signed in at
+// the same time in the same browser without one login evicting the other.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,7 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!sessionUser) {
           if (!mounted) return;
           setUser(null);
-          setIsAdmin(false);
+          setLoading(false);
+          return;
+        }
+
+        // Customer accounts only — admin accounts sign in through the admin
+        // portal with its own session, so bail out here rather than showing
+        // an admin as "logged in" on the storefront.
+        const admin = await checkAdmin(sessionUser.id);
+        if (admin) {
+          if (!mounted) return;
+          setUser(null);
           setLoading(false);
           return;
         }
@@ -86,16 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        const admin = await checkAdmin(sessionUser.id);
         if (!mounted) return;
         setUser(toAppUser(sessionUser));
-        setIsAdmin(admin);
         setLoading(false);
       } catch (error) {
         console.error("Auth sync failed:", error);
         if (!mounted) return;
         setUser(null);
-        setIsAdmin(false);
         setLoading(false);
       }
     };
@@ -125,21 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Admin accounts must sign in via the admin portal.");
     }
     setUser(toAppUser(data.user));
-    setIsAdmin(false);
-  };
-
-  const loginAdmin = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    if (!data.user) throw new Error("No user returned from Supabase.");
-
-    const admin = await checkAdmin(data.user.id);
-    if (!admin) {
-      await supabase.auth.signOut();
-      throw new Error("Not an admin account.");
-    }
-    setUser(toAppUser(data.user));
-    setIsAdmin(true);
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -160,17 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     if (!data.user) throw new Error("No user returned from Supabase.");
     setUser(toAppUser(data.user));
-    setIsAdmin(false);
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setIsAdmin(false);
   };
 
-  // Expose loginAdmin so AdminLogin can call it directly
-  const ctx = { user, isAdmin, loading, login, register, confirmSignup, logout, loginAdmin } as AuthContextType & { loginAdmin: typeof loginAdmin };
+  const ctx: AuthContextType = { user, loading, login, register, confirmSignup, logout };
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
 }
@@ -178,5 +169,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx as AuthContextType & { loginAdmin: (email: string, password: string) => Promise<void> };
+  return ctx;
 }

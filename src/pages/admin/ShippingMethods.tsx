@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon } from "@phosphor-icons/react";
 
 interface ShippingMethod {
@@ -25,7 +25,7 @@ export default function ShippingMethods() {
 
   const fetchMethods = async () => {
     setLoading(true);
-    const { data } = await supabase.from("shipping_methods").select("*").order("created_at", { ascending: true });
+    const { data } = await adminSupabase.from("shipping_methods").select("*").order("created_at", { ascending: true });
     if (data) setMethods(data as ShippingMethod[]);
     setLoading(false);
   };
@@ -39,7 +39,7 @@ export default function ShippingMethods() {
     if (isNaN(price) || price < 0) { setError("Enter a valid price."); return; }
     setSaving(true);
     try {
-      const { data, error } = await supabase.from("shipping_methods").insert({
+      const { data, error } = await adminSupabase.from("shipping_methods").insert({
         name: form.name.trim(),
         description: form.description.trim(),
         price,
@@ -71,7 +71,7 @@ export default function ShippingMethods() {
     if (isNaN(price) || price < 0) return;
     setSaving(true);
     try {
-      await supabase.from("shipping_methods").update({
+      await adminSupabase.from("shipping_methods").update({
         name: editForm.name.trim(),
         description: editForm.description.trim(),
         price,
@@ -92,14 +92,14 @@ export default function ShippingMethods() {
   };
 
   const toggleEnabled = async (m: ShippingMethod) => {
-    await supabase.from("shipping_methods").update({ enabled: !m.enabled }).eq("id", m.id);
+    await adminSupabase.from("shipping_methods").update({ enabled: !m.enabled }).eq("id", m.id);
     setMethods((prev) => prev.map((x) => (x.id === m.id ? { ...x, enabled: !x.enabled } : x)));
   };
 
   const handleRemove = async (id: string) => {
     setRemovingId(id);
     try {
-      await supabase.from("shipping_methods").delete().eq("id", id);
+      await adminSupabase.from("shipping_methods").delete().eq("id", id);
       setMethods((prev) => prev.filter((m) => m.id !== id));
     } finally {
       setRemovingId(null);

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "./context/AuthContext";
+import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { CartProvider } from "./context/CartContext";
 import { DebugProvider } from "./context/DebugContext";
 import { seedBuiltInSizeCharts } from "./lib/sizeCharts";
@@ -53,6 +54,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <AdminAuthProvider>
       <DebugProvider>
       <CartProvider>
         <BrowserRouter>
@@ -118,6 +120,7 @@ function App() {
         </BrowserRouter>
       </CartProvider>
       </DebugProvider>
+      </AdminAuthProvider>
     </AuthProvider>
   );
 }

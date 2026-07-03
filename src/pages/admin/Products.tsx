@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   PlusIcon,
@@ -243,7 +243,7 @@ export default function Products() {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false });
@@ -258,7 +258,7 @@ export default function Products() {
   };
 
   const fetchSizeCharts = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from("site_settings")
       .select("value")
       .eq("key", "size_charts")
@@ -332,7 +332,7 @@ export default function Products() {
         ...chart,
         rows: chart.rows.filter((row) => row.size.trim() || row.label.trim() || row.value.trim()),
       }));
-      const { error } = await supabase.from("site_settings").upsert({
+      const { error } = await adminSupabase.from("site_settings").upsert({
         key: "size_charts",
         value: { charts: cleanCharts },
         updated_at: new Date().toISOString(),
@@ -642,13 +642,13 @@ export default function Products() {
       };
 
       if (editing) {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("products")
           .update(data)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("products")
           .insert({ ...data, created_at: new Date().toISOString() });
         if (error) throw error;
@@ -666,7 +666,7 @@ export default function Products() {
   const handleDelete = async (p: Product) => {
     setDeleteId(p.id);
     try {
-      const { error } = await supabase.from("products").delete().eq("id", p.id);
+      const { error } = await adminSupabase.from("products").delete().eq("id", p.id);
       if (error) throw error;
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
     } finally {

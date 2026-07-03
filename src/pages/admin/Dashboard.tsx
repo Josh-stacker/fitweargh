@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import {
   ShoppingCartIcon,
   UsersIcon,
@@ -76,11 +76,11 @@ export default function Dashboard() {
           { data: monthOrders },
           { data: recentData }
         ] = await Promise.all([
-          supabase.from("orders").select("total", { count: "exact" }),
-          supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("products").select("*", { count: "exact", head: true }),
-          supabase.from("orders").select("total").gte("created_at", startOfMonth.toISOString()),
-          supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
+          adminSupabase.from("orders").select("total", { count: "exact" }),
+          adminSupabase.from("profiles").select("*", { count: "exact", head: true }),
+          adminSupabase.from("products").select("*", { count: "exact", head: true }),
+          adminSupabase.from("orders").select("total").gte("created_at", startOfMonth.toISOString()),
+          adminSupabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
         ]);
 
         const totalRevenue = allOrders?.reduce((sum, d) => sum + (Number(d.total) || 0), 0) || 0;

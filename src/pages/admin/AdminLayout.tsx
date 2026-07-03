@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 import {
   ChartBarIcon,
   PackageIcon,
@@ -31,7 +31,7 @@ const NAV = [
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAdminAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
