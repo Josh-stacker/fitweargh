@@ -86,9 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // On first confirmed signup, create profile and send welcome email.
         // Insert (not select-then-insert) so the profiles PK conflict is the
-        // single source of truth for "already handled" — avoids a race where
-        // two near-simultaneous SIGNED_IN events both pass a pre-check select
-        // and both send the welcome email.
+        // single source of truth for "already has a profile row" — avoids a
+        // race where two near-simultaneous SIGNED_IN events both pass a
+        // pre-check select. Whether to send the welcome email is decided
+        // separately from account age (created_at vs last_sign_in_at), not
+        // from insert success — SIGNED_IN fires on every login, not just
+        // signup, so insert outcome alone can't tell the two apart.
         if (event === "SIGNED_IN" && profileHandledForUid !== sessionUser.id) {
           profileHandledForUid = sessionUser.id;
           const meta = sessionUser.user_metadata ?? {};
@@ -100,14 +103,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             phone: "",
           });
 
-          if (!insertError) {
+          if (insertError && insertError.code !== "23505") {
+            throw insertError;
+          }
+
+          const createdAt = sessionUser.created_at ? new Date(sessionUser.created_at).getTime() : 0;
+          const lastSignInAt = sessionUser.last_sign_in_at ? new Date(sessionUser.last_sign_in_at).getTime() : 0;
+          const isFreshSignup = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 60_000;
+
+          if (isFreshSignup) {
             await queueAndSendMail([{
               to: sessionUser.email ?? "",
               subject: "Welcome to FitwearGH!",
               html: welcomeEmailHtml(name),
             }]);
-          } else if (insertError.code !== "23505") {
-            throw insertError;
           }
         }
 

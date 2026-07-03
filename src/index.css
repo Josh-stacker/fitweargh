@@ -58,6 +58,14 @@
     cursor: not-allowed;
 }
 
+button:not(:disabled), [role="button"]:not(:disabled), a {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
 /* ── Mobile: ensure tap targets are at least 44px ── */
 @media (max-width: 768px) {
     button, a {
