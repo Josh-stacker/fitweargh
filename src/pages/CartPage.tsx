@@ -105,8 +105,9 @@ export default function CartPage() {
   const [step, setStep] = useState<"cart" | "checkout" | "success">("cart");
   const [form, setForm] = useState<FormData>({
     ...EMPTY_FORM,
-    name: user?.displayName ?? "",
-    email: user?.email ?? "",
+    ...loadGuestBilling(),
+    name: user?.displayName ?? loadGuestBilling().name ?? "",
+    email: user?.email ?? loadGuestBilling().email ?? "",
   });
   const [placing, setPlacing] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -315,6 +316,8 @@ export default function CartPage() {
           address: form.address,
           city: form.city,
         }).eq("id", user.uid);
+      } else {
+        saveGuestBilling(form);
       }
 
       const callbackUrl = `${window.location.origin}/cart?paystack=verify&order_id=${orderId}`;

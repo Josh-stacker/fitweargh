@@ -30,6 +30,7 @@ interface Order {
   delivery_fee?: number | null;
   total: number;
   status: string;
+  payment_status: string;
   line_items: LineItem[];
   items: number;
   created_at: string;
@@ -229,11 +230,14 @@ export default function Orders() {
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{fmt(order.total ?? 0)}</td>
                   <td className="px-5 py-3">
-                    <StatusSelect
-                      value={order.status}
-                      onChange={(s) => updateStatus(order.id, s)}
-                      loading={updatingId === order.id}
-                    />
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <StatusSelect
+                        value={order.status}
+                        onChange={(s) => updateStatus(order.id, s)}
+                        loading={updatingId === order.id}
+                      />
+                      <PaymentBadge status={order.payment_status} />
+                    </div>
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                     {fmtDate(order.created_at)}
@@ -270,11 +274,14 @@ export default function Orders() {
               {/* Status */}
               <div className="flex flex-col gap-2">
                 <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest">Status</p>
-                <StatusSelect
-                  value={selectedOrder.status}
-                  onChange={(s) => updateStatus(selectedOrder.id, s)}
-                  loading={updatingId === selectedOrder.id}
-                />
+                <div className="flex items-center gap-2">
+                  <StatusSelect
+                    value={selectedOrder.status}
+                    onChange={(s) => updateStatus(selectedOrder.id, s)}
+                    loading={updatingId === selectedOrder.id}
+                  />
+                  <PaymentBadge status={selectedOrder.payment_status} />
+                </div>
               </div>
 
               {/* Customer */}
@@ -349,6 +356,26 @@ export default function Orders() {
         </div>
       )}
     </div>
+  );
+}
+
+const PAYMENT_COLORS: Record<string, string> = {
+  paid: "bg-green-100 text-green-700 border-green-200",
+  unpaid: "bg-gray-100 text-gray-600 border-gray-200",
+  initialized: "bg-orange-100 text-orange-700 border-orange-200",
+  failed: "bg-red-100 text-red-700 border-red-200",
+  amount_mismatch: "bg-red-100 text-red-700 border-red-200",
+};
+
+function PaymentBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`raleway-regular text-xs px-2 py-0.5 border capitalize ${
+        PAYMENT_COLORS[status] ?? "bg-gray-100 text-gray-600 border-gray-200"
+      }`}
+    >
+      {status?.replace(/_/g, " ") ?? "unpaid"}
+    </span>
   );
 }
 
