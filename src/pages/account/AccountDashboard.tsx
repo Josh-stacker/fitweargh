@@ -11,21 +11,37 @@ import {
   PackageIcon,
   MapPinIcon,
   ClockIcon,
+  CheckIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 
 type Tab = "orders" | "profile";
+
+interface OrderLineItem {
+  name: string;
+  size?: string;
+  color?: string;
+  quantity: number;
+  price: number;
+}
 
 interface Order {
   id: string;
   total: number;
   status: string;
+  payment_status: string | null;
+  delivery_area?: string | null;
+  delivery_fee?: number | null;
+  address?: string | null;
+  city?: string | null;
   item_count: number;
-  line_items: { name: string; quantity: number; price: number }[];
+  line_items: OrderLineItem[];
   created_at: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
   payment_pending: "bg-orange-100 text-orange-700",
+  paid: "bg-green-100 text-green-700",
   pending: "bg-yellow-100 text-yellow-700",
   processing: "bg-blue-100 text-blue-700",
   shipped: "bg-purple-100 text-purple-700",
@@ -33,13 +49,30 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-700",
 };
 
+function displayStatus(order: Pick<Order, "status" | "payment_status">) {
+  if (order.status === "pending" && order.payment_status === "paid") return "paid";
+  return order.status ?? "pending";
+}
+
+const MILESTONES = [
+  { key: "paid", label: "Order Paid" },
+  { key: "processing", label: "Processing" },
+  { key: "shipped", label: "Shipped" },
+  { key: "delivered", label: "Delivered" },
+];
+
+function milestoneIndex(status: string) {
+  const idx = MILESTONES.findIndex((m) => m.key === status);
+  return idx === -1 ? 0 : idx;
+}
+
 export default function AccountDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
 
   // Profile state
   const [name, setName] = useState(user?.displayName ?? "");
@@ -79,7 +112,7 @@ export default function AccountDashboard() {
 
     fetchOrders();
     fetchProfile();
-  }, [user]);
+  }, [user?.uid]);
 
   const handleLogout = async () => {
     await logout();
@@ -186,26 +219,35 @@ export default function AccountDashboard() {
                 </Link>
               </div>
             ) : (
-              orders.map((order) => (
-                <div key={order.id} className="bg-white border border-[#DEDEDE]">
-                  {/* Order summary row */}
+              orders.map((order) => {
+                const firstItem = order.line_items?.[0];
+                const extraCount = (order.line_items?.length ?? 0) - 1;
+                return (
                   <button
-                    onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                    className="w-full flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-2 text-left hover:bg-[#FFFBF6] transition-colors"
+                    key={order.id}
+                    onClick={() => setViewOrder(order)}
+                    className="w-full text-left bg-white border border-[#DEDEDE] flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-[#FFFBF6] transition-colors"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <span className="font-mono raleway-regular text-sm text-[#533113]/60">
-                        #{order.id.slice(0, 8)}
-                      </span>
-                      <span
-                        className={`raleway-regular text-sm px-2.5 py-1 capitalize self-start ${
-                          STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {order.status ?? "pending"}
-                      </span>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="font-mono raleway-regular text-sm text-[#533113]/60">
+                          #{order.id.slice(0, 8)}
+                        </span>
+                        <span
+                          className={`raleway-regular text-sm px-2.5 py-1 capitalize ${
+                            STATUS_COLORS[displayStatus(order)] ?? "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {displayStatus(order)}
+                        </span>
+                      </div>
+                      <p className="raleway-regular text-base text-[#533113]/70 truncate">
+                        {firstItem
+                          ? `${firstItem.name}${extraCount > 0 ? ` + ${extraCount} more item${extraCount > 1 ? "s" : ""}` : ""}`
+                          : "No item details available."}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 shrink-0">
                       <span className="raleway-regular text-base text-[#533113]/60">
                         {fmtDate(order.created_at)}
                       </span>
@@ -214,29 +256,8 @@ export default function AccountDashboard() {
                       </span>
                     </div>
                   </button>
-
-                  {/* Expanded items */}
-                  {expandedOrder === order.id && (
-                    <div className="border-t border-[#DEDEDE] px-5 py-4 flex flex-col gap-3">
-                      {order.line_items?.length > 0 ? (
-                        order.line_items.map((item, i) => (
-                          <div key={i} className="flex justify-between items-center">
-                            <div>
-                              <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
-                              <p className="raleway-regular text-sm text-[#533113]/50">Qty: {item.quantity}</p>
-                            </div>
-                            <p className="raleway-bold text-sm text-[#533113]">
-                              {fmt(item.price * item.quantity)}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="raleway-regular text-base text-[#533113]/40">No item details available.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -324,7 +345,141 @@ export default function AccountDashboard() {
         )}
       </main>
 
+      {viewOrder && (
+        <OrderDetailModal order={viewOrder} onClose={() => setViewOrder(null)} fmt={fmt} fmtDate={fmtDate} />
+      )}
+
       <Footer />
+    </div>
+  );
+}
+
+function OrderDetailModal({
+  order,
+  onClose,
+  fmt,
+  fmtDate,
+}: {
+  order: Order;
+  onClose: () => void;
+  fmt: (n: number) => string;
+  fmtDate: (iso: string) => string;
+}) {
+  const status = displayStatus(order);
+  const isCancelled = status === "cancelled";
+  const currentStep = milestoneIndex(status);
+  const subtotal = order.line_items?.reduce((s, i) => s + i.price * i.quantity, 0) ?? 0;
+  const deliveryFee = order.delivery_fee ?? Math.max(0, (order.total ?? 0) - subtotal);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-lg max-h-full overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#DEDEDE] sticky top-0 bg-white">
+          <div>
+            <p className="raleway-bold text-lg text-[#533113]">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+            <p className="raleway-regular text-sm text-[#533113]/50">{fmtDate(order.created_at)}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-[#533113]/50 hover:text-[#533113] transition-colors">
+            <XIcon size={20} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 flex flex-col gap-6">
+          {/* Milestone tracker */}
+          {isCancelled ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-base px-4 py-3">
+              This order was cancelled.
+            </div>
+          ) : (
+            <div className="flex items-start">
+              {MILESTONES.map((m, i) => {
+                const done = i <= currentStep;
+                const isLast = i === MILESTONES.length - 1;
+                return (
+                  <div key={m.key} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
+                    <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                          done ? "bg-[#533113] text-white" : "bg-gray-100 text-gray-400"
+                        }`}
+                      >
+                        {done ? <CheckIcon size={14} weight="bold" /> : <span className="text-xs">{i + 1}</span>}
+                      </div>
+                      <span
+                        className={`raleway-regular text-xs text-center w-16 leading-tight ${
+                          done ? "text-[#533113]" : "text-[#533113]/40"
+                        }`}
+                      >
+                        {m.label}
+                      </span>
+                    </div>
+                    {!isLast && (
+                      <div className={`h-0.5 flex-1 mx-1 mb-4 ${i < currentStep ? "bg-[#533113]" : "bg-gray-100"}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Items */}
+          <div className="flex flex-col gap-3">
+            <h3 className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Items</h3>
+            {order.line_items?.length > 0 ? (
+              order.line_items.map((item, i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <div>
+                    <p className="raleway-bold text-sm text-[#533113]">{item.name}</p>
+                    <p className="raleway-regular text-sm text-[#533113]/50">
+                      {[item.size, item.color].filter(Boolean).join(" · ")}
+                      {item.size || item.color ? " · " : ""}Qty: {item.quantity}
+                    </p>
+                  </div>
+                  <p className="raleway-bold text-sm text-[#533113]">{fmt(item.price * item.quantity)}</p>
+                </div>
+              ))
+            ) : (
+              <p className="raleway-regular text-base text-[#533113]/40">No item details available.</p>
+            )}
+          </div>
+
+          <hr className="border-[#DEDEDE]" />
+
+          {/* Totals */}
+          <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{fmt(subtotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{order.delivery_area ? `Delivery (${order.delivery_area})` : "Delivery"}</span>
+              <span>{fmt(deliveryFee)}</span>
+            </div>
+            <hr className="border-[#DEDEDE] my-1" />
+            <div className="flex justify-between raleway-bold text-lg">
+              <span>Total</span>
+              <span>{fmt(order.total ?? 0)}</span>
+            </div>
+          </div>
+
+          {(order.address || order.city) && (
+            <>
+              <hr className="border-[#DEDEDE]" />
+              <div className="flex flex-col gap-1">
+                <h3 className="raleway-bold text-xs text-[#533113] uppercase tracking-widest mb-1">
+                  Delivery Address
+                </h3>
+                <p className="raleway-regular text-base text-[#533113]/70">
+                  {[order.address, order.city].filter(Boolean).join(", ")}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

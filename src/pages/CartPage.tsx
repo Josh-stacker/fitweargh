@@ -4,7 +4,6 @@ import { supabase } from "../supabase";
 import { orderConfirmHtml } from "../emails/orderConfirmEmail";
 import { orderAdminHtml } from "../emails/orderAdminEmail";
 import { queueAndSendMail } from "../lib/mail";
-import { getOrderAdminEmails } from "../lib/adminEmails";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
@@ -173,7 +172,7 @@ export default function CartPage() {
       city: order.city ?? "",
       notes: "",
     };
-    const adminEmails = await getOrderAdminEmails();
+    const adminEmails = ["fitweargh1@gmail.com"];
 
     await queueAndSendMail([
       {
@@ -253,7 +252,8 @@ export default function CartPage() {
         );
         setStep("checkout");
       } finally {
-        if (active) { setPlacing(false); setVerifying(false); }
+        setPlacing(false);
+        setVerifying(false);
       }
     };
 

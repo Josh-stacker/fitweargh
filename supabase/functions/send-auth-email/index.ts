@@ -1,9 +1,26 @@
+import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const MAIL_FROM = Deno.env.get("MAIL_AUTH_FROM") ?? Deno.env.get("MAIL_FROM")!;
+const HOOK_SECRET = Deno.env.get("SEND_AUTH_EMAIL_HOOK_SECRET");
 
 Deno.serve(async (req) => {
   try {
-    const payload = await req.json();
+    const rawBody = await req.text();
+
+    let payload: any;
+    if (HOOK_SECRET) {
+      // Supabase signs "Send Email" hook requests using the Standard
+      // Webhooks spec. The secret is prefixed "v1,whsec_..." in the
+      // dashboard but the library expects the raw whsec_ value.
+      const secret = HOOK_SECRET.startsWith("v1,") ? HOOK_SECRET.slice(3) : HOOK_SECRET;
+      const wh = new Webhook(secret);
+      const headers = Object.fromEntries(req.headers.entries());
+      payload = wh.verify(rawBody, headers);
+    } else {
+      payload = JSON.parse(rawBody);
+    }
+
     const { user, email_data } = payload;
 
     const email = user?.email;
@@ -12,6 +29,7 @@ Deno.serve(async (req) => {
     const actionType: string = email_data?.email_action_type ?? "signup";
 
     if (!email || !token) {
+      console.error("Missing email or token in payload:", JSON.stringify(payload));
       return json({ error: "Missing email or token" }, 400);
     }
 

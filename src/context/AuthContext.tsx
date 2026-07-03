@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let profileHandledForUid: string | null = null;
 
     const syncSession = async (sessionUser: User | null, event?: AuthChangeEvent) => {
       try {
@@ -88,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // single source of truth for "already handled" — avoids a race where
         // two near-simultaneous SIGNED_IN events both pass a pre-check select
         // and both send the welcome email.
-        if (event === "SIGNED_IN") {
+        if (event === "SIGNED_IN" && profileHandledForUid !== sessionUser.id) {
+          profileHandledForUid = sessionUser.id;
           const meta = sessionUser.user_metadata ?? {};
           const name = typeof meta.full_name === "string" ? meta.full_name : "";
           const { error: insertError } = await supabase.from("profiles").insert({
@@ -110,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (!mounted) return;
-        setUser(toAppUser(sessionUser));
+        setUser((prev) => (prev?.uid === sessionUser.id ? prev : toAppUser(sessionUser)));
         setLoading(false);
       } catch (error) {
         console.error("Auth sync failed:", error);
