@@ -61,6 +61,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // An unconfirmed signup can still hand back a session (depends on
+        // Supabase project auth settings) — don't treat that as logged in,
+        // or the dashboard renders before the profile row / welcome email
+        // logic (both gated on email_confirmed_at) have run.
+        if (!sessionUser.email_confirmed_at) {
+          if (!mounted) return;
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
         // Customer accounts only — admin accounts sign in through the admin
         // portal with its own session, so bail out here rather than showing
         // an admin as "logged in" on the storefront.
@@ -77,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // single source of truth for "already handled" — avoids a race where
         // two near-simultaneous SIGNED_IN events both pass a pre-check select
         // and both send the welcome email.
-        if (event === "SIGNED_IN" && sessionUser.email_confirmed_at) {
+        if (event === "SIGNED_IN") {
           const meta = sessionUser.user_metadata ?? {};
           const name = typeof meta.full_name === "string" ? meta.full_name : "";
           const { error: insertError } = await supabase.from("profiles").insert({
