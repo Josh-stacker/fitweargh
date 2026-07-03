@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
-import { orderConfirmHtml } from "../emails/orderConfirmEmail";
-import { orderAdminHtml } from "../emails/orderAdminEmail";
-import { queueAndSendMail } from "../lib/mail";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
@@ -66,27 +63,6 @@ function saveGuestBilling(form: FormData) {
   }
 }
 
-interface VerifiedOrderItem {
-  name: string;
-  size: string;
-  color: string;
-  quantity: number;
-  price: number;
-}
-
-interface VerifiedOrder {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  address: string;
-  city: string;
-  total: number;
-  delivery_area?: string | null;
-  delivery_fee?: number | null;
-  line_items: VerifiedOrderItem[];
-}
-
 interface ShippingMethod {
   id: string;
   name: string;
@@ -96,12 +72,10 @@ interface ShippingMethod {
 }
 
 export default function CartPage() {
-  const { items, count, total, removeItem, updateQty, clearCart } = useCart();
+  const { items, count, total, removeItem, updateQty } = useCart();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [step, setStep] = useState<"cart" | "checkout" | "success">("cart");
+  const [step, setStep] = useState<"cart" | "checkout">("cart");
   const [form, setForm] = useState<FormData>({
     ...EMPTY_FORM,
     ...loadGuestBilling(),
@@ -109,19 +83,11 @@ export default function CartPage() {
     email: user?.email ?? loadGuestBilling().email ?? "",
   });
   const [placing, setPlacing] = useState(false);
-  const [verifying, setVerifying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [orderId, setOrderId] = useState("");
 
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
-  const verifyingPaymentRef = useRef("");
   const initializingPaymentRef = useRef(false);
-  const clearCartRef = useRef(clearCart);
-
-  useEffect(() => {
-    clearCartRef.current = clearCart;
-  }, [clearCart]);
 
   useEffect(() => {
     if (!user) return;
@@ -158,110 +124,6 @@ export default function CartPage() {
   const grandTotal = total + deliveryFee;
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const sendOrderEmails = async (order: VerifiedOrder) => {
-    const orderItems = order.line_items ?? [];
-    const subtotal = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-    const orderTotal = Number(order.total ?? 0);
-    const orderDeliveryFee = Number(order.delivery_fee ?? Math.max(0, orderTotal - subtotal));
-    const orderForm = {
-      name: order.customer_name ?? "",
-      email: order.customer_email ?? "",
-      phone: order.customer_phone ?? "",
-      address: order.address ?? "",
-      city: order.city ?? "",
-      notes: "",
-    };
-    const adminEmails = ["fitweargh1@gmail.com"];
-
-    await queueAndSendMail([
-      {
-        to: orderForm.email,
-        subject: `FitwearGH — Order Confirmed #${order.id.slice(0, 8).toUpperCase()}`,
-        html: orderConfirmHtml({
-          orderId: order.id,
-          form: orderForm,
-          items: orderItems,
-          total: subtotal,
-          deliveryFee: orderDeliveryFee,
-          grandTotal: orderTotal,
-          shippingMethod: order.delivery_area ?? undefined,
-        }),
-      },
-      ...adminEmails.map((email) => ({
-        to: email,
-        subject: `New Paid Order #${order.id.slice(0, 8).toUpperCase()} — ${orderForm.name} (GH₵${orderTotal.toFixed(2)})`,
-        html: orderAdminHtml({
-          orderId: order.id,
-          form: orderForm,
-          items: orderItems,
-          total: subtotal,
-          deliveryFee: orderDeliveryFee,
-          grandTotal: orderTotal,
-          shippingMethod: order.delivery_area ?? undefined,
-        }),
-      })),
-    ]);
-  };
-
-  useEffect(() => {
-    const shouldVerify = searchParams.get("paystack") === "verify";
-    const reference = searchParams.get("reference");
-    const callbackOrderId = searchParams.get("order_id");
-    if (!shouldVerify || !reference || !callbackOrderId) return;
-
-    const verificationKey = `${callbackOrderId}:${reference}`;
-    if (verifyingPaymentRef.current === verificationKey) return;
-    verifyingPaymentRef.current = verificationKey;
-
-    let active = true;
-    const verifyPayment = async () => {
-      setPlacing(true);
-      setVerifying(true);
-      setPaymentError("");
-      setStep("checkout");
-      setSearchParams({}, { replace: true });
-
-      try {
-        const { data, error } = await supabase.functions.invoke("verify-paystack", {
-          body: { order_id: callbackOrderId, reference },
-        });
-        if (error) throw error;
-        if (!data?.paid || !data?.order) {
-          throw new Error(data?.status ? `Payment ${data.status}.` : "Payment could not be verified.");
-        }
-
-        const verifiedOrder = data.order as VerifiedOrder;
-        if (!data.was_already_paid) {
-          await sendOrderEmails(verifiedOrder);
-        }
-
-        if (!active) return;
-        setOrderId(verifiedOrder.id);
-        clearCartRef.current();
-        setStep("success");
-      } catch (err) {
-        console.error("Paystack verification error:", err);
-        if (!active) return;
-        verifyingPaymentRef.current = "";
-        const msg = err instanceof Error ? err.message : "";
-        setPaymentError(
-          msg && !msg.toLowerCase().includes("edge function") && !msg.toLowerCase().includes("non-2xx")
-            ? msg
-            : "We could not verify your payment. If you were charged, please contact us with your order reference and we'll sort it out."
-        );
-        setStep("checkout");
-      } finally {
-        setPlacing(false);
-        setVerifying(false);
-      }
-    };
-
-    verifyPayment();
-    return () => {
-      active = false;
-    };
-  }, [searchParams, setSearchParams]);
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,7 +169,6 @@ export default function CartPage() {
       if (error) throw error;
 
       const orderId = ref.id;
-      setOrderId(orderId);
 
       if (user) {
         await supabase.from("profiles").update({
@@ -320,7 +181,7 @@ export default function CartPage() {
         saveGuestBilling(form);
       }
 
-      const callbackUrl = `${window.location.origin}/cart?paystack=verify&order_id=${orderId}`;
+      const callbackUrl = `${window.location.origin}/order/processing?order_id=${orderId}`;
       const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-paystack", {
         body: { order_id: orderId, callback_url: callbackUrl },
       });
@@ -341,33 +202,6 @@ export default function CartPage() {
       setPlacing(false);
     }
   };
-
-  if (step === "success") {
-    return (
-      <div className="min-h-screen bg-[#FFFBF6]">
-        <Navbar />
-        <div className="max-w-[600px] mx-auto px-4 py-20 text-center flex flex-col items-center gap-6">
-          <div className="w-16 h-16 bg-green-100 flex items-center justify-center">
-            <ShoppingCartIcon size={32} className="text-green-600" weight="fill" />
-          </div>
-          <h1 className="raleway-bold text-3xl text-[#533113]">Order Placed!</h1>
-          <p className="raleway-regular text-[#533113]/70 text-lg">
-            Thank you for your order. We'll contact you shortly to confirm delivery.
-          </p>
-          <p className="raleway-regular text-sm text-[#533113]/40 font-mono">
-            Order #{orderId.slice(0, 10).toUpperCase()}
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-8 py-3 hover:bg-[#3d2409] transition-colors"
-          >
-            Continue Shopping
-          </button>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#FFFBF6]">
@@ -664,7 +498,7 @@ export default function CartPage() {
                   {placing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      {verifying ? "Verifying Payment…" : "Starting Payment…"}
+                      Starting Payment…
                     </span>
                   ) : (
                     <>Pay Securely <ArrowLineUpRightIcon size={16} /></>

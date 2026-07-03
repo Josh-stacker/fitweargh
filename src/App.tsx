@@ -18,6 +18,7 @@ import Accessories from "./pages/Accessories";
 import Sales from "./pages/Sales";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
+import OrderProcessing from "./pages/OrderProcessing";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import ContactUs from "./pages/ContactUs";
@@ -70,6 +71,7 @@ function App() {
             <Route path="/sales" element={<Sales />} />
             <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/order/processing" element={<OrderProcessing />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/contact-us" element={<ContactUs />} />

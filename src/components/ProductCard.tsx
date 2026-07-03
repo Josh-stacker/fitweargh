@@ -59,7 +59,7 @@ function ProductCard({
     addItem({
       id: String(id),
       name,
-      price: numericPrice,
+      price: hasDiscount ? discountPrice! : numericPrice,
       imageUrl: image ?? "",
       size: "",
       color: colors?.[0] ?? "",
