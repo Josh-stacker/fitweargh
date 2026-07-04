@@ -3,6 +3,7 @@ import { adminSupabase } from "../../supabase";
 import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon } from "@phosphor-icons/react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { syncOrderAdminEmails } from "../../lib/adminEmails";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface AdminUser {
   uid: string;
@@ -21,6 +22,7 @@ export default function AdminUsers() {
   const [removingUid, setRemovingUid] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<AdminUser | null>(null);
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -106,6 +108,7 @@ export default function AdminUsers() {
       setError("Failed to remove admin.");
     } finally {
       setRemovingUid(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -210,7 +213,7 @@ export default function AdminUsers() {
                       <span className="raleway-regular text-sm text-[#533113]/30 italic">you</span>
                     ) : (
                       <button
-                        onClick={() => handleRemove(a.uid)}
+                        onClick={() => setConfirmTarget(a)}
                         disabled={removingUid === a.uid}
                         className="p-1.5 text-red-400 hover:bg-red-50 transition-colors disabled:opacity-40"
                         title="Remove admin"
@@ -229,6 +232,16 @@ export default function AdminUsers() {
           </table>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Remove Admin"
+        message={`Are you sure you want to remove admin access for "${confirmTarget?.email}"? This cannot be undone.`}
+        confirmLabel="Remove"
+        loading={removingUid === confirmTarget?.uid}
+        onConfirm={() => confirmTarget && handleRemove(confirmTarget.uid)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

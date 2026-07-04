@@ -13,6 +13,7 @@ import {
   CaretRightIcon,
 } from "@phosphor-icons/react";
 import { BUILT_IN_SIZE_CHARTS, DEFAULT_SIZE_CHART, mergeBuiltInSizeCharts, type SizeChart } from "../../lib/sizeCharts";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface Product {
   id: string;
@@ -223,6 +224,7 @@ export default function Products() {
   const [displayIdx, setDisplayIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("latest");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -671,6 +673,7 @@ export default function Products() {
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
     } finally {
       setDeleteId(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -1212,7 +1215,7 @@ export default function Products() {
                         <PencilSimpleIcon size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(p)}
+                        onClick={() => setConfirmTarget(p)}
                         disabled={deleteId === p.id}
                         className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 transition-colors disabled:opacity-40"
                       >
@@ -1889,6 +1892,15 @@ export default function Products() {
           />
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${confirmTarget?.name}"? This cannot be undone.`}
+        loading={deleteId === confirmTarget?.id}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

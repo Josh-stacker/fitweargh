@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { adminSupabase } from "../../supabase";
 import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon } from "@phosphor-icons/react";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface ShippingMethod {
   id: string;
@@ -22,6 +23,7 @@ export default function ShippingMethods() {
   const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<ShippingMethod | null>(null);
 
   const fetchMethods = async () => {
     setLoading(true);
@@ -103,6 +105,7 @@ export default function ShippingMethods() {
       setMethods((prev) => prev.filter((m) => m.id !== id));
     } finally {
       setRemovingId(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -295,7 +298,7 @@ export default function ShippingMethods() {
                         <PencilSimpleIcon size={15} />
                       </button>
                       <button
-                        onClick={() => handleRemove(m.id)}
+                        onClick={() => setConfirmTarget(m)}
                         disabled={removingId === m.id}
                         className="p-1.5 text-red-400 hover:bg-red-50 transition-colors disabled:opacity-40"
                         title="Delete"
@@ -318,6 +321,15 @@ export default function ShippingMethods() {
       <p className="raleway-regular text-sm text-[#533113]/40">
         Only enabled areas appear at checkout. Disable rather than delete to preserve order history.
       </p>
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Delete Delivery Area"
+        message={`Are you sure you want to delete "${confirmTarget?.name}"? This cannot be undone.`}
+        loading={removingId === confirmTarget?.id}
+        onConfirm={() => confirmTarget && handleRemove(confirmTarget.id)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
