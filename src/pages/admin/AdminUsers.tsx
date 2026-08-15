@@ -4,6 +4,7 @@ import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon } from "@phosphor
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { syncOrderAdminEmails } from "../../lib/adminEmails";
 import ConfirmModal from "../../components/admin/ConfirmModal";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 interface AdminUser {
   uid: string;
@@ -11,7 +12,9 @@ interface AdminUser {
   name: string;
 }
 
-const EMPTY_FORM = { email: "" };
+const EMPTY_FORM = { email: "", password: "" };
+
+const PROTECTED_ADMIN_EMAIL = "nerdosey@gmail.com";
 
 export default function AdminUsers() {
   const { user } = useAdminAuth();
@@ -55,34 +58,28 @@ export default function AdminUsers() {
 
     setAdding(true);
     try {
-      const { data: profile, error: profileError } = await adminSupabase
-        .from("profiles")
-        .select("*")
-        .eq("email", email)
-        .single();
-
-      if (profileError || !profile) {
-        setError("No user found with that email. They must register an account first.");
+      const { data: sessionData } = await adminSupabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        setError("Your session expired. Please sign in again.");
         return;
       }
 
-      const { error: insertError } = await adminSupabase.from("admin_users").insert({
-        user_id: profile.id,
-        email: profile.email,
-        name: profile.full_name,
+      const { data, error: invokeError } = await adminSupabase.functions.invoke("grant-admin", {
+        body: { email, password: form.password },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (insertError) {
-        if (insertError.code === "23505") setError("User is already an admin.");
-        else setError("Failed to grant admin access.");
+      if (invokeError || data?.error) {
+        setError(data?.error ?? "Failed to grant admin access.");
         return;
       }
 
-      const nextAdmins = [...admins, { uid: profile.id, email: profile.email, name: profile.full_name }];
+      const nextAdmins = [...admins, { uid: data.uid, email: data.email, name: data.name || "—" }];
       setAdmins(nextAdmins);
       await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setForm(EMPTY_FORM);
-      setSuccess(`Admin access granted to ${profile.email}.`);
+      setSuccess(`Admin access granted to ${data.email}.`);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -93,6 +90,11 @@ export default function AdminUsers() {
   const handleRemove = async (uid: string) => {
     if (uid === user?.uid) {
       setError("You cannot remove your own admin access.");
+      return;
+    }
+    const target = admins.find((a) => a.uid === uid);
+    if (target?.email === PROTECTED_ADMIN_EMAIL) {
+      setError("This admin account cannot be removed.");
       return;
     }
     setError("");
@@ -135,12 +137,24 @@ export default function AdminUsers() {
                 required
                 type="email"
                 value={form.email}
-                onChange={(e) => { setForm({ email: e.target.value }); setError(""); setSuccess(""); }}
+                onChange={(e) => { setForm({ ...form, email: e.target.value }); setError(""); setSuccess(""); }}
                 placeholder="user@example.com"
                 className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-4 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
               />
               <span className="raleway-regular text-xs text-[#533113]/50">
-                The user must already have an account with this email address.
+                If no account exists for this email, one will be created automatically using the password below.
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Password</label>
+              <PasswordInput
+                value={form.password}
+                onChange={(e) => { setForm({ ...form, password: e.target.value }); setError(""); setSuccess(""); }}
+                className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-4 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors w-full"
+              />
+              <span className="raleway-regular text-xs text-[#533113]/50">
+                Only required when creating a new account. Ignored if the email already has one.
               </span>
             </div>
           </div>
@@ -211,6 +225,8 @@ export default function AdminUsers() {
                   <td className="px-5 py-3 text-right">
                     {a.uid === user?.uid ? (
                       <span className="raleway-regular text-sm text-[#533113]/30 italic">you</span>
+                    ) : a.email === PROTECTED_ADMIN_EMAIL ? (
+                      <span className="raleway-regular text-sm text-[#533113]/30 italic">protected</span>
                     ) : (
                       <button
                         onClick={() => setConfirmTarget(a)}
