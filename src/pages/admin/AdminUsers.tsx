@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { adminSupabase } from "../../supabase";
-import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon } from "@phosphor-icons/react";
+import { TrashIcon, UserPlusIcon, ShieldCheckIcon, WarningIcon, KeyIcon, XIcon } from "@phosphor-icons/react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { syncOrderAdminEmails } from "../../lib/adminEmails";
 import ConfirmModal from "../../components/admin/ConfirmModal";
 import PasswordInput from "../../components/ui/PasswordInput";
+
+async function getAuthToken(): Promise<string> {
+  const { data } = await adminSupabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Your session expired. Please sign in again.");
+  return token;
+}
 
 interface AdminUser {
   uid: string;
@@ -26,6 +33,10 @@ export default function AdminUsers() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<AdminUser | null>(null);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -58,12 +69,7 @@ export default function AdminUsers() {
 
     setAdding(true);
     try {
-      const { data: sessionData } = await adminSupabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        setError("Your session expired. Please sign in again.");
-        return;
-      }
+      const token = await getAuthToken();
 
       const { data, error: invokeError } = await adminSupabase.functions.invoke("grant-admin", {
         body: { email, password: form.password },
@@ -80,8 +86,8 @@ export default function AdminUsers() {
       await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setForm(EMPTY_FORM);
       setSuccess(`Admin access granted to ${data.email}.`);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setAdding(false);
     }
@@ -101,16 +107,53 @@ export default function AdminUsers() {
     setSuccess("");
     setRemovingUid(uid);
     try {
-      await adminSupabase.from("admin_users").delete().eq("user_id", uid);
+      const token = await getAuthToken();
+      const { data, error: invokeError } = await adminSupabase.functions.invoke("revoke-admin", {
+        body: { user_id: uid },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (invokeError || data?.error) {
+        setError(data?.error ?? "Failed to remove admin.");
+        return;
+      }
+
       const nextAdmins = admins.filter((a) => a.uid !== uid);
       setAdmins(nextAdmins);
       await syncOrderAdminEmails(nextAdmins.map((admin) => admin.email));
       setSuccess("Admin removed.");
-    } catch {
-      setError("Failed to remove admin.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove admin.");
     } finally {
       setRemovingUid(null);
       setConfirmTarget(null);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    setResetError("");
+    setResetting(true);
+    try {
+      const token = await getAuthToken();
+      const { data, error: invokeError } = await adminSupabase.functions.invoke("reset-admin-password", {
+        body: { user_id: resetTarget.uid, password: resetPassword },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (invokeError || data?.error) {
+        setResetError(data?.error ?? "Failed to reset password.");
+        return;
+      }
+
+      setSuccess(`Password reset for ${resetTarget.email}.`);
+      setResetTarget(null);
+      setResetPassword("");
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Failed to reset password.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -223,24 +266,33 @@ export default function AdminUsers() {
                     {a.uid}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    {a.uid === user?.uid ? (
-                      <span className="raleway-regular text-sm text-[#533113]/30 italic">you</span>
-                    ) : a.email === PROTECTED_ADMIN_EMAIL ? (
-                      <span className="raleway-regular text-sm text-[#533113]/30 italic">protected</span>
-                    ) : (
+                    <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => setConfirmTarget(a)}
-                        disabled={removingUid === a.uid}
-                        className="p-1.5 text-red-400 hover:bg-red-50 transition-colors disabled:opacity-40"
-                        title="Remove admin"
+                        onClick={() => { setResetTarget(a); setResetPassword(""); setResetError(""); }}
+                        className="p-1.5 text-[#533113]/50 hover:bg-[#533113]/5 transition-colors"
+                        title="Reset password"
                       >
-                        {removingUid === a.uid ? (
-                          <span className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin block" />
-                        ) : (
-                          <TrashIcon size={15} />
-                        )}
+                        <KeyIcon size={15} />
                       </button>
-                    )}
+                      {a.uid === user?.uid ? (
+                        <span className="raleway-regular text-sm text-[#533113]/30 italic px-1">you</span>
+                      ) : a.email === PROTECTED_ADMIN_EMAIL ? (
+                        <span className="raleway-regular text-sm text-[#533113]/30 italic px-1">protected</span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmTarget(a)}
+                          disabled={removingUid === a.uid}
+                          className="p-1.5 text-red-400 hover:bg-red-50 transition-colors disabled:opacity-40"
+                          title="Remove admin"
+                        >
+                          {removingUid === a.uid ? (
+                            <span className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin block" />
+                          ) : (
+                            <TrashIcon size={15} />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -258,6 +310,57 @@ export default function AdminUsers() {
         onConfirm={() => confirmTarget && handleRemove(confirmTarget.uid)}
         onCancel={() => setConfirmTarget(null)}
       />
+
+      {resetTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-sm border border-[#DEDEDE]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#DEDEDE]">
+              <h3 className="raleway-bold text-base text-[#533113]">Reset Password</h3>
+              <button type="button" onClick={() => setResetTarget(null)} disabled={resetting}>
+                <XIcon size={20} className="text-[#533113]" />
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="px-6 py-5 flex flex-col gap-4">
+              <p className="raleway-regular text-base text-[#533113]/70">
+                Set a new password for <span className="raleway-bold">{resetTarget.email}</span>.
+              </p>
+
+              <PasswordInput
+                required
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-4 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors w-full"
+              />
+
+              {resetError && (
+                <div className="flex items-start gap-2 text-red-600 raleway-regular text-base">
+                  <WarningIcon size={16} className="mt-0.5 shrink-0" />
+                  {resetError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  disabled={resetting}
+                  className="raleway-regular text-base text-[#533113] px-5 py-2.5 border border-[#DEDEDE] hover:bg-[#533113]/5 transition-colors disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetting || resetPassword.length < 6}
+                  className="raleway-bold text-sm text-white bg-[#533113] px-6 py-2.5 uppercase tracking-widest hover:bg-[#3d2409] transition-colors disabled:opacity-60"
+                >
+                  {resetting ? "Resetting…" : "Reset Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

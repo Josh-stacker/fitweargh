@@ -57,6 +57,8 @@ Deno.serve(async (req) => {
       userId = profile.data.id;
       fullName = profile.data.full_name ?? "";
     } else {
+      fullName = "";
+
       if (!password || password.length < 6) {
         return json({ error: "Password must be at least 6 characters." }, 400);
       }
@@ -67,12 +69,18 @@ Deno.serve(async (req) => {
         email_confirm: true,
       });
 
-      if (createError || !created.user) {
-        return json({ error: createError?.message ?? "Could not create user account." }, 500);
+      if (created?.user) {
+        userId = created.user.id;
+      } else {
+        // profiles has no row for this email, but an auth user might already
+        // exist (e.g. a prior signup that never completed profile creation).
+        // Reuse that auth user rather than failing on a duplicate-email error.
+        const existingAuthUser = await findAuthUserByEmail(admin, email);
+        if (!existingAuthUser) {
+          return json({ error: createError?.message ?? "Could not create user account." }, 500);
+        }
+        userId = existingAuthUser.id;
       }
-
-      userId = created.user.id;
-      fullName = "";
 
       const { error: insertProfileError } = await admin.from("profiles").insert({
         id: userId,
@@ -104,6 +112,16 @@ Deno.serve(async (req) => {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
+
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+  const match = data.users.find((u) => u.email?.toLowerCase() === email);
+  return match ? { id: match.id } : null;
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
