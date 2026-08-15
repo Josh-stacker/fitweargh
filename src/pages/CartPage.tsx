@@ -245,7 +245,9 @@ export default function CartPage() {
   // International orders pay for the goods only — delivery is quoted by email
   // after payment, so no delivery fee is charged at checkout.
   const deliveryFee = isInternational ? 0 : (quote?.fee ?? 0);
-  const grandTotal = total + deliveryFee;
+  // Delivery is settled with the rider on arrival, so it is never charged
+  // through Paystack — the online total is the goods only.
+  const grandTotal = total;
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtUsd = (n: number) =>
@@ -512,7 +514,7 @@ export default function CartPage() {
         ) : (
           /* ── Checkout form ── */
           <div className="flex flex-col lg:flex-row gap-8">
-            <form onSubmit={handlePlaceOrder} className="flex-1 flex flex-col gap-5">
+            <form id="checkout-form" onSubmit={handlePlaceOrder} className="flex-1 flex flex-col gap-5">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-5">
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Delivery Information
@@ -616,12 +618,14 @@ export default function CartPage() {
                         ) : quote.mode === "exact" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             Delivery to {typedTown.trim()}:{" "}
-                            <span className="raleway-bold">{fmt(quote.fee)}</span>
+                            <span className="raleway-bold">{fmt(quote.fee)}</span> — paid to the
+                            delivery rider, not added to your online payment.
                           </p>
                         ) : quote.mode === "nearby" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
-                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span>{" "}
-                            (nearest area we cover, about {quote.km}km away)
+                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span> (nearest
+                            area we cover, about {quote.km}km away) — paid to the delivery rider, not
+                            added to your online payment.
                           </p>
                         ) : (
                           <p className="raleway-regular text-sm text-[#533113]/80">
@@ -760,20 +764,6 @@ export default function CartPage() {
                 >
                   Back to Cart
                 </button>
-                <button
-                  type="submit"
-                  disabled={placing || !hasDeliveryChoice || shippingMethods.length === 0}
-                  className="flex-1 bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {placing ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Starting Payment…
-                    </span>
-                  ) : (
-                    <>Pay Securely <ArrowLineUpRightIcon size={16} /></>
-                  )}
-                </button>
               </div>
             </form>
 
@@ -816,7 +806,7 @@ export default function CartPage() {
                     <span>Subtotal</span>
                     <span>{fmt(total)}</span>
                   </div>
-                  <div className="flex justify-between gap-3">
+                  <div className="flex justify-between gap-3 text-[#533113]/70">
                     <span>Delivery{deliveryAreaLabel ? ` (${deliveryAreaLabel})` : ""}</span>
                     <span className="shrink-0 text-right">
                       {!hasDeliveryChoice
@@ -826,9 +816,12 @@ export default function CartPage() {
                         : fmt(deliveryFee)}
                     </span>
                   </div>
+                  <p className="raleway-regular text-sm text-[#533113]/50">
+                    Paid directly to the delivery rider — not included in the amount below.
+                  </p>
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-lg">
-                    <span>Total</span>
+                    <span>You pay now</span>
                     <span>{fmt(grandTotal)}</span>
                   </div>
                   {isInternational && fmtUsd(grandTotal) && (
@@ -838,6 +831,22 @@ export default function CartPage() {
                     </div>
                   )}
                 </div>
+
+                <button
+                  type="submit"
+                  form="checkout-form"
+                  disabled={placing || !hasDeliveryChoice || shippingMethods.length === 0}
+                  className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-4 px-5 hover:bg-[#3d2409] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {placing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                      Starting Payment…
+                    </>
+                  ) : (
+                    <>Pay Securely <ArrowLineUpRightIcon size={16} className="shrink-0" /></>
+                  )}
+                </button>
 
                 <p className="raleway-regular text-sm text-[#533113]/80 bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
                   Same day delivery within Greater Accra. Next day delivery outside Greater Accra.

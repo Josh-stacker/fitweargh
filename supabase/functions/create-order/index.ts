@@ -113,7 +113,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const total = subtotal + deliveryFee;
+    // Delivery is settled with the rider on arrival, so it is deliberately NOT
+    // part of the charged total — it is recorded on the order for fulfilment
+    // only. verify-paystack compares Paystack's amount against this value, so
+    // the two must stay in step.
+    const total = subtotal;
     if (!(total > 0)) return json({ error: "Order total must be greater than zero." }, 400);
 
     // Trust the caller's JWT for identity, never a user_id in the body.

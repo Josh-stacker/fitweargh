@@ -126,7 +126,7 @@ function CartDrawer() {
                 onClick={closeCart}
                 className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 px-4 hover:bg-[#3d2409] transition-colors flex items-center justify-between"
               >
-                Checkout
+                Buy Now
                 <ArrowLineUpRightIcon size={18} />
               </Link>
               <button onClick={closeCart} className="raleway-regular text-base text-[#533113]/60 hover:text-[#533113] transition-colors">

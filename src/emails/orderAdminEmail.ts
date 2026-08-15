@@ -45,12 +45,12 @@ export function orderAdminHtml({ orderId, form, items, total, deliveryFee, grand
             <td style="padding:10px 0 4px;font-size:13px;color:#888;text-align:right;">GH₵${total.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding:4px 0;font-size:13px;color:#888;">${shippingMethod ?? "Delivery"}</td>
-            <td style="padding:4px 0;font-size:13px;color:#888;text-align:right;">GH₵${deliveryFee.toFixed(2)}</td>
+            <td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#533113;">Paid online</td>
+            <td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#533113;text-align:right;">GH₵${grandTotal.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#533113;">Total</td>
-            <td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#533113;text-align:right;">GH₵${grandTotal.toFixed(2)}</td>
+            <td style="padding:10px 0 0;font-size:13px;color:#888;">${shippingMethod ?? "Delivery"} — collect from customer</td>
+            <td style="padding:10px 0 0;font-size:13px;color:#888;text-align:right;">GH₵${deliveryFee.toFixed(2)}</td>
           </tr>
         </table>
 
