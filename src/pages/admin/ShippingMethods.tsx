@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { adminSupabase } from "../../supabase";
 import { PlusIcon, TrashIcon, PencilSimpleIcon, CheckIcon } from "@phosphor-icons/react";
 import ConfirmModal from "../../components/admin/ConfirmModal";
+import DistrictPicker from "../../components/admin/DistrictPicker";
 
 interface ShippingMethod {
   id: string;
@@ -9,9 +10,20 @@ interface ShippingMethod {
   description: string;
   price: number;
   enabled: boolean;
+  is_international?: boolean;
+  region?: string | null;
+  districts?: string[] | null;
 }
 
-const EMPTY_FORM = { name: "", description: "", price: "", enabled: true };
+const EMPTY_FORM = {
+  name: "",
+  description: "",
+  price: "",
+  enabled: true,
+  is_international: false,
+  region: "",
+  districts: [] as string[],
+};
 
 export default function ShippingMethods() {
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
@@ -46,6 +58,9 @@ export default function ShippingMethods() {
         description: form.description.trim(),
         price,
         enabled: form.enabled,
+        is_international: form.is_international,
+        region: form.region || null,
+        districts: form.districts.length ? form.districts : null,
       }).select().single();
       
       if (error) throw error;
@@ -65,7 +80,15 @@ export default function ShippingMethods() {
 
   const startEdit = (m: ShippingMethod) => {
     setEditingId(m.id);
-    setEditForm({ name: m.name, description: m.description, price: String(m.price), enabled: m.enabled });
+    setEditForm({
+      name: m.name,
+      description: m.description,
+      price: String(m.price),
+      enabled: m.enabled,
+      is_international: m.is_international ?? false,
+      region: m.region ?? "",
+      districts: m.districts ?? [],
+    });
   };
 
   const saveEdit = async (id: string) => {
@@ -78,12 +101,24 @@ export default function ShippingMethods() {
         description: editForm.description.trim(),
         price,
         enabled: editForm.enabled,
+        is_international: editForm.is_international,
+        region: editForm.region || null,
+        districts: editForm.districts.length ? editForm.districts : null,
       }).eq("id", id);
-      
+
       setMethods((prev) =>
         prev.map((m) =>
           m.id === id
-            ? { ...m, name: editForm.name.trim(), description: editForm.description.trim(), price, enabled: editForm.enabled }
+            ? {
+                ...m,
+                name: editForm.name.trim(),
+                description: editForm.description.trim(),
+                price,
+                enabled: editForm.enabled,
+                is_international: editForm.is_international,
+                region: editForm.region || null,
+                districts: editForm.districts.length ? editForm.districts : null,
+              }
             : m
         )
       );
@@ -174,6 +209,15 @@ export default function ShippingMethods() {
             />
           </div>
 
+          {!form.is_international && (
+            <DistrictPicker
+              region={form.region}
+              districts={form.districts}
+              onRegionChange={(region) => setForm((f) => ({ ...f, region }))}
+              onDistrictsChange={(districts) => setForm((f) => ({ ...f, districts }))}
+            />
+          )}
+
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -182,6 +226,22 @@ export default function ShippingMethods() {
               className="accent-[#533113]"
             />
             <span className="raleway-regular text-base text-[#533113]">Enabled (visible to customers)</span>
+          </label>
+
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.is_international}
+              onChange={(e) => setForm((f) => ({ ...f, is_international: e.target.checked }))}
+              className="accent-[#533113] mt-1"
+            />
+            <span className="raleway-regular text-base text-[#533113]">
+              International delivery
+              <span className="block raleway-regular text-sm text-[#533113]/50">
+                Customers get street/apartment/town/state/postcode fields, pay for items only, and are
+                asked to email us to arrange shipping. The fee above is not charged.
+              </span>
+            </span>
           </label>
 
           {error && <p className="raleway-regular text-base text-red-600">{error}</p>}
@@ -242,6 +302,15 @@ export default function ShippingMethods() {
                       onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
                       className="border border-[#533113] raleway-regular text-base text-[#533113] px-3 py-2 outline-none bg-white"
                     />
+                    {!editForm.is_international && (
+                      <DistrictPicker
+                        region={editForm.region}
+                        districts={editForm.districts}
+                        onRegionChange={(region) => setEditForm((f) => ({ ...f, region }))}
+                        onDistrictsChange={(districts) => setEditForm((f) => ({ ...f, districts }))}
+                      />
+                    )}
+
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -250,6 +319,15 @@ export default function ShippingMethods() {
                         className="accent-[#533113]"
                       />
                       <span className="raleway-regular text-base text-[#533113]">Enabled</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editForm.is_international}
+                        onChange={(e) => setEditForm((f) => ({ ...f, is_international: e.target.checked }))}
+                        className="accent-[#533113]"
+                      />
+                      <span className="raleway-regular text-base text-[#533113]">International delivery</span>
                     </label>
                     <div className="flex gap-2">
                       <button
@@ -280,9 +358,20 @@ export default function ShippingMethods() {
                         />
                       </button>
                       <div className="min-w-0">
-                        <p className={`raleway-bold text-sm ${m.enabled ? "text-[#533113]" : "text-[#533113]/40"}`}>
+                        <p className={`raleway-bold text-sm flex items-center gap-2 ${m.enabled ? "text-[#533113]" : "text-[#533113]/40"}`}>
                           {m.name}
+                          {m.is_international && (
+                            <span className="raleway-bold text-[10px] uppercase tracking-widest border border-[#533113]/30 text-[#533113]/60 px-1.5 py-0.5">
+                              International
+                            </span>
+                          )}
                         </p>
+                        {m.region && (
+                          <p className="raleway-regular text-sm text-[#533113]/50 truncate">
+                            {m.region}
+                            {m.districts?.length ? ` · ${m.districts.join(", ")}` : " · no districts set"}
+                          </p>
+                        )}
                         {m.description && (
                           <p className="raleway-regular text-sm text-[#533113]/50 truncate">{m.description}</p>
                         )}
