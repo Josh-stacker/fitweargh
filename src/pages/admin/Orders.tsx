@@ -39,6 +39,20 @@ interface Order {
 
 const STATUSES = ["payment_pending", "pending", "processing", "shipped", "delivered", "cancelled"];
 
+// The raw values are kept in the database; these are what staff read. In
+// particular "pending" means the money has arrived and the parcel has not
+// gone out, which "pending" on its own does not make obvious.
+const STATUS_LABELS: Record<string, string> = {
+  payment_pending: "Awaiting payment",
+  pending: "Paid – not sent",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+const statusLabel = (status: string) => STATUS_LABELS[status] ?? status ?? "unknown";
+
 const STATUS_COLORS: Record<string, string> = {
   payment_pending: "bg-orange-100 text-orange-700 border-orange-200",
   pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -53,6 +67,9 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  // Default to paid: unpaid rows are abandoned checkout attempts and are not
+  // what anyone opens this page to work through.
+  const [filterPayment, setFilterPayment] = useState("paid");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -147,7 +164,12 @@ export default function Orders() {
       o.customer_email?.toLowerCase().includes(search.toLowerCase()) ||
       o.id.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || o.status === filterStatus;
-    return matchSearch && matchStatus;
+    const matchPayment =
+      filterPayment === "all" ||
+      (filterPayment === "paid"
+        ? o.payment_status === "paid"
+        : o.payment_status !== "paid");
+    return matchSearch && matchStatus && matchPayment;
   });
 
   return (
@@ -156,7 +178,8 @@ export default function Orders() {
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Orders</h2>
         <p className="raleway-regular text-base text-[#533113]/50 mt-1">
-          {orders.length} total orders
+          {filtered.length} shown · {orders.filter((o) => o.payment_status === "paid").length} paid
+          of {orders.length} total
         </p>
       </div>
 
@@ -182,8 +205,18 @@ export default function Orders() {
           >
             <option value="all">All statuses</option>
             {STATUSES.map((s) => (
-              <option key={s} value={s} className="capitalize">{s}</option>
+              <option key={s} value={s}>{statusLabel(s)}</option>
             ))}
+          </select>
+
+          <select
+            value={filterPayment}
+            onChange={(e) => setFilterPayment(e.target.value)}
+            className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none bg-white cursor-pointer focus:border-[#533113] transition-colors"
+          >
+            <option value="paid">Paid orders</option>
+            <option value="unpaid">Unpaid / abandoned</option>
+            <option value="all">All payments</option>
           </select>
         </div>
       </div>
@@ -259,8 +292,15 @@ export default function Orders() {
 
       {/* Order detail drawer */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
-          <div className="w-full max-w-md bg-white h-full flex flex-col shadow-xl">
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex justify-end"
+          onClick={() => setSelectedOrder(null)}
+        >
+          {/* Clicks inside the panel must not bubble up and close it. */}
+          <div
+            className="w-full max-w-md bg-white h-full flex flex-col shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#DEDEDE]">
               <h3 className="raleway-bold text-base text-[#533113]">
                 Order #{selectedOrder.id.slice(0, 8)}
@@ -394,13 +434,13 @@ function StatusSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={loading}
-        className={`appearance-none raleway-regular text-sm px-2.5 py-1 pr-6 border capitalize cursor-pointer outline-none transition-colors ${
+        className={`appearance-none raleway-regular text-sm px-2.5 py-1 pr-6 border cursor-pointer outline-none transition-colors ${
           STATUS_COLORS[value] ?? "bg-gray-100 text-gray-600 border-gray-200"
         } disabled:opacity-50`}
       >
         {STATUSES.map((s) => (
-          <option key={s} value={s} className="capitalize bg-white text-gray-800">
-            {s}
+          <option key={s} value={s} className="bg-white text-gray-800">
+            {statusLabel(s)}
           </option>
         ))}
       </select>

@@ -20,8 +20,41 @@ export default function Customers() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const { data } = await adminSupabase.from("profiles").select("*").order("created_at", { ascending: false });
-      if (data) setCustomers(data as Customer[]);
+      // Built from paid orders, not `profiles`: guests never register, so a
+      // profile list both misses real customers and counts people who only
+      // ever signed up. Grouped by email, which is the one field every order
+      // is guaranteed to carry.
+      const { data } = await adminSupabase
+        .from("orders")
+        .select("customer_name,customer_email,customer_phone,total,created_at")
+        .eq("payment_status", "paid")
+        .order("created_at", { ascending: false });
+
+      const byEmail = new Map<string, Customer>();
+      for (const order of (data ?? []) as any[]) {
+        const email = (order.customer_email ?? "").trim().toLowerCase();
+        if (!email) continue;
+
+        const existing = byEmail.get(email);
+        if (existing) {
+          existing.order_count += 1;
+          existing.total_spent += Number(order.total) || 0;
+          // Rows arrive newest first, so the last one seen is the earliest.
+          existing.created_at = order.created_at;
+        } else {
+          byEmail.set(email, {
+            id: email,
+            full_name: order.customer_name || "—",
+            email: order.customer_email,
+            phone: order.customer_phone || "—",
+            order_count: 1,
+            total_spent: Number(order.total) || 0,
+            created_at: order.created_at,
+          });
+        }
+      }
+
+      setCustomers([...byEmail.values()].sort((a, b) => b.total_spent - a.total_spent));
       setLoading(false);
     };
     fetch();
@@ -50,7 +83,7 @@ export default function Customers() {
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Customers</h2>
         <p className="raleway-regular text-base text-[#533113]/50 mt-1">
-          {customers.length} registered customers
+          {customers.length} paying customers
         </p>
       </div>
 
@@ -86,7 +119,7 @@ export default function Customers() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#DEDEDE] bg-[#FFFBF6]">
-                {["Customer", "Contact", "Orders", "Total Spent", "Joined"].map((h) => (
+                {["Customer", "Contact", "Orders", "Total Spent", "First Order"].map((h) => (
                   <th
                     key={h}
                     className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest text-left px-5 py-3"
