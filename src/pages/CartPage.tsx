@@ -131,6 +131,9 @@ export default function CartPage() {
   const [outsideGhana, setOutsideGhana] = useState(false);
   const [deliveryRegion, setDeliveryRegion] = useState("");
   const [typedTown, setTypedTown] = useState("");
+  // Held true while the customer is still typing, so we don't tell someone
+  // their area isn't covered before they've finished writing its name.
+  const [searchingTown, setSearchingTown] = useState(false);
 
   const internationalArea = shippingMethods.find((m) => m.is_international) ?? null;
   const isInternational = outsideGhana && Boolean(internationalArea);
@@ -218,6 +221,17 @@ export default function CartPage() {
     return () => { cancelled = true; };
   }, [shippingMethods]);
 
+  // Debounce the "we don't cover this" verdict behind a short search state.
+  useEffect(() => {
+    if (!typedTown.trim()) {
+      setSearchingTown(false);
+      return;
+    }
+    setSearchingTown(true);
+    const timer = setTimeout(() => setSearchingTown(false), 600);
+    return () => clearTimeout(timer);
+  }, [typedTown, deliveryRegion]);
+
   // USD is display-only — Paystack always charges in GHS.
   useEffect(() => {
     if (!isInternational || usdPerCedi !== null) return;
@@ -276,34 +290,36 @@ export default function CartPage() {
         ? `${deliveryAreaLabel} — priced via ${quote.viaDistrict}, ~${quote.km}km (${quote.area.name})`
         : `${deliveryAreaLabel} — delivery price to be confirmed`;
 
-      const { data: ref, error } = await supabase.from("orders").insert({
-        customer_name: form.name,
-        customer_email: form.email,
-        customer_phone: form.phone,
-        address: addressLine,
-        city: cityLine,
-        user_id: user?.uid ?? null,
-        line_items: items.map((i) => ({
-          productId: i.id,
-          name: i.name,
-          price: i.price,
-          size: i.size,
-          color: i.color,
-          quantity: i.quantity,
-          imageUrl: i.imageUrl,
-        })),
-        total: grandTotal,
-        delivery_area: deliveryAreaRecord,
-        delivery_fee: deliveryFee,
-        status: "payment_pending",
-        payment_provider: "paystack",
-        payment_status: "unpaid",
-        items: count,
-      }).select("id").single();
-      
-      if (error) throw error;
+      // Send only what is being bought and where — the server prices it from
+      // `products` and `shipping_methods`, so a tampered cart cannot set its
+      // own total.
+      const { data: created, error } = await supabase.functions.invoke("create-order", {
+        body: {
+          items: items.map((i) => ({
+            productId: i.id,
+            size: i.size,
+            color: i.color,
+            quantity: i.quantity,
+          })),
+          customer: {
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            address: addressLine,
+            city: cityLine,
+          },
+          delivery: {
+            area_id: isInternational ? internationalArea?.id ?? null : quote?.mode === "contact" ? null : quote?.area.id ?? null,
+            label: deliveryAreaRecord,
+          },
+        },
+      });
 
-      const orderId = ref.id;
+      if (error) throw error;
+      if (created?.error) throw new Error(created.error);
+      if (!created?.order_id) throw new Error("Could not create your order. Please try again.");
+
+      const orderId = created.order_id as string;
 
       if (user) {
         await supabase.from("profiles").update({
@@ -344,7 +360,7 @@ export default function CartPage() {
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-6 md:py-10">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 raleway-regular text-lg text-[#533113]/60 mb-6">
+        <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60 mb-6">
           <Link to="/" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
             <ArrowLeftIcon size={14} />
             Home
@@ -355,7 +371,7 @@ export default function CartPage() {
           </span>
         </div>
 
-        <h1 className="raleway-bold text-3xl md:text-4xl text-[#533113] mb-8">
+        <h1 className="raleway-bold text-2xl md:text-3xl text-[#533113] mb-8">
           {step === "cart" ? `Your Cart (${count})` : "Checkout"}
         </h1>
 
@@ -390,8 +406,8 @@ export default function CartPage() {
                   </div>
 
                   <div className="flex flex-1 flex-col gap-2 min-w-0">
-                    <p className="raleway-bold text-lg md:text-xl text-[#533113] leading-snug">{item.name}</p>
-                    <div className="flex flex-wrap items-center gap-3 raleway-regular text-base md:text-lg text-[#533113]/60">
+                    <p className="raleway-bold text-base md:text-lg text-[#533113] leading-snug">{item.name}</p>
+                    <div className="flex flex-wrap items-center gap-3 raleway-regular text-sm md:text-base text-[#533113]/60">
                       {item.size && <span>Size: {item.size}</span>}
                       {item.color && (
                         <span className="flex items-center gap-1">
@@ -427,7 +443,7 @@ export default function CartPage() {
                   </div>
 
                   <div className="shrink-0 min-w-[120px] flex flex-col items-end gap-3">
-                    <p className="raleway-bold text-lg md:text-xl text-[#533113] text-right">
+                    <p className="raleway-bold text-base md:text-lg text-[#533113] text-right">
                       {fmt(item.price * item.quantity)}
                     </p>
                     <button
@@ -445,10 +461,10 @@ export default function CartPage() {
             {/* Summary */}
             <div className="w-full lg:w-96 shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
-                <h2 className="raleway-bold text-base text-[#533113] uppercase tracking-widest">
+                <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Order Summary
                 </h2>
-                <div className="flex flex-col gap-2 raleway-regular text-lg text-[#533113]">
+                <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal ({count} items)</span>
                     <span>{fmt(total)}</span>
@@ -460,16 +476,16 @@ export default function CartPage() {
                   </div>
 
                   <hr className="border-[#DEDEDE] my-1" />
-                  <div className="flex justify-between raleway-bold text-xl">
+                  <div className="flex justify-between raleway-bold text-lg">
                     <span>Total</span>
                     <span>{fmt(total)}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStep("checkout")}
-                  className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-4 px-5 hover:bg-[#3d2409] transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-4 px-5 hover:bg-[#3d2409] transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                 >
-                  Proceed to Checkout
+                  Buy Now
                   <ArrowLineUpRightIcon size={16} className="shrink-0" />
                 </button>
                 {!user && (
@@ -486,7 +502,7 @@ export default function CartPage() {
                 )}
                 <Link
                   to="/new-arrivals"
-                  className="text-center raleway-regular text-base text-[#533113]/60 hover:text-[#533113] transition-colors"
+                  className="text-center raleway-regular text-sm text-[#533113]/60 hover:text-[#533113] transition-colors"
                 >
                   Continue Shopping
                 </Link>
@@ -592,19 +608,22 @@ export default function CartPage() {
 
                     {typedTown.trim().length > 0 && quote && (
                       <div className="bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
-                        {quote.mode === "exact" && (
+                        {searchingTown ? (
+                          <p className="raleway-regular text-sm text-[#533113]/70 flex items-center gap-2">
+                            <span className="w-3.5 h-3.5 border-2 border-[#533113]/40 border-t-transparent rounded-full animate-spin shrink-0" />
+                            Searching for your area…
+                          </p>
+                        ) : quote.mode === "exact" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             Delivery to {typedTown.trim()}:{" "}
                             <span className="raleway-bold">{fmt(quote.fee)}</span>
                           </p>
-                        )}
-                        {quote.mode === "nearby" && (
+                        ) : quote.mode === "nearby" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span>{" "}
                             (nearest area we cover, about {quote.km}km away)
                           </p>
-                        )}
-                        {quote.mode === "contact" && (
+                        ) : (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             After completing your order and payment please contact us via WhatsApp or email to
                             confirm your shipping/delivery fee.
@@ -759,7 +778,7 @@ export default function CartPage() {
             </form>
 
             {/* Mini order summary */}
-            <div className="w-full lg:w-[28rem] shrink-0">
+            <div className="w-full lg:w-[32rem] shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Your Order
