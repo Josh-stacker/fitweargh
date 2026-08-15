@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CheckCircleIcon, PlusIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
-import { GHANA_REGIONS, districtsInRegion } from "../../data/ghanaDistricts";
+import { GHANA_REGIONS, districtsInRegion, townsInRegion } from "../../data/ghanaDistricts";
 import { geocodeTown } from "../../lib/geocodeTown";
 
 interface DistrictPickerProps {
@@ -37,10 +37,13 @@ export default function DistrictPicker({
     onCoversWholeRegionChange(value);
     setNote(null);
     if (value && region) {
-      onTownsChange([]);
+      // Load every district and every known town in the region, so the admin
+      // sets the region once and customers can still find their own town.
       onDistrictsChange(districtsInRegion(region).map((d) => d.district));
+      onTownsChange(townsInRegion(region));
     } else {
       onDistrictsChange([]);
+      onTownsChange([]);
     }
   };
 
@@ -89,10 +92,9 @@ export default function DistrictPicker({
           onChange={(e) => {
             const next = e.target.value;
             onRegionChange(next);
-            onTownsChange([]);
-            onDistrictsChange(
-              coversWholeRegion && next ? districtsInRegion(next).map((d) => d.district) : [],
-            );
+            const wholeRegion = coversWholeRegion && next;
+            onDistrictsChange(wholeRegion ? districtsInRegion(next).map((d) => d.district) : []);
+            onTownsChange(wholeRegion ? townsInRegion(next) : []);
             setNote(null);
           }}
           className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
@@ -121,7 +123,9 @@ export default function DistrictPicker({
                 <span className="raleway-regular text-base text-[#533113]">
                   The whole of {region}
                   <span className="block raleway-regular text-sm text-[#533113]/50">
-                    Every town in the region pays this price, unless a specific town below overrides it.
+                    {coversWholeRegion && towns.length > 0
+                      ? `${towns.length} towns across ${districts.length} districts loaded. Any of them pays this price, unless another area names that town specifically.`
+                      : "Every town in the region pays this price, unless another area names that town specifically."}
                   </span>
                 </span>
               </label>
@@ -199,7 +203,7 @@ export default function DistrictPicker({
             </div>
           )}
 
-          {districts.length > 0 && (
+          {districts.length > 0 && !coversWholeRegion && (
             <p className="raleway-regular text-sm text-[#533113]/50">
               Pricing districts: {districts.join(", ")}
             </p>

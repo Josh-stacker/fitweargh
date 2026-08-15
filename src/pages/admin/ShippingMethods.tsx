@@ -55,10 +55,13 @@ export default function ShippingMethods() {
     setError("");
     const price = parseFloat(form.price);
     if (isNaN(price) || price < 0) { setError("Enter a valid price."); return; }
+    // A whole-region area needs no name of its own — the region is the name.
+    const name = form.name.trim() || (form.covers_whole_region ? form.region : "");
+    if (!name) { setError("Enter an area name."); return; }
     setSaving(true);
     try {
       const { data, error } = await adminSupabase.from("shipping_methods").insert({
-        name: form.name.trim(),
+        name,
         description: form.description.trim(),
         price,
         enabled: form.enabled,
@@ -102,10 +105,12 @@ export default function ShippingMethods() {
   const saveEdit = async (id: string) => {
     const price = parseFloat(editForm.price);
     if (isNaN(price) || price < 0) return;
+    const name = editForm.name.trim() || (editForm.covers_whole_region ? editForm.region : "");
+    if (!name) return;
     setSaving(true);
     try {
       await adminSupabase.from("shipping_methods").update({
-        name: editForm.name.trim(),
+        name,
         description: editForm.description.trim(),
         price,
         enabled: editForm.enabled,
@@ -121,7 +126,7 @@ export default function ShippingMethods() {
           m.id === id
             ? {
                 ...m,
-                name: editForm.name.trim(),
+                name,
                 description: editForm.description.trim(),
                 price,
                 enabled: editForm.enabled,
@@ -187,12 +192,14 @@ export default function ShippingMethods() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">Area</label>
+              <label className="raleway-bold text-xs text-[#533113] uppercase tracking-widest">
+                Area {form.covers_whole_region && <span className="text-[#533113]/40">(optional)</span>}
+              </label>
               <input
-                required
+                required={!form.covers_whole_region}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="East Legon"
+                placeholder={form.covers_whole_region ? form.region || "Defaults to the region name" : "East Legon"}
                 className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none focus:border-[#533113] bg-white transition-colors"
               />
             </div>

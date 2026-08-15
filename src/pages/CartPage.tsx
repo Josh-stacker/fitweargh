@@ -7,7 +7,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { PhoneInput } from "react-international-phone";
 import "react-international-phone/style.css";
-import { GHANA_REGIONS } from "../data/ghanaDistricts";
+import { GHANA_REGIONS, matchDistrictByName } from "../data/ghanaDistricts";
 import { quoteDelivery, type DeliveryArea } from "../lib/deliveryPricing";
 
 const COLOR_HEX: Record<string, string> = {
@@ -166,11 +166,21 @@ export default function CartPage() {
     return names.map((name) => ({ id: `${area.id}:${name}`, name, area }));
   });
   const needle = typedTown.trim().toLowerCase();
+  // Suggestions only appear once they type — clicking the field shows nothing.
   const townSuggestions = needle
     ? townOptions.filter((o) => o.name.toLowerCase().includes(needle))
-    : townOptions;
+    : [];
 
   const chosenArea = townOptions.find((o) => o.name.toLowerCase() === needle)?.area ?? null;
+
+  // The town exists, just not in the region they picked. Worth saying so
+  // rather than telling them we don't deliver there.
+  const townElsewhere = (() => {
+    if (!needle || chosenArea || townSuggestions.length > 0) return null;
+    const match = matchDistrictByName(typedTown.trim());
+    if (!match || match.region === deliveryRegion) return null;
+    return match.region;
+  })();
 
   // An area the admin created is priced outright. Anything else falls back to
   // the proximity rules, and finally to "contact us".
@@ -628,7 +638,6 @@ export default function CartPage() {
                           setTownListOpen(true);
                           setPaymentError("");
                         }}
-                        onFocus={() => setTownListOpen(true)}
                         // Delayed so a click on a suggestion registers first.
                         onBlur={() => setTimeout(() => setTownListOpen(false), 150)}
                         placeholder="Start typing to find your area"
@@ -668,6 +677,23 @@ export default function CartPage() {
                             <span className="w-3.5 h-3.5 border-2 border-[#533113]/40 border-t-transparent rounded-full animate-spin shrink-0" />
                             Searching for your area…
                           </p>
+                        ) : townElsewhere ? (
+                          <div className="flex flex-col gap-2">
+                            <p className="raleway-regular text-sm text-[#533113]/80">
+                              {typedTown.trim()} isn't in {deliveryRegion} — we found it in{" "}
+                              <span className="raleway-bold">{townElsewhere}</span>.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeliveryRegion(townElsewhere);
+                                setPaymentError("");
+                              }}
+                              className="self-start raleway-bold text-xs uppercase tracking-widest border border-[#533113] text-[#533113] px-4 py-2 hover:bg-[#533113]/5 transition-colors"
+                            >
+                              Switch to {townElsewhere}
+                            </button>
+                          </div>
                         ) : quote.mode === "exact" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             Delivery to {typedTown.trim()}:{" "}

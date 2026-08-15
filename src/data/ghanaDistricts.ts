@@ -164,6 +164,19 @@ export function findDistrict(region: string, district: string): GhanaDistrict | 
   return GHANA_DISTRICTS.find((d) => d.region === region && d.district === district);
 }
 
+/**
+ * Every place name we know inside a region — its districts plus all the
+ * neighbourhood aliases that resolve into them. Used when an admin prices a
+ * whole region, so customers can still find their own town by name.
+ */
+export function townsInRegion(region: string): string[] {
+  const districtNames = new Set(districtsInRegion(region).map((d) => d.district));
+  const towns = Object.entries(TOWN_ALIASES)
+    .filter(([, district]) => districtNames.has(district))
+    .map(([town]) => town);
+  return Array.from(new Set([...districtNames, ...towns])).sort((a, b) => a.localeCompare(b));
+}
+
 /** Great-circle distance in kilometres. */
 export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6371;
@@ -209,9 +222,9 @@ export function matchDistrictByName(typed: string, region?: string | null): Ghan
     pool.find((d) => normalizeName(d.district).includes(needle)) ??
     pool.find((d) => needle.includes(normalizeName(d.district)));
 
-  if (region) {
-    const inRegion = search(districtsInRegion(region));
-    if (inRegion) return inRegion;
-  }
+  // When a region is given it is a constraint, not a hint: a town in another
+  // region must NOT quietly resolve here, or a customer gets priced for a
+  // place hundreds of kilometres from where they said they are.
+  if (region) return search(districtsInRegion(region));
   return search(GHANA_DISTRICTS);
 }
