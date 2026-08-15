@@ -330,31 +330,24 @@ export default function CartPage() {
                     <span>{fmt(grandTotal)}</span>
                   </div>
                 </div>
-                {user ? (
-                  <button
-                    onClick={() => setStep("checkout")}
-                    className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
-                  >
-                    Proceed to Checkout
-                    <ArrowLineUpRightIcon size={16} />
-                  </button>
-                ) : (
-                  <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setStep("checkout")}
+                  className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                >
+                  Proceed to Checkout
+                  <ArrowLineUpRightIcon size={16} />
+                </button>
+                {!user && (
+                  <p className="text-center raleway-regular text-sm text-[#533113]/60">
+                    No account needed.{" "}
                     <Link
                       to="/account/login?next=/cart"
-                      className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                      className="underline hover:text-[#533113] transition-colors"
                     >
-                      Sign In to Checkout
-                      <ArrowLineUpRightIcon size={16} />
-                    </Link>
-                    <Link
-                      to="/account/register?next=/cart"
-                      className="w-full border border-[#533113] text-[#533113] raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#533113]/5 transition-colors flex items-center justify-between px-4"
-                    >
-                      Create Account
-                      <ArrowLineUpRightIcon size={16} />
-                    </Link>
-                  </div>
+                      Sign in
+                    </Link>{" "}
+                    to save your details.
+                  </p>
                 )}
                 <Link
                   to="/new-arrivals"

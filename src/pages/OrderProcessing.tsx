@@ -5,6 +5,7 @@ import { orderConfirmHtml } from "../emails/orderConfirmEmail";
 import { orderAdminHtml } from "../emails/orderAdminEmail";
 import { queueAndSendMail } from "../lib/mail";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
@@ -78,10 +79,17 @@ export default function OrderProcessing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { clearCart } = useCart();
+  const { user } = useAuth();
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [errorMsg, setErrorMsg] = useState("");
   const [orderId, setOrderId] = useState("");
   const ranRef = useRef(false);
+
+  // Kept current so the post-success redirect can be decided when it actually
+  // fires, not when the effect closed over `user` — auth resolves async, so at
+  // verify time a signed-in customer can still look like a guest.
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -108,13 +116,22 @@ export default function OrderProcessing() {
 
         const verifiedOrder = data.order as VerifiedOrder;
         if (!data.was_already_paid) {
-          await sendOrderEmails(verifiedOrder);
+          // Payment already succeeded at this point. A mail failure must never
+          // turn a paid order into a "payment not confirmed" screen.
+          try {
+            await sendOrderEmails(verifiedOrder);
+          } catch (mailErr) {
+            console.error("Order email failed:", mailErr);
+          }
         }
 
         setOrderId(verifiedOrder.id);
         clearCart();
         setStatus("success");
-        setTimeout(() => navigate("/account"), 2500);
+        // Guests have no account page to land on — leave them on the receipt.
+        setTimeout(() => {
+          if (userRef.current) navigate("/account");
+        }, 2500);
       } catch (err) {
         console.error("Paystack verification error:", err);
         const msg = err instanceof Error ? err.message : "";
@@ -156,7 +173,21 @@ export default function OrderProcessing() {
             <p className="raleway-regular text-sm text-[#533113]/40 font-mono">
               Order #{orderId.slice(0, 10).toUpperCase()}
             </p>
-            <p className="raleway-regular text-sm text-[#533113]/50">Redirecting to your account…</p>
+            {user ? (
+              <p className="raleway-regular text-sm text-[#533113]/50">Redirecting to your account…</p>
+            ) : (
+              <>
+                <p className="raleway-regular text-sm text-[#533113]/50">
+                  A confirmation email is on its way. Keep your order number for reference.
+                </p>
+                <Link
+                  to="/new-arrivals"
+                  className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#3d2409] transition-colors mt-2"
+                >
+                  Continue Shopping
+                </Link>
+              </>
+            )}
           </>
         )}
 
@@ -169,10 +200,10 @@ export default function OrderProcessing() {
             <p className="raleway-regular text-[#533113]/70 text-lg">{errorMsg}</p>
             <div className="flex items-center gap-3 mt-2">
               <Link
-                to="/account"
+                to={user ? "/account" : "/cart"}
                 className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#3d2409] transition-colors"
               >
-                Go to My Account
+                {user ? "Go to My Account" : "Back to Cart"}
               </Link>
               <Link
                 to="/contact-us"
