@@ -35,9 +35,9 @@ const FAQS = [
       "Refunds are issued exclusively as store credit. We do not process cash refunds or reverse electronic transactions. Store credit is added to your account within 3–5 business days after we receive and inspect the returned item, and never expires.",
   },
   {
-    question: "How do I return an item?",
+    question: "What is your returns & exchanges policy?",
     answer:
-      "Contact our support team within 7 days of receiving your order. We will provide return instructions. Items must be in original, unused condition with all tags attached.",
+      "Returns or exchanges are only accepted if an item is incorrect, defective, or damaged upon delivery. You must notify us within 24 hours of receiving your order and provide photos and your order number via WhatsApp for review. Items must be unworn and in original condition.\n\nReturns or exchanges will NOT be accepted if: you purchased a different size because your correct size was sold out; you did not use the size guide to find your size; you did not review the product description, measurements, or model height reference before purchasing; or you fail to notify us within 24 hours of receiving your order.\n\nPlease review all product details and size guides carefully before placing your order.",
   },
   {
     question: "Do you ship outside Ghana?",
@@ -79,9 +79,11 @@ function FAQItem({
         />
       </button>
       {open && (
-        <p className="raleway-regular text-sm md:text-base text-[#533113]/80 pb-5 leading-relaxed">
-          {answer}
-        </p>
+        <div className="raleway-regular text-sm md:text-base text-[#533113]/80 pb-5 leading-relaxed flex flex-col gap-3">
+          {answer.split("\n\n").map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
       )}
     </div>
   );

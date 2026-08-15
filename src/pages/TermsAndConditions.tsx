@@ -82,8 +82,9 @@ function TermsAndConditions() {
       title: "9. Returns, Exchanges, and Refunds",
       content: (
         <>
-          <p>Return or exchange requests must be made within 7 days after delivery. Items must be unused, unworn, unwashed, undamaged, and returned with original tags and packaging.</p>
-          <p className="mt-4">For hygiene reasons, body shapers and intimate wear may be non-returnable unless faulty. Sale items may be final sale unless faulty. Refunds are issued after returned items are inspected and approved.</p>
+          <p>Returns or exchanges are only accepted if an item is incorrect, defective, or damaged upon delivery. You must notify us within 24 hours of receiving your order and provide photos and your order number via WhatsApp for review. Items must be unworn and in original condition.</p>
+          <p className="mt-4">Returns or exchanges will NOT be accepted if: you purchased a different size because your correct size was sold out; you did not use the size guide to find your size; you did not review the product description, measurements, or model height reference before purchasing; or you fail to notify us within 24 hours of receiving your order.</p>
+          <p className="mt-4">Please review all product details and size guides carefully before placing your order. For hygiene reasons, body shapers and intimate wear may be non-returnable unless faulty. Sale items may be final sale unless faulty. Refunds are issued after returned items are inspected and approved.</p>
         </>
       ),
     },
