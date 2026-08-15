@@ -63,14 +63,15 @@ export function quoteDelivery(
 ): DeliveryQuote {
   const usable = areas.filter((a) => a.enabled && !a.is_international);
 
-  // Where is the customer? Either a picked district, or a free-typed town we
-  // try to recognise against the district list.
+  // Where is the customer? Districts are an internal pricing concept only —
+  // the customer types a town, and we resolve it to a district behind the
+  // scenes, preferring one inside the region they picked.
   let point: GhanaDistrict | undefined;
   if (selection.region && selection.district) {
     point = findDistrict(selection.region, selection.district);
   }
   if (!point && selection.typedTown) {
-    point = matchDistrictByName(selection.typedTown);
+    point = matchDistrictByName(selection.typedTown, selection.region);
   }
   if (!point) return { mode: "contact", fee: 0 };
 

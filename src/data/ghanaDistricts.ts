@@ -3,6 +3,8 @@
 // 2.2MB of polygon geometry and must never be shipped to the browser.
 // Regenerate with the script in scripts/build-districts.mjs.
 
+import { TOWN_ALIASES } from "./ghanaTownAliases";
+
 export interface GhanaDistrict {
   region: string;
   district: string;
@@ -179,12 +181,37 @@ export function normalizeName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-export function matchDistrictByName(typed: string): GhanaDistrict | undefined {
+const ALIAS_BY_NORMALIZED = new Map(
+  Object.entries(TOWN_ALIASES).map(([town, district]) => [normalizeName(town), district]),
+);
+
+/**
+ * Resolve a free-typed town to a district. Never shown to the customer — it
+ * only exists so a typed town can be priced. When a region is given we look
+ * there first, so "Accra" in Greater Accra doesn't match a similarly named
+ * place in another region.
+ */
+export function matchDistrictByName(typed: string, region?: string | null): GhanaDistrict | undefined {
   const needle = normalizeName(typed);
   if (needle.length < 3) return undefined;
-  return (
-    GHANA_DISTRICTS.find((d) => normalizeName(d.district) === needle) ??
-    GHANA_DISTRICTS.find((d) => normalizeName(d.district).includes(needle)) ??
-    GHANA_DISTRICTS.find((d) => needle.includes(normalizeName(d.district)))
-  );
+
+  // Neighbourhoods first: customers type "Osu" or "Madina", which are not
+  // districts but sit inside one.
+  const aliasDistrict = ALIAS_BY_NORMALIZED.get(needle);
+  if (aliasDistrict) {
+    const match = GHANA_DISTRICTS.find((d) => d.district === aliasDistrict);
+    // Only trust the alias if it agrees with the region the customer picked.
+    if (match && (!region || match.region === region)) return match;
+  }
+
+  const search = (pool: GhanaDistrict[]) =>
+    pool.find((d) => normalizeName(d.district) === needle) ??
+    pool.find((d) => normalizeName(d.district).includes(needle)) ??
+    pool.find((d) => needle.includes(normalizeName(d.district)));
+
+  if (region) {
+    const inRegion = search(districtsInRegion(region));
+    if (inRegion) return inRegion;
+  }
+  return search(GHANA_DISTRICTS);
 }

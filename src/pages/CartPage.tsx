@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { GHANA_REGIONS, districtsInRegion } from "../data/ghanaDistricts";
+import { GHANA_REGIONS } from "../data/ghanaDistricts";
 import { quoteDelivery } from "../lib/deliveryPricing";
 
 const COLOR_HEX: Record<string, string> = {
@@ -48,14 +48,7 @@ const EMPTY_FORM = {
 
 const ADMIN_DELIVERY_EMAIL = "fitweargh1@gmail.com";
 
-// Sentinel values for the region/town selects — kept distinct from real
-// region names so they can never collide with the GADM data.
-const OTHER_REGION = "__other__";
-const OTHER_DISTRICT = "__other__";
-const INTERNATIONAL_REGION = "__international__";
-
 const WHATSAPP_NUMBER = "233559506998";
-const WHATSAPP_DISPLAY = "+233 55 950 6998";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
   "Hi FitwearGH, I have a question about my order.",
 )}`;
@@ -137,36 +130,30 @@ export default function CartPage() {
   const initializingPaymentRef = useRef(false);
   const geoAppliedRef = useRef(false);
 
-  // Customer's location choice drives the price: region → town, or a typed
-  // town we try to recognise. See lib/deliveryPricing.
+  // The customer ticks "outside Ghana", or picks a region and types their
+  // town. Districts are never surfaced — they exist only so
+  // lib/deliveryPricing can resolve a price behind the scenes.
+  const [outsideGhana, setOutsideGhana] = useState(false);
   const [deliveryRegion, setDeliveryRegion] = useState("");
-  const [deliveryDistrict, setDeliveryDistrict] = useState("");
   const [typedTown, setTypedTown] = useState("");
 
   const internationalArea = shippingMethods.find((m) => m.is_international) ?? null;
-  const isInternational = deliveryRegion === INTERNATIONAL_REGION;
-  const needsTypedTown =
-    !isInternational && (deliveryRegion === OTHER_REGION || deliveryDistrict === OTHER_DISTRICT);
+  const isInternational = outsideGhana && Boolean(internationalArea);
 
   const quote = isInternational
     ? null
     : quoteDelivery(shippingMethods, {
-        region: deliveryRegion === OTHER_REGION ? null : deliveryRegion,
-        district: deliveryDistrict === OTHER_DISTRICT ? null : deliveryDistrict,
-        typedTown: needsTypedTown ? typedTown : null,
+        region: deliveryRegion,
+        district: null,
+        typedTown: typedTown,
       });
 
-  // A location is chosen once we have a recognised district, or the customer
-  // has told us where they are in their own words.
   const hasDeliveryChoice =
-    isInternational ||
-    (needsTypedTown ? typedTown.trim().length > 0 : Boolean(deliveryRegion && deliveryDistrict));
+    isInternational || Boolean(deliveryRegion && typedTown.trim().length > 0);
 
   const deliveryAreaLabel = isInternational
     ? internationalArea?.name ?? "Outside Ghana"
-    : needsTypedTown
-    ? typedTown.trim()
-    : [deliveryDistrict, deliveryRegion].filter(Boolean).join(", ");
+    : [typedTown.trim(), deliveryRegion].filter(Boolean).join(", ");
 
   useEffect(() => {
     if (!user) return;
@@ -212,8 +199,8 @@ export default function CartPage() {
       .then((outside) => {
         if (cancelled || !outside) return;
         geoAppliedRef.current = true;
-        // Only a hint: never overwrite a region the customer already chose.
-        setDeliveryRegion((current) => current || INTERNATIONAL_REGION);
+        // Only a hint: don't override a customer who already picked a region.
+        setOutsideGhana((current) => current || !deliveryRegion);
       })
       .catch(() => { /* stay on the default Ghana flow */ });
 
@@ -534,93 +521,61 @@ export default function CartPage() {
                   />
                 </Field>
 
-                <Field label="Region">
-                  <select
-                    required
-                    value={deliveryRegion}
-                    onChange={(e) => {
-                      setDeliveryRegion(e.target.value);
-                      setDeliveryDistrict("");
-                      setTypedTown("");
-                      setPaymentError("");
-                    }}
-                    className="input-base"
-                  >
-                    <option value="">Select region</option>
-                    {GHANA_REGIONS.map((region) => (
-                      <option key={region} value={region}>{region}</option>
-                    ))}
-                    <option value={OTHER_REGION}>Other / not listed</option>
-                    {internationalArea && (
-                      <option value={INTERNATIONAL_REGION}>Outside Ghana</option>
-                    )}
-                  </select>
-                  {!shippingMethods.length && (
-                    <p className="raleway-regular text-sm text-red-500">No delivery areas are available yet.</p>
-                  )}
-                </Field>
+                {internationalArea && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={outsideGhana}
+                      onChange={(e) => {
+                        setOutsideGhana(e.target.checked);
+                        setPaymentError("");
+                      }}
+                      className="accent-[#533113]"
+                    />
+                    <span className="raleway-regular text-base text-[#533113]">
+                      I'm ordering from outside Ghana
+                    </span>
+                  </label>
+                )}
 
-                {deliveryRegion && !isInternational && deliveryRegion !== OTHER_REGION && (
-                  <Field label="Town / District">
+                {!isInternational && (
+                  <Field label="Region">
                     <select
                       required
-                      value={deliveryDistrict}
+                      value={deliveryRegion}
                       onChange={(e) => {
-                        setDeliveryDistrict(e.target.value);
-                        setTypedTown("");
+                        setDeliveryRegion(e.target.value);
                         setPaymentError("");
                       }}
                       className="input-base"
                     >
-                      <option value="">Select your town</option>
-                      {districtsInRegion(deliveryRegion).map((d) => (
-                        <option key={d.district} value={d.district}>{d.district}</option>
+                      <option value="">Select region</option>
+                      {GHANA_REGIONS.map((region) => (
+                        <option key={region} value={region}>{region}</option>
                       ))}
-                      <option value={OTHER_DISTRICT}>Other / not listed</option>
                     </select>
+                    {!shippingMethods.length && (
+                      <p className="raleway-regular text-sm text-red-500">No delivery areas are available yet.</p>
+                    )}
                   </Field>
                 )}
 
-                {needsTypedTown && (
-                  <Field label="Your Town">
+                {!isInternational && (
+                  <Field label="Town or Area">
                     <input
                       required
                       value={typedTown}
                       onChange={(e) => { setTypedTown(e.target.value); setPaymentError(""); }}
-                      placeholder="Type the name of your town"
+                      placeholder="e.g. Osu, Tema, Kumasi"
                       className="input-base"
                     />
-                    <p className="raleway-regular text-sm text-[#533113]/50">
-                      We'll match it to the closest area we deliver to. If we can't, we'll contact you
-                      with a delivery price.
-                    </p>
+                    {quote?.mode === "contact" && typedTown.trim().length > 0 && (
+                      <p className="raleway-regular text-sm text-[#533113]/50">
+                        We don't have a set delivery price for this area yet. Pay for your items now and
+                        we'll contact you with a delivery price — or ask us on WhatsApp before paying.
+                      </p>
+                    )}
                   </Field>
-                )}
-
-                {!isInternational && hasDeliveryChoice && quote && (
-                  <div className="bg-[#FFFBF6] border border-[#DEDEDE] px-4 py-3 flex flex-col gap-1">
-                    {quote.mode === "exact" && (
-                      <p className="raleway-regular text-sm text-[#533113]/70">
-                        Delivery to {deliveryAreaLabel}: <span className="raleway-bold">{fmt(quote.fee)}</span>
-                      </p>
-                    )}
-                    {quote.mode === "nearby" && (
-                      <p className="raleway-regular text-sm text-[#533113]/70">
-                        Closest area we cover is {quote.viaDistrict} (about {quote.km}km away). Delivery:{" "}
-                        <span className="raleway-bold">{fmt(quote.fee)}</span>
-                      </p>
-                    )}
-                    {quote.mode === "contact" && (
-                      <p className="raleway-regular text-sm text-[#533113]/70">
-                        We don't have a set delivery price for {deliveryAreaLabel || "your area"} yet. Pay for
-                        your items now and we'll contact you with a delivery price — or ask us on WhatsApp
-                        before paying.
-                      </p>
-                    )}
-                    <p className="raleway-regular text-sm text-[#533113]/50">
-                      Same day delivery within Greater Accra. Next day delivery outside Greater Accra.
-                    </p>
-                  </div>
                 )}
 
                 {isInternational ? (
@@ -739,14 +694,11 @@ export default function CartPage() {
                     href={WHATSAPP_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest px-5 py-3 mt-2 hover:bg-[#533113]/5 transition-colors"
+                    className="flex items-center justify-center gap-2 bg-[#25D366] text-white raleway-bold text-sm uppercase tracking-widest px-5 py-3 mt-2 hover:bg-[#1EBE5A] transition-colors"
                   >
-                    <WhatsappLogoIcon size={18} className="shrink-0" />
+                    <WhatsappLogoIcon size={18} weight="fill" className="shrink-0" />
                     Ask a question on WhatsApp
                   </a>
-                  <p className="raleway-regular text-sm text-[#533113]/50 text-center">
-                    {WHATSAPP_DISPLAY}
-                  </p>
 
                   {paymentError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-sm px-4 py-3 mt-2">
@@ -782,7 +734,7 @@ export default function CartPage() {
             </form>
 
             {/* Mini order summary */}
-            <div className="w-full lg:w-96 shrink-0">
+            <div className="w-full lg:w-[28rem] shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Your Order
@@ -803,18 +755,18 @@ export default function CartPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="raleway-bold text-xs text-[#533113] truncate">{item.name}</p>
+                        <p className="raleway-bold text-base text-[#533113] leading-snug">{item.name}</p>
                         <p className="raleway-regular text-sm text-[#533113]/60">
                           {item.size && `${item.size} · `}×{item.quantity}
                         </p>
                       </div>
-                      <p className="raleway-bold text-xs text-[#533113] shrink-0">
+                      <p className="raleway-bold text-base text-[#533113] shrink-0">
                         {fmt(item.price * item.quantity)}
                       </p>
                     </div>
                   ))}
                 </div>
-                <hr className="border-[#DEDEDE]" />
+                <hr className="border-[#DEDEDE] shrink-0" />
                 <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
@@ -826,12 +778,12 @@ export default function CartPage() {
                       {!hasDeliveryChoice
                         ? "Select area"
                         : isInternational || quote?.mode === "contact"
-                        ? "Quoted after payment"
+                        ? "To be confirmed"
                         : fmt(deliveryFee)}
                     </span>
                   </div>
                   <hr className="border-[#DEDEDE] my-1" />
-                  <div className="flex justify-between raleway-bold text-base">
+                  <div className="flex justify-between raleway-bold text-lg">
                     <span>Total</span>
                     <span>{fmt(grandTotal)}</span>
                   </div>
@@ -842,6 +794,10 @@ export default function CartPage() {
                     </div>
                   )}
                 </div>
+
+                <p className="raleway-regular text-sm text-[#533113]/50 border-t border-[#DEDEDE] pt-3">
+                  Same day delivery within Greater Accra. Next day delivery outside Greater Accra.
+                </p>
               </div>
             </div>
           </div>
