@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 import PasswordInput from "../../components/ui/PasswordInput";
 
 export default function AdminLogin() {
-  const { loginAdmin: login } = useAuth();
+  const { loginAdmin: login } = useAdminAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

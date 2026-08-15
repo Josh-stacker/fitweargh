@@ -1,0 +1,38 @@
+project_id = "bkcrgubjjxrjfxghkhss"
+
+# Guests have no user JWT, so every function the storefront calls during
+# checkout must not require one. These are safe to expose because each
+# validates its own input server-side:
+#   create-order        prices the cart from `products` / `shipping_methods`
+#   initialize-paystack only turns an existing order id into a payment URL
+#   verify-paystack     confirms a payment against Paystack itself
+#   send-mail           sends already-queued messages by id
+#
+# Without these entries a plain `supabase functions deploy <name>` re-enables
+# JWT verification and silently breaks guest checkout.
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.initialize-paystack]
+verify_jwt = false
+
+[functions.verify-paystack]
+verify_jwt = false
+
+[functions.send-mail]
+verify_jwt = false
+
+[functions.send-auth-email]
+verify_jwt = false
+
+# Admin-only functions keep JWT verification and additionally check that the
+# caller is in `admin_users`.
+[functions.grant-admin]
+verify_jwt = true
+
+[functions.revoke-admin]
+verify_jwt = true
+
+[functions.reset-admin-password]
+verify_jwt = true

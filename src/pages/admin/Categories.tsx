@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, TagIcon } from "@phosphor-icons/react";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface Category {
   id: string;
@@ -21,10 +22,12 @@ export default function Categories() {
   const [form, setForm] = useState({ name: "", description: "" });
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Category | null>(null);
 
   const fetchCats = async () => {
     setLoading(true);
-    const { data } = await supabase.from("categories").select("*").order("name", { ascending: true });
+    const { data, error } = await adminSupabase.from("categories").select("*").order("name", { ascending: true });
+    if (error) console.error("Fetch categories error:", error);
     if (data) {
       setCats(data as Category[]);
     }
@@ -56,9 +59,9 @@ export default function Categories() {
         updated_at: new Date().toISOString(),
       };
       if (editing) {
-        await supabase.from("categories").update(data).eq("id", editing.id);
+        await adminSupabase.from("categories").update(data).eq("id", editing.id);
       } else {
-        await supabase.from("categories").insert({ ...data, product_count: 0 });
+        await adminSupabase.from("categories").insert({ ...data, product_count: 0 });
       }
       setModalOpen(false);
       fetchCats();
@@ -70,10 +73,14 @@ export default function Categories() {
   const handleDelete = async (id: string) => {
     setDeleteId(id);
     try {
-      await supabase.from("categories").delete().eq("id", id);
+      const { error } = await adminSupabase.from("categories").delete().eq("id", id);
+      if (error) throw error;
       setCats((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Delete category error:", err);
     } finally {
       setDeleteId(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -139,7 +146,7 @@ export default function Categories() {
                         <PencilSimpleIcon size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(c.id)}
+                        onClick={() => setConfirmTarget(c)}
                         disabled={deleteId === c.id}
                         className="p-2 hover:bg-red-50 transition-colors text-red-500 disabled:opacity-40"
                       >
@@ -219,6 +226,15 @@ export default function Categories() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Delete Category"
+        message={`Are you sure you want to delete "${confirmTarget?.name}"? This cannot be undone.`}
+        loading={deleteId === confirmTarget?.id}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget.id)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

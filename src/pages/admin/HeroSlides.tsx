@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   PlusIcon,
   PencilSimpleIcon,
@@ -10,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "../../lib/cropImage";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface HeroSlide {
   id: string;
@@ -71,6 +73,7 @@ export default function HeroSlides() {
 
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<HeroSlide | null>(null);
 
   // Cropper state
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -86,7 +89,7 @@ export default function HeroSlides() {
 
   const fetchSlides = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await adminSupabase
       .from("hero_slides")
       .select("*")
       .order("page", { ascending: true })
@@ -137,16 +140,11 @@ export default function HeroSlides() {
     file: File | null,
     existing: string,
     existingPath: string,
-    folder: string
+    _folder: string
   ): Promise<{ url: string; path: string }> => {
     if (!file) return { url: existing, path: existingPath };
-    const path = `heroSlides/${folder}/${Date.now()}_${file.name}`;
-    await supabase.storage.from("public-assets").upload(path, file);
-    const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
-    if (existingPath) {
-      try { await supabase.storage.from("public-assets").remove([existingPath]); } catch {}
-    }
-    return { url: data.publicUrl, path };
+    const url = await uploadToCloudinary(file, "fitweargh/hero");
+    return { url, path: url };
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -179,9 +177,9 @@ export default function HeroSlides() {
       };
 
       if (editing) {
-        await supabase.from("hero_slides").update(data).eq("id", editing.id);
+        await adminSupabase.from("hero_slides").update(data).eq("id", editing.id);
       } else {
-        await supabase.from("hero_slides").insert(data);
+        await adminSupabase.from("hero_slides").insert(data);
       }
 
       setModalOpen(false);
@@ -196,13 +194,11 @@ export default function HeroSlides() {
   const handleDelete = async (s: HeroSlide) => {
     setDeleteId(s.id);
     try {
-      await supabase.from("hero_slides").delete().eq("id", s.id);
-      for (const path of [s.bg_image_path, s.image1_path, s.image2_path]) {
-        if (path) { try { await supabase.storage.from("public-assets").remove([path]); } catch {} }
-      }
+      await adminSupabase.from("hero_slides").delete().eq("id", s.id);
       setSlides((prev) => prev.filter((x) => x.id !== s.id));
     } finally {
       setDeleteId(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -347,7 +343,7 @@ export default function HeroSlides() {
                                 <PencilSimpleIcon size={15} />
                               </button>
                               <button
-                                onClick={() => handleDelete(s)}
+                                onClick={() => setConfirmTarget(s)}
                                 disabled={deleteId === s.id}
                                 className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 transition-colors disabled:opacity-40"
                               >
@@ -623,6 +619,15 @@ export default function HeroSlides() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Delete Slide"
+        message={`Are you sure you want to delete "${confirmTarget?.title || "this slide"}"? This cannot be undone.`}
+        loading={deleteId === confirmTarget?.id}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

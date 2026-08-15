@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   ImageIcon,
   FloppyDiskIcon,
@@ -128,8 +129,8 @@ export default function HomepageSettings() {
         settingsResult,
         productsResult
       ] = await Promise.all([
-        supabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
-        supabase.from("products").select("*").order("created_at", { ascending: false })
+        adminSupabase.from("site_settings").select("value").eq("key", "homepage").maybeSingle(),
+        adminSupabase.from("products").select("*").order("created_at", { ascending: false })
       ]);
 
       if (settingsResult.error) console.error("Settings error:", settingsResult.error);
@@ -234,14 +235,8 @@ export default function HomepageSettings() {
       let imagePath = stillImagePath;
 
       if (stillFile) {
-        const path = `siteSettings/heroStill_${Date.now()}_${stillFile.name}`;
-        await supabase.storage.from("public-assets").upload(path, stillFile);
-        const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
-        imageUrl = data.publicUrl;
-        if (stillImagePath) {
-          try { await supabase.storage.from("public-assets").remove([stillImagePath]); } catch {}
-        }
-        imagePath = path;
+        imageUrl = await uploadToCloudinary(stillFile, "fitweargh/settings");
+        imagePath = imageUrl;
         setStillImageUrl(imageUrl);
         setStillImagePath(imagePath);
         setStillFile(null);
@@ -255,20 +250,9 @@ export default function HomepageSettings() {
             let cardImagePath = card.imagePath;
 
             if (card.file) {
-              const safeName = card.file.name
-                .toLowerCase()
-                .replace(/[^a-z0-9.]+/g, "-")
-                .replace(/^-+|-+$/g, "");
-              const path = `siteSettings/categoryCards/${category.name.toLowerCase().replace(/\s+/g, "-")}_${Date.now()}_${safeName || "image.jpg"}`;
-              await supabase.storage.from("public-assets").upload(path, card.file);
-              const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
-              cardImageUrl = data.publicUrl;
-              if (card.imagePath) {
-                try { await supabase.storage.from("public-assets").remove([card.imagePath]); } catch {}
-              }
-              cardImagePath = path;
-            } else if (card.removeExisting && card.imagePath) {
-              try { await supabase.storage.from("public-assets").remove([card.imagePath]); } catch {}
+              cardImageUrl = await uploadToCloudinary(card.file, "fitweargh/settings");
+              cardImagePath = cardImageUrl;
+            } else if (card.removeExisting) {
               cardImageUrl = "";
               cardImagePath = "";
             }
@@ -296,7 +280,7 @@ export default function HomepageSettings() {
         ) as Record<string, CategoryCardForm>,
       );
 
-      await supabase.from("site_settings").upsert({
+      await adminSupabase.from("site_settings").upsert({
         key: "homepage",
         value: {
           heroMode,

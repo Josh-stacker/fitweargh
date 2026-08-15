@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   PlusIcon,
   PencilSimpleIcon,
@@ -12,6 +13,7 @@ import {
   CaretRightIcon,
 } from "@phosphor-icons/react";
 import { BUILT_IN_SIZE_CHARTS, DEFAULT_SIZE_CHART, mergeBuiltInSizeCharts, type SizeChart } from "../../lib/sizeCharts";
+import ConfirmModal from "../../components/admin/ConfirmModal";
 
 interface Product {
   id: string;
@@ -169,7 +171,7 @@ const EMPTY_FORM = {
   description: "",
 };
 
-const PRODUCT_IMAGE_BUCKET = "public-assets";
+const CLOUDINARY_PRODUCTS_FOLDER = "fitweargh/products";
 const STOCK_ALL_KEY = "__all__";
 const COLOR_STOCK_PREFIX = "color::";
 const SIZE_STOCK_PREFIX = "size::";
@@ -207,13 +209,6 @@ function productFromRow(row: ProductRow): Product {
   };
 }
 
-function storageName(fileName: string) {
-  const safeName = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `products/${crypto.randomUUID()}-${safeName || "image.jpg"}`;
-}
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -229,6 +224,7 @@ export default function Products() {
   const [displayIdx, setDisplayIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("latest");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -249,7 +245,7 @@ export default function Products() {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false });
@@ -264,7 +260,7 @@ export default function Products() {
   };
 
   const fetchSizeCharts = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from("site_settings")
       .select("value")
       .eq("key", "size_charts")
@@ -338,7 +334,7 @@ export default function Products() {
         ...chart,
         rows: chart.rows.filter((row) => row.size.trim() || row.label.trim() || row.value.trim()),
       }));
-      const { error } = await supabase.from("site_settings").upsert({
+      const { error } = await adminSupabase.from("site_settings").upsert({
         key: "size_charts",
         value: { charts: cleanCharts },
         updated_at: new Date().toISOString(),
@@ -588,33 +584,11 @@ export default function Products() {
 
   const totalStock = Object.values(normalizedStock).reduce((a, b) => a + (b || 0), 0);
 
-  const uploadSlot = async (slot: ImageSlot, index: number): Promise<{ url: string; path: string }> => {
+  const uploadSlot = async (slot: ImageSlot, _index: number): Promise<{ url: string; path: string }> => {
     if (slot.file) {
-      const path = storageName(`${index}_${slot.file.name}`);
-      const { error } = await supabase.storage
-        .from(PRODUCT_IMAGE_BUCKET)
-        .upload(path, slot.file, {
-          contentType: slot.file.type,
-          upsert: false,
-        });
-
-      if (error) throw error;
-
-      const { data } = supabase.storage
-        .from(PRODUCT_IMAGE_BUCKET)
-        .getPublicUrl(path);
-
-      // Remove the old image if it was replaced
-      if (slot.existingPath) {
-        try {
-          await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([slot.existingPath]);
-        } catch (removeError) {
-          console.warn("Could not remove replaced product image:", removeError);
-        }
-      }
-      return { url: data.publicUrl, path };
+      const url = await uploadToCloudinary(slot.file, CLOUDINARY_PRODUCTS_FOLDER);
+      return { url, path: url };
     }
-    // Unchanged existing image
     return { url: slot.existingUrl, path: slot.existingPath };
   };
 
@@ -626,19 +600,6 @@ export default function Products() {
       // Upload all slots in parallel
       const uploaded = await Promise.all(imageSlots.map((s, i) => uploadSlot(s, i)));
 
-      // Delete any images that were removed from the editing product
-      if (editing) {
-        const oldPaths = [editing.imagePath, ...(editing.imagePaths ?? [])].filter(Boolean);
-        const keptPaths = new Set(uploaded.map((u) => u.path));
-        const removedPaths = oldPaths.filter((oldPath) => oldPath && !keptPaths.has(oldPath));
-        if (removedPaths.length > 0) {
-          try {
-            await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(removedPaths);
-          } catch (removeError) {
-            console.warn("Could not remove old product images:", removeError);
-          }
-        }
-      }
 
       const safeDisplayIdx = uploaded.length > 0 ? Math.min(displayIdx, uploaded.length - 1) : 0;
       // imageUrl = the chosen display image (used by product cards & product page first view)
@@ -683,13 +644,13 @@ export default function Products() {
       };
 
       if (editing) {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("products")
           .update(data)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("products")
           .insert({ ...data, created_at: new Date().toISOString() });
         if (error) throw error;
@@ -707,19 +668,12 @@ export default function Products() {
   const handleDelete = async (p: Product) => {
     setDeleteId(p.id);
     try {
-      const { error } = await supabase.from("products").delete().eq("id", p.id);
+      const { error } = await adminSupabase.from("products").delete().eq("id", p.id);
       if (error) throw error;
-      const allPaths = [p.imagePath, ...(p.imagePaths ?? [])].filter(Boolean);
-      if (allPaths.length > 0) {
-        try {
-          await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(allPaths);
-        } catch (removeError) {
-          console.warn("Could not remove deleted product images:", removeError);
-        }
-      }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
     } finally {
       setDeleteId(null);
+      setConfirmTarget(null);
     }
   };
 
@@ -1261,7 +1215,7 @@ export default function Products() {
                         <PencilSimpleIcon size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(p)}
+                        onClick={() => setConfirmTarget(p)}
                         disabled={deleteId === p.id}
                         className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white raleway-bold text-xs uppercase tracking-widest px-4 py-2 transition-colors disabled:opacity-40"
                       >
@@ -1938,6 +1892,15 @@ export default function Products() {
           />
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${confirmTarget?.name}"? This cannot be undone.`}
+        loading={deleteId === confirmTarget?.id}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

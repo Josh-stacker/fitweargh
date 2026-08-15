@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import {
   ShoppingCartIcon,
   UsersIcon,
@@ -33,6 +33,16 @@ const STATUS_COLORS: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-700",
   delivered: "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-700",
+};
+
+// Mirrors the labels on the Orders page: "pending" means paid but not yet sent.
+const STATUS_LABELS: Record<string, string> = {
+  payment_pending: "Awaiting payment",
+  pending: "Paid – not sent",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 function StatCard({ label, value, sub, icon: Icon, color }: StatCard) {
@@ -69,27 +79,48 @@ export default function Dashboard() {
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
+        // Every figure below counts paid orders only. Unpaid rows are
+        // abandoned checkout attempts — counting them would inflate revenue,
+        // orders and customers alike.
         const [
           { data: allOrders, count: ordersCount },
-          { count: customersCount },
           { count: productsCount },
           { data: monthOrders },
           { data: recentData }
         ] = await Promise.all([
-          supabase.from("orders").select("total", { count: "exact" }),
-          supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("products").select("*", { count: "exact", head: true }),
-          supabase.from("orders").select("total").gte("created_at", startOfMonth.toISOString()),
-          supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
+          adminSupabase
+            .from("orders")
+            .select("total,customer_email", { count: "exact" })
+            .eq("payment_status", "paid"),
+          adminSupabase.from("products").select("*", { count: "exact", head: true }),
+          adminSupabase
+            .from("orders")
+            .select("total")
+            .eq("payment_status", "paid")
+            .gte("created_at", startOfMonth.toISOString()),
+          adminSupabase
+            .from("orders")
+            .select("*")
+            .eq("payment_status", "paid")
+            .order("created_at", { ascending: false })
+            .limit(8),
         ]);
 
         const totalRevenue = allOrders?.reduce((sum, d) => sum + (Number(d.total) || 0), 0) || 0;
         const monthRevenue = monthOrders?.reduce((sum, d) => sum + (Number(d.total) || 0), 0) || 0;
 
+        // A customer is someone who has actually paid, counted once by email —
+        // guests never get a `profiles` row, so profiles can't be the source.
+        const payingCustomers = new Set(
+          (allOrders ?? [])
+            .map((o: any) => (o.customer_email ?? "").trim().toLowerCase())
+            .filter(Boolean),
+        );
+
         setStats({
           totalRevenue,
           totalOrders: ordersCount || 0,
-          totalCustomers: customersCount || 0,
+          totalCustomers: payingCustomers.size,
           totalProducts: productsCount || 0,
           monthRevenue,
           monthOrders: monthOrders?.length || 0,
@@ -222,11 +253,11 @@ export default function Dashboard() {
                     </td>
                     <td className="px-5 py-3">
                       <span
-                        className={`raleway-regular text-sm px-2.5 py-1 capitalize ${
+                        className={`raleway-regular text-sm px-2.5 py-1 ${
                           STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"
                         }`}
                       >
-                        {order.status ?? "unknown"}
+                        {STATUS_LABELS[order.status] ?? order.status ?? "unknown"}
                       </span>
                     </td>
                     <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">

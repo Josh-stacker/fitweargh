@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import { FloppyDiskIcon, ToggleLeftIcon, ToggleRightIcon } from "@phosphor-icons/react";
 
 interface PopupDoc {
@@ -27,7 +27,7 @@ export default function PopupSettings() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await supabase.from("site_settings").select("value").eq("key", "popup").maybeSingle();
+        const { data } = await adminSupabase.from("site_settings").select("value").eq("key", "popup").maybeSingle();
         if (data && data.value) setForm(data.value as PopupDoc);
       } catch {}
       setLoading(false);
@@ -41,7 +41,7 @@ export default function PopupSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await supabase.from("site_settings").upsert({
+      await adminSupabase.from("site_settings").upsert({
         key: "popup",
         value: form,
         updated_at: new Date().toISOString()

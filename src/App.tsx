@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "./context/AuthContext";
+import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { CartProvider } from "./context/CartContext";
 import { DebugProvider } from "./context/DebugContext";
 import { seedBuiltInSizeCharts } from "./lib/sizeCharts";
@@ -17,6 +18,7 @@ import Accessories from "./pages/Accessories";
 import Sales from "./pages/Sales";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
+import OrderProcessing from "./pages/OrderProcessing";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import ContactUs from "./pages/ContactUs";
@@ -26,6 +28,8 @@ import FAQPage from "./pages/FAQPage";
 
 import Login from "./pages/account/Login";
 import Register from "./pages/account/Register";
+import ForgotPassword from "./pages/account/ForgotPassword";
+import ResetPassword from "./pages/account/ResetPassword";
 import AccountDashboard from "./pages/account/AccountDashboard";
 
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -51,6 +55,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <AdminAuthProvider>
       <DebugProvider>
       <CartProvider>
         <BrowserRouter>
@@ -66,6 +71,7 @@ function App() {
             <Route path="/sales" element={<Sales />} />
             <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/order/processing" element={<OrderProcessing />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/contact-us" element={<ContactUs />} />
@@ -76,6 +82,8 @@ function App() {
             {/* ── Customer auth ── */}
             <Route path="/account/login" element={<Login />} />
             <Route path="/account/register" element={<Register />} />
+            <Route path="/account/forgot-password" element={<ForgotPassword />} />
+            <Route path="/account/reset-password" element={<ResetPassword />} />
 
             {/* ── Customer dashboard (protected) ── */}
             <Route
@@ -114,6 +122,7 @@ function App() {
         </BrowserRouter>
       </CartProvider>
       </DebugProvider>
+      </AdminAuthProvider>
     </AuthProvider>
   );
 }

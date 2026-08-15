@@ -14,7 +14,7 @@ export async function queueMail(payload: MailPayload) {
   const id = crypto.randomUUID();
   const { error } = await supabase
     .from("mail_queue")
-    .insert({ id, ...payload });
+    .insert({ id, to_email: payload.to, subject: payload.subject, html: payload.html });
 
   if (error) throw error;
   return { id } as MailQueueRow;

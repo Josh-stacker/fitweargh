@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
-import { orderConfirmHtml } from "../emails/orderConfirmEmail";
-import { orderAdminHtml } from "../emails/orderAdminEmail";
-import { queueAndSendMail } from "../lib/mail";
-import { getOrderAdminEmails } from "../lib/adminEmails";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
+import { GHANA_REGIONS, matchDistrictByName } from "../data/ghanaDistricts";
+import { quoteDelivery, type DeliveryArea } from "../lib/deliveryPricing";
 
 const COLOR_HEX: Record<string, string> = {
   Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
@@ -29,6 +29,7 @@ import {
   ShoppingCartIcon,
   ArrowLineUpRightIcon,
   ImageIcon,
+  WhatsappLogoIcon,
 } from "@phosphor-icons/react";
 
 const EMPTY_FORM = {
@@ -38,64 +39,188 @@ const EMPTY_FORM = {
   address: "",
   city: "",
   notes: "",
+  // International-only fields. These are composed into `address` / `city` on
+  // submit so international orders need no extra columns on `orders`.
+  street: "",
+  apartment: "",
+  intlTown: "",
+  state: "",
+  postcode: "",
 };
+
+const ADMIN_DELIVERY_EMAIL = "fitweargh1@gmail.com";
+
+const WHATSAPP_NUMBER = "233559506998";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  "Hi FitwearGH, I have a question about my order.",
+)}`;
 
 type FormData = typeof EMPTY_FORM;
 
-interface VerifiedOrderItem {
-  name: string;
-  size: string;
-  color: string;
-  quantity: number;
-  price: number;
+const GUEST_BILLING_KEY = "fitweargh_guest_billing";
+
+interface GuestBilling extends Partial<FormData> {
+  deliveryRegion?: string;
+  deliveryTown?: string;
 }
 
-interface VerifiedOrder {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  address: string;
-  city: string;
-  total: number;
-  delivery_area?: string | null;
-  delivery_fee?: number | null;
-  line_items: VerifiedOrderItem[];
+function loadGuestBilling(): GuestBilling {
+  try {
+    const raw = localStorage.getItem(GUEST_BILLING_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
-interface ShippingMethod {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  enabled: boolean;
+function saveGuestBilling(form: FormData, delivery: { region: string; town: string }) {
+  try {
+    localStorage.setItem(GUEST_BILLING_KEY, JSON.stringify({
+      name: form.name,
+      phone: form.phone,
+      email: form.email,
+      address: form.address,
+      city: form.city,
+      // Kept so a cancelled payment can be retried without re-picking a place.
+      deliveryRegion: delivery.region,
+      deliveryTown: delivery.town,
+    }));
+  } catch {
+    // ignore storage failures (private mode, quota, etc.)
+  }
+}
+
+// The shape stored in `shipping_methods` — same rows the pricing rules read,
+// so reuse that type rather than keeping a second copy in sync.
+type ShippingMethod = DeliveryArea;
+
+// Free, keyless endpoints. Both are best-effort: if either fails the checkout
+// still works, it just falls back to Ghana/GHS-only behaviour.
+const GEO_URL = "https://ipwho.is/";
+const FX_URL = "https://open.er-api.com/v6/latest/GHS";
+
+async function detectOutsideGhana(): Promise<boolean> {
+  const res = await fetch(GEO_URL);
+  if (!res.ok) throw new Error("geo lookup failed");
+  const data = await res.json();
+  if (data?.success === false || !data?.country_code) throw new Error("geo lookup unusable");
+  return data.country_code !== "GH";
+}
+
+async function fetchUsdPerCedi(): Promise<number> {
+  const res = await fetch(FX_URL);
+  if (!res.ok) throw new Error("fx lookup failed");
+  const data = await res.json();
+  const rate = Number(data?.rates?.USD);
+  if (!rate || !isFinite(rate) || rate <= 0) throw new Error("fx rate unusable");
+  return rate;
 }
 
 export default function CartPage() {
-  const { items, count, total, removeItem, updateQty, clearCart } = useCart();
+  const { items, count, total, removeItem, updateQty } = useCart();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [step, setStep] = useState<"cart" | "checkout" | "success">("cart");
+  // ?step=checkout lets a cancelled or failed payment drop the customer back
+  // on the checkout form to retry, rather than at the top of the cart.
+  const [searchParams] = useSearchParams();
+  const [step, setStep] = useState<"cart" | "checkout">(
+    searchParams.get("step") === "checkout" ? "checkout" : "cart",
+  );
   const [form, setForm] = useState<FormData>({
     ...EMPTY_FORM,
-    name: user?.displayName ?? "",
-    email: user?.email ?? "",
+    ...loadGuestBilling(),
+    name: user?.displayName ?? loadGuestBilling().name ?? "",
+    email: user?.email ?? loadGuestBilling().email ?? "",
   });
   const [placing, setPlacing] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [orderId, setOrderId] = useState("");
 
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
-  const [selectedShipping, setSelectedShipping] = useState<ShippingMethod | null>(null);
-  const verifyingPaymentRef = useRef("");
+  const [usdPerCedi, setUsdPerCedi] = useState<number | null>(null);
   const initializingPaymentRef = useRef(false);
-  const clearCartRef = useRef(clearCart);
+  const geoAppliedRef = useRef(false);
+
+  // The customer ticks "outside Ghana", or picks a region and types their
+  // town. Districts are never surfaced — they exist only so
+  // lib/deliveryPricing can resolve a price behind the scenes.
+  const [outsideGhana, setOutsideGhana] = useState(false);
+  const [deliveryRegion, setDeliveryRegion] = useState(loadGuestBilling().deliveryRegion ?? "");
+  const [typedTown, setTypedTown] = useState(loadGuestBilling().deliveryTown ?? "");
+  // Held true while the customer is still typing, so we don't tell someone
+  // their area isn't covered before they've finished writing its name.
+  const [searchingTown, setSearchingTown] = useState(false);
+  const [townListOpen, setTownListOpen] = useState(false);
+
+  const internationalArea = shippingMethods.find((m) => m.is_international) ?? null;
+  const isInternational = outsideGhana && Boolean(internationalArea);
+
+  // Customers choose from the areas the admin actually created, filtered to
+  // the region they picked. Typing narrows the list rather than free-texting.
+  const areasInRegion = shippingMethods.filter(
+    (m) => !m.is_international && m.region === deliveryRegion,
+  );
+  // Offer every town the admin listed, plus the area name itself, so someone
+  // in Tema finds "Tema" rather than having to know it sits in "Greater Accra".
+  const townOptions = areasInRegion.flatMap((area) => {
+    const names = area.towns?.length ? area.towns : [area.name];
+    return names.map((name) => ({ id: `${area.id}:${name}`, name, area }));
+  });
+  const needle = typedTown.trim().toLowerCase();
+  // Suggestions only appear once they type — clicking the field shows nothing.
+  const townSuggestions = needle
+    ? townOptions.filter((o) => o.name.toLowerCase().includes(needle))
+    : [];
+
+  const chosenArea = townOptions.find((o) => o.name.toLowerCase() === needle)?.area ?? null;
+
+  // The town exists, just not in the region they picked. Worth saying so
+  // rather than telling them we don't deliver there.
+  const townElsewhere = (() => {
+    if (!needle || chosenArea || townSuggestions.length > 0) return null;
+    const match = matchDistrictByName(typedTown.trim());
+    if (!match || match.region === deliveryRegion) return null;
+    return match.region;
+  })();
+
+  // An area the admin created is priced outright. Anything else falls back to
+  // the proximity rules, and finally to "contact us".
+  const quote = isInternational
+    ? null
+    : chosenArea
+    ? ({ mode: "exact", area: chosenArea, fee: Number(chosenArea.price) || 0 } as const)
+    : quoteDelivery(shippingMethods, {
+        region: deliveryRegion,
+        district: null,
+        typedTown,
+      });
+
+  const hasDeliveryChoice =
+    isInternational || Boolean(deliveryRegion && typedTown.trim().length > 0);
+
+  const deliveryAreaLabel = isInternational
+    ? internationalArea?.name ?? "Outside Ghana"
+    : [typedTown.trim(), deliveryRegion].filter(Boolean).join(", ");
 
   useEffect(() => {
-    clearCartRef.current = clearCart;
-  }, [clearCart]);
+    if (!user) return;
+    const loadSavedBilling = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name,phone,address,city")
+        .eq("id", user.uid)
+        .single();
+      if (data) {
+        setForm((f) => ({
+          ...f,
+          name: f.name || data.full_name || "",
+          phone: f.phone || data.phone || "",
+          address: f.address || data.address || "",
+          city: f.city || data.city || "",
+        }));
+      }
+    };
+    loadSavedBilling();
+  }, [user]);
 
   useEffect(() => {
     supabase.from("shipping_methods").select("*").eq("enabled", true).then(({ data }) => {
@@ -107,107 +232,62 @@ export default function CartPage() {
     });
   }, []);
 
-  const deliveryFee = selectedShipping?.price ?? 0;
-  const grandTotal = total + deliveryFee;
+  // Best-effort IP geolocation: pre-selects the international delivery option
+  // for visitors outside Ghana. Only ever a hint — the customer can change the
+  // delivery area, and any failure leaves the normal Ghana flow untouched.
+  useEffect(() => {
+    if (geoAppliedRef.current || shippingMethods.length === 0) return;
+    const international = shippingMethods.find((m) => m.is_international);
+    if (!international) return;
+
+    let cancelled = false;
+    detectOutsideGhana()
+      .then((outside) => {
+        if (cancelled || !outside) return;
+        geoAppliedRef.current = true;
+        // Only a hint: don't override a customer who already picked a region.
+        setOutsideGhana((current) => current || !deliveryRegion);
+      })
+      .catch(() => { /* stay on the default Ghana flow */ });
+
+    return () => { cancelled = true; };
+  }, [shippingMethods]);
+
+  // Only spin when nothing matched — while suggestions are on screen the list
+  // itself is the feedback, so a spinner would just flicker over it.
+  const hasTownSuggestions = townSuggestions.length > 0;
+  useEffect(() => {
+    if (!typedTown.trim() || hasTownSuggestions) {
+      setSearchingTown(false);
+      return;
+    }
+    setSearchingTown(true);
+    const timer = setTimeout(() => setSearchingTown(false), 600);
+    return () => clearTimeout(timer);
+  }, [typedTown, deliveryRegion, hasTownSuggestions]);
+
+  // USD is display-only — Paystack always charges in GHS.
+  useEffect(() => {
+    if (!isInternational || usdPerCedi !== null) return;
+    let cancelled = false;
+    fetchUsdPerCedi()
+      .then((rate) => { if (!cancelled) setUsdPerCedi(rate); })
+      .catch(() => { /* hide the USD estimate rather than block checkout */ });
+    return () => { cancelled = true; };
+  }, [isInternational, usdPerCedi]);
+
+  // International orders pay for the goods only — delivery is quoted by email
+  // after payment, so no delivery fee is charged at checkout.
+  const deliveryFee = isInternational ? 0 : (quote?.fee ?? 0);
+  // Delivery is settled with the rider on arrival, so it is never charged
+  // through Paystack — the online total is the goods only.
+  const grandTotal = total;
   const fmt = (n: number) =>
     `gh₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const sendOrderEmails = async (order: VerifiedOrder) => {
-    const orderItems = order.line_items ?? [];
-    const subtotal = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-    const orderTotal = Number(order.total ?? 0);
-    const orderDeliveryFee = Number(order.delivery_fee ?? Math.max(0, orderTotal - subtotal));
-    const orderForm = {
-      name: order.customer_name ?? "",
-      email: order.customer_email ?? "",
-      phone: order.customer_phone ?? "",
-      address: order.address ?? "",
-      city: order.city ?? "",
-      notes: "",
-    };
-    const adminEmails = await getOrderAdminEmails();
-
-    await queueAndSendMail([
-      {
-        to: orderForm.email,
-        subject: `FitwearGH — Order Confirmed #${order.id.slice(0, 8).toUpperCase()}`,
-        html: orderConfirmHtml({
-          orderId: order.id,
-          form: orderForm,
-          items: orderItems,
-          total: subtotal,
-          deliveryFee: orderDeliveryFee,
-          grandTotal: orderTotal,
-          shippingMethod: order.delivery_area ?? undefined,
-        }),
-      },
-      ...adminEmails.map((email) => ({
-        to: email,
-        subject: `New Paid Order #${order.id.slice(0, 8).toUpperCase()} — ${orderForm.name} (GH₵${orderTotal.toFixed(2)})`,
-        html: orderAdminHtml({
-          orderId: order.id,
-          form: orderForm,
-          items: orderItems,
-          total: subtotal,
-          deliveryFee: orderDeliveryFee,
-          grandTotal: orderTotal,
-          shippingMethod: order.delivery_area ?? undefined,
-        }),
-      })),
-    ]);
-  };
-
-  useEffect(() => {
-    const shouldVerify = searchParams.get("paystack") === "verify";
-    const reference = searchParams.get("reference");
-    const callbackOrderId = searchParams.get("order_id");
-    if (!shouldVerify || !reference || !callbackOrderId) return;
-
-    const verificationKey = `${callbackOrderId}:${reference}`;
-    if (verifyingPaymentRef.current === verificationKey) return;
-    verifyingPaymentRef.current = verificationKey;
-
-    let active = true;
-    const verifyPayment = async () => {
-      setPlacing(true);
-      setPaymentError("");
-      setStep("checkout");
-      setSearchParams({}, { replace: true });
-
-      try {
-        const { data, error } = await supabase.functions.invoke("verify-paystack", {
-          body: { order_id: callbackOrderId, reference },
-        });
-        if (error) throw error;
-        if (!data?.paid || !data?.order) {
-          throw new Error(data?.status ? `Payment ${data.status}.` : "Payment could not be verified.");
-        }
-
-        const verifiedOrder = data.order as VerifiedOrder;
-        if (!data.was_already_paid) {
-          await sendOrderEmails(verifiedOrder);
-        }
-
-        if (!active) return;
-        setOrderId(verifiedOrder.id);
-        clearCartRef.current();
-        setStep("success");
-      } catch (err) {
-        console.error("Paystack verification error:", err);
-        if (!active) return;
-        verifyingPaymentRef.current = "";
-        setPaymentError(err instanceof Error ? err.message : "Payment could not be verified.");
-        setStep("checkout");
-      } finally {
-        if (active) setPlacing(false);
-      }
-    };
-
-    verifyPayment();
-    return () => {
-      active = false;
-    };
-  }, [searchParams, setSearchParams]);
+  const fmtUsd = (n: number) =>
+    usdPerCedi === null
+      ? null
+      : `$${(n * usdPerCedi).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,8 +296,8 @@ export default function CartPage() {
       setPaymentError("Your cart is empty.");
       return;
     }
-    if (!selectedShipping) {
-      setPaymentError("Select a delivery area to continue.");
+    if (!hasDeliveryChoice) {
+      setPaymentError("Tell us where you want the order delivered to continue.");
       return;
     }
 
@@ -225,37 +305,72 @@ export default function CartPage() {
     setPlacing(true);
     setPaymentError("");
     try {
-      const { data: ref, error } = await supabase.from("orders").insert({
-        customer_name: form.name,
-        customer_email: form.email,
-        customer_phone: form.phone,
-        address: form.address,
-        city: form.city,
-        user_id: user?.uid ?? null,
-        line_items: items.map((i) => ({
-          productId: i.id,
-          name: i.name,
-          price: i.price,
-          size: i.size,
-          color: i.color,
-          quantity: i.quantity,
-          imageUrl: i.imageUrl,
-        })),
-        total: grandTotal,
-        delivery_area: selectedShipping.name,
-        delivery_fee: deliveryFee,
-        status: "payment_pending",
-        payment_provider: "paystack",
-        payment_status: "unpaid",
-        items: count,
-      }).select("id").single();
-      
-      if (error) throw error;
-      
-      const orderId = ref.id;
-      setOrderId(orderId);
+      // No extra columns: fold the structured international address into the
+      // same `address` / `city` fields the admin and order emails already read.
+      const addressLine = isInternational
+        ? [form.street, form.apartment].filter(Boolean).join(", ")
+        : form.address;
+      // Domestic orders no longer have a separate town field — the town and
+      // region come from the delivery selection above.
+      const cityLine = isInternational
+        ? [form.intlTown, form.state, form.postcode].filter(Boolean).join(", ")
+        : [typedTown.trim(), deliveryRegion].filter(Boolean).join(", ");
 
-      const callbackUrl = `${window.location.origin}/cart?paystack=verify&order_id=${orderId}`;
+      // Record where the customer said they are AND how that produced a price,
+      // so fulfilment can see when a fee was inferred or is still outstanding.
+      const deliveryAreaRecord = isInternational
+        ? internationalArea?.name ?? "Outside Ghana"
+        : quote?.mode === "exact"
+        ? `${deliveryAreaLabel} (${quote.area.name})`
+        : quote?.mode === "nearby"
+        ? `${deliveryAreaLabel} — priced via ${quote.viaDistrict}, ~${quote.km}km (${quote.area.name})`
+        : `${deliveryAreaLabel} — delivery price to be confirmed`;
+
+      // Send only what is being bought and where — the server prices it from
+      // `products` and `shipping_methods`, so a tampered cart cannot set its
+      // own total.
+      const { data: created, error } = await supabase.functions.invoke("create-order", {
+        body: {
+          items: items.map((i) => ({
+            productId: i.id,
+            size: i.size,
+            color: i.color,
+            quantity: i.quantity,
+          })),
+          customer: {
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            address: addressLine,
+            city: cityLine,
+          },
+          delivery: {
+            area_id: isInternational ? internationalArea?.id ?? null : quote?.mode === "contact" ? null : quote?.area.id ?? null,
+            label: deliveryAreaRecord,
+          },
+        },
+      });
+
+      if (error) throw error;
+      if (created?.error) throw new Error(created.error);
+      if (!created?.order_id) throw new Error("Could not create your order. Please try again.");
+
+      const orderId = created.order_id as string;
+
+      // Saved for everyone, not just guests — a cancelled payment should come
+      // back to a filled-in form regardless of whether they have an account.
+      saveGuestBilling(form, { region: deliveryRegion, town: typedTown.trim() });
+
+      if (user) {
+        await supabase.from("profiles").update({
+          full_name: form.name,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+        }).eq("id", user.uid);
+      }
+
+      const callbackUrl = `${window.location.origin}/order/processing?order_id=${orderId}`;
       const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-paystack", {
         body: { order_id: orderId, callback_url: callbackUrl },
       });
@@ -265,39 +380,17 @@ export default function CartPage() {
       window.location.href = payment.authorization_url;
     } catch (err) {
       console.error("Order error:", err);
-      setPaymentError(err instanceof Error ? err.message : "Could not start Paystack payment.");
+      const msg = err instanceof Error ? err.message : "";
+      setPaymentError(
+        msg && !msg.toLowerCase().includes("edge function") && !msg.toLowerCase().includes("non-2xx")
+          ? msg
+          : "We could not start your payment. Please try again or contact us if the problem persists."
+      );
       initializingPaymentRef.current = false;
     } finally {
       setPlacing(false);
     }
   };
-
-  if (step === "success") {
-    return (
-      <div className="min-h-screen bg-[#FFFBF6]">
-        <Navbar />
-        <div className="max-w-[600px] mx-auto px-4 py-20 text-center flex flex-col items-center gap-6">
-          <div className="w-16 h-16 bg-green-100 flex items-center justify-center">
-            <ShoppingCartIcon size={32} className="text-green-600" weight="fill" />
-          </div>
-          <h1 className="raleway-bold text-3xl text-[#533113]">Order Placed!</h1>
-          <p className="raleway-regular text-[#533113]/70 text-lg">
-            Thank you for your order. We'll contact you shortly to confirm delivery.
-          </p>
-          <p className="raleway-regular text-sm text-[#533113]/40 font-mono">
-            Order #{orderId.slice(0, 10).toUpperCase()}
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-8 py-3 hover:bg-[#3d2409] transition-colors"
-          >
-            Continue Shopping
-          </button>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#FFFBF6]">
@@ -305,7 +398,7 @@ export default function CartPage() {
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-10 py-6 md:py-10">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 raleway-regular text-lg text-[#533113]/60 mb-6">
+        <div className="flex items-center gap-2 raleway-regular text-base text-[#533113]/60 mb-6">
           <Link to="/" className="flex items-center gap-1 hover:text-[#533113] transition-colors">
             <ArrowLeftIcon size={14} />
             Home
@@ -316,7 +409,7 @@ export default function CartPage() {
           </span>
         </div>
 
-        <h1 className="raleway-bold text-3xl md:text-4xl text-[#533113] mb-8">
+        <h1 className="raleway-bold text-2xl md:text-3xl text-[#533113] mb-8">
           {step === "cart" ? `Your Cart (${count})` : "Checkout"}
         </h1>
 
@@ -351,8 +444,8 @@ export default function CartPage() {
                   </div>
 
                   <div className="flex flex-1 flex-col gap-2 min-w-0">
-                    <p className="raleway-bold text-lg md:text-xl text-[#533113] leading-snug">{item.name}</p>
-                    <div className="flex flex-wrap items-center gap-3 raleway-regular text-base md:text-lg text-[#533113]/60">
+                    <p className="raleway-bold text-base md:text-lg text-[#533113] leading-snug">{item.name}</p>
+                    <div className="flex flex-wrap items-center gap-3 raleway-regular text-sm md:text-base text-[#533113]/60">
                       {item.size && <span>Size: {item.size}</span>}
                       {item.color && (
                         <span className="flex items-center gap-1">
@@ -388,7 +481,7 @@ export default function CartPage() {
                   </div>
 
                   <div className="shrink-0 min-w-[120px] flex flex-col items-end gap-3">
-                    <p className="raleway-bold text-lg md:text-xl text-[#533113] text-right">
+                    <p className="raleway-bold text-base md:text-lg text-[#533113] text-right">
                       {fmt(item.price * item.quantity)}
                     </p>
                     <button
@@ -404,38 +497,50 @@ export default function CartPage() {
             </div>
 
             {/* Summary */}
-            <div className="w-full lg:w-80 shrink-0">
+            <div className="w-full lg:w-96 shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
-                <h2 className="raleway-bold text-base text-[#533113] uppercase tracking-widest">
+                <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Order Summary
                 </h2>
-                <div className="flex flex-col gap-2 raleway-regular text-lg text-[#533113]">
+                <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal ({count} items)</span>
                     <span>{fmt(total)}</span>
                   </div>
 
                   <div className="flex justify-between">
-                    <span>{selectedShipping ? `Delivery (${selectedShipping.name})` : "Delivery"}</span>
-                    <span>{selectedShipping ? fmt(deliveryFee) : "Select at checkout"}</span>
+                    <span>Delivery</span>
+                    <span>Select at checkout</span>
                   </div>
 
                   <hr className="border-[#DEDEDE] my-1" />
-                  <div className="flex justify-between raleway-bold text-xl">
+                  <div className="flex justify-between raleway-bold text-lg">
                     <span>Total</span>
-                    <span>{fmt(grandTotal)}</span>
+                    <span>{fmt(total)}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStep("checkout")}
-                  className="w-full bg-[#533113] text-white raleway-bold text-base uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors flex items-center justify-between px-4"
+                  className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-4 px-5 hover:bg-[#3d2409] transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                 >
-                  Proceed to Checkout
-                  <ArrowLineUpRightIcon size={16} />
+                  Buy Now
+                  <ArrowLineUpRightIcon size={16} className="shrink-0" />
                 </button>
+                {!user && (
+                  <p className="text-center raleway-regular text-sm text-[#533113]/60">
+                    No account needed.{" "}
+                    <Link
+                      to="/account/login?next=/cart"
+                      className="underline hover:text-[#533113] transition-colors"
+                    >
+                      Sign in
+                    </Link>{" "}
+                    to save your details.
+                  </p>
+                )}
                 <Link
                   to="/new-arrivals"
-                  className="text-center raleway-regular text-base text-[#533113]/60 hover:text-[#533113] transition-colors"
+                  className="text-center raleway-regular text-sm text-[#533113]/60 hover:text-[#533113] transition-colors"
                 >
                   Continue Shopping
                 </Link>
@@ -445,7 +550,7 @@ export default function CartPage() {
         ) : (
           /* ── Checkout form ── */
           <div className="flex flex-col lg:flex-row gap-8">
-            <form onSubmit={handlePlaceOrder} className="flex-1 flex flex-col gap-5">
+            <form id="checkout-form" onSubmit={handlePlaceOrder} className="flex-1 flex flex-col gap-5">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-5">
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Delivery Information
@@ -462,12 +567,12 @@ export default function CartPage() {
                     />
                   </Field>
                   <Field label="Phone Number">
-                    <input
-                      required
+                    <PhoneInput
+                      defaultCountry="gh"
                       value={form.phone}
-                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                      placeholder="+233 XX XXX XXXX"
-                      className="input-base"
+                      onChange={(phone) => setForm((f) => ({ ...f, phone }))}
+                      inputClassName="input-base w-full"
+                      className="w-full"
                     />
                   </Field>
                 </div>
@@ -483,51 +588,197 @@ export default function CartPage() {
                   />
                 </Field>
 
-                <Field label="Delivery Address">
-                  <input
-                    required
-                    value={form.address}
-                    onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                    placeholder="House no. / Street name"
-                    className="input-base"
-                  />
-                </Field>
+                {internationalArea && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={outsideGhana}
+                      onChange={(e) => {
+                        setOutsideGhana(e.target.checked);
+                        setPaymentError("");
+                      }}
+                      className="accent-[#533113]"
+                    />
+                    <span className="raleway-regular text-base text-[#533113]">
+                      I'm ordering from outside Ghana
+                    </span>
+                  </label>
+                )}
 
-                <Field label="City / Town">
-                  <input
-                    required
-                    value={form.city}
-                    onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                    placeholder="Accra"
-                    className="input-base"
-                  />
-                </Field>
+                {!isInternational && (
+                  <Field label="Region">
+                    <select
+                      required
+                      value={deliveryRegion}
+                      onChange={(e) => {
+                        setDeliveryRegion(e.target.value);
+                        setPaymentError("");
+                      }}
+                      className="input-base"
+                    >
+                      <option value="">Select region</option>
+                      {GHANA_REGIONS.map((region) => (
+                        <option key={region} value={region}>{region}</option>
+                      ))}
+                    </select>
+                    {!shippingMethods.length && (
+                      <p className="raleway-regular text-sm text-red-500">No delivery areas are available yet.</p>
+                    )}
+                  </Field>
+                )}
 
-                <Field label="Delivery Area">
-                  <select
-                    required
-                    value={selectedShipping?.id ?? ""}
-                    onChange={(e) => {
-                      const area = shippingMethods.find((method) => method.id === e.target.value) ?? null;
-                      setSelectedShipping(area);
-                      setPaymentError("");
-                    }}
-                    className="input-base"
-                  >
-                    <option value="">Select delivery area</option>
-                    {shippingMethods.map((method) => (
-                      <option key={method.id} value={method.id}>
-                        {method.name} — {fmt(method.price)}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedShipping?.description && (
-                    <p className="raleway-regular text-sm text-[#533113]/50">{selectedShipping.description}</p>
-                  )}
-                  {!shippingMethods.length && (
-                    <p className="raleway-regular text-sm text-red-500">No delivery areas are available yet.</p>
-                  )}
-                </Field>
+                {!isInternational && deliveryRegion && (
+                  <Field label="Town or Area">
+                    <div className="relative">
+                      <input
+                        required
+                        value={typedTown}
+                        onChange={(e) => {
+                          setTypedTown(e.target.value);
+                          setTownListOpen(true);
+                          setPaymentError("");
+                        }}
+                        // Delayed so a click on a suggestion registers first.
+                        onBlur={() => setTimeout(() => setTownListOpen(false), 150)}
+                        placeholder="Start typing to find your area"
+                        autoComplete="off"
+                        className="input-base w-full"
+                      />
+
+                      {townListOpen && townSuggestions.length > 0 && (
+                        <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#DEDEDE] max-h-56 overflow-y-auto shadow-sm">
+                          {townSuggestions.map((option) => (
+                            <li key={option.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTypedTown(option.name);
+                                  setTownListOpen(false);
+                                  setPaymentError("");
+                                }}
+                                className="w-full text-left raleway-regular text-base text-[#533113] px-4 py-2.5 hover:bg-[#FFFBF6] transition-colors flex justify-between gap-3"
+                              >
+                                <span>{option.name}</span>
+                                <span className="text-[#533113]/50 shrink-0">{fmt(option.area.price)}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Hidden while the suggestion list is doing the talking. */}
+                    {typedTown.trim().length > 0 &&
+                      quote &&
+                      !(townListOpen && townSuggestions.length > 0) && (
+                      <div className="bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
+                        {searchingTown ? (
+                          <p className="raleway-regular text-sm text-[#533113]/70 flex items-center gap-2">
+                            <span className="w-3.5 h-3.5 border-2 border-[#533113]/40 border-t-transparent rounded-full animate-spin shrink-0" />
+                            Searching for your area…
+                          </p>
+                        ) : townElsewhere ? (
+                          <div className="flex flex-col gap-2">
+                            <p className="raleway-regular text-sm text-[#533113]/80">
+                              {typedTown.trim()} isn't in {deliveryRegion} — we found it in{" "}
+                              <span className="raleway-bold">{townElsewhere}</span>.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeliveryRegion(townElsewhere);
+                                setPaymentError("");
+                              }}
+                              className="self-start raleway-bold text-xs uppercase tracking-widest border border-[#533113] text-[#533113] px-4 py-2 hover:bg-[#533113]/5 transition-colors"
+                            >
+                              Switch to {townElsewhere}
+                            </button>
+                          </div>
+                        ) : quote.mode === "exact" ? (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            Delivery to {typedTown.trim()}:{" "}
+                            <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to the
+                            delivery rider
+                          </p>
+                        ) : quote.mode === "nearby" ? (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            Delivery to {typedTown.trim()}:{" "}
+                            <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to the
+                            delivery rider
+                          </p>
+                        ) : (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            After completing your order and payment please contact us via WhatsApp or email to
+                            confirm your shipping/delivery fee.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </Field>
+                )}
+
+                {isInternational ? (
+                  <>
+                    <Field label="Street Name">
+                      <input
+                        required
+                        value={form.street}
+                        onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
+                        placeholder="123 Example Street"
+                        className="input-base"
+                      />
+                    </Field>
+
+                    <Field label="Apartment / Unit (optional)">
+                      <input
+                        value={form.apartment}
+                        onChange={(e) => setForm((f) => ({ ...f, apartment: e.target.value }))}
+                        placeholder="Apt 4B"
+                        className="input-base"
+                      />
+                    </Field>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Field label="Town">
+                        <input
+                          required
+                          value={form.intlTown}
+                          onChange={(e) => setForm((f) => ({ ...f, intlTown: e.target.value }))}
+                          placeholder="Brooklyn"
+                          className="input-base"
+                        />
+                      </Field>
+                      <Field label="State">
+                        <input
+                          required
+                          value={form.state}
+                          onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+                          placeholder="New York"
+                          className="input-base"
+                        />
+                      </Field>
+                      <Field label="Postcode">
+                        <input
+                          required
+                          value={form.postcode}
+                          onChange={(e) => setForm((f) => ({ ...f, postcode: e.target.value }))}
+                          placeholder="11201"
+                          className="input-base"
+                        />
+                      </Field>
+                    </div>
+                  </>
+                ) : (
+                  <Field label="Delivery Address">
+                    <input
+                      required
+                      value={form.address}
+                      onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      placeholder="House no. / Street name"
+                      className="input-base"
+                    />
+                  </Field>
+                )}
 
                 <Field label="Order Notes (optional)">
                   <textarea
@@ -546,11 +797,36 @@ export default function CartPage() {
                 </h2>
                 <div className="flex flex-col gap-2">
                   <p className="raleway-regular text-base text-[#533113]/70">
-                    Pay securely with Paystack. Test mode is enabled by the Paystack test secret key on the server.
+                    Pay securely with mobile money or Visa card via Paystack.
                   </p>
                   <p className="raleway-regular text-sm text-[#533113]/50">
                     You will be redirected to Paystack, then returned here once payment is complete.
                   </p>
+                  {isInternational && (
+                    <div className="bg-[#FFFBF6] border border-[#DEDEDE] px-4 py-3 mt-2 flex flex-col gap-1">
+                      <p className="raleway-bold text-sm text-[#533113]">International orders</p>
+                      <p className="raleway-regular text-sm text-[#533113]/70">
+                        You are paying for the items only. Once payment is confirmed, email{" "}
+                        <a href={`mailto:${ADMIN_DELIVERY_EMAIL}`} className="underline">
+                          {ADMIN_DELIVERY_EMAIL}
+                        </a>{" "}
+                        with your order number to arrange delivery and get a shipping quote.
+                      </p>
+                      <p className="raleway-regular text-sm text-[#533113]/50">
+                        Payment is charged in Ghana cedis. Any dollar amount shown is an estimate.
+                      </p>
+                    </div>
+                  )}
+                  <a
+                    href={WHATSAPP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-[#25D366] text-white raleway-bold text-sm uppercase tracking-widest px-5 py-3 mt-2 hover:bg-[#1EBE5A] transition-colors"
+                  >
+                    <WhatsappLogoIcon size={18} weight="fill" className="shrink-0" />
+                    Ask a question on WhatsApp
+                  </a>
+
                   {paymentError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 raleway-regular text-sm px-4 py-3 mt-2">
                       {paymentError}
@@ -567,25 +843,11 @@ export default function CartPage() {
                 >
                   Back to Cart
                 </button>
-                <button
-                  type="submit"
-                  disabled={placing || !selectedShipping || shippingMethods.length === 0}
-                  className="flex-1 bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-3 hover:bg-[#3d2409] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {placing ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      {searchParams.get("paystack") === "verify" ? "Verifying Payment…" : "Starting Payment…"}
-                    </span>
-                  ) : (
-                    <>Pay with Paystack <ArrowLineUpRightIcon size={16} /></>
-                  )}
-                </button>
               </div>
             </form>
 
             {/* Mini order summary */}
-            <div className="w-full lg:w-80 shrink-0">
+            <div className="w-full lg:w-[32rem] shrink-0">
               <div className="bg-white border border-[#DEDEDE] p-6 flex flex-col gap-4 sticky top-4">
                 <h2 className="raleway-bold text-sm text-[#533113] uppercase tracking-widest">
                   Your Order
@@ -606,33 +868,68 @@ export default function CartPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="raleway-bold text-xs text-[#533113] truncate">{item.name}</p>
+                        <p className="raleway-bold text-base text-[#533113] leading-snug">{item.name}</p>
                         <p className="raleway-regular text-sm text-[#533113]/60">
                           {item.size && `${item.size} · `}×{item.quantity}
                         </p>
                       </div>
-                      <p className="raleway-bold text-xs text-[#533113] shrink-0">
+                      <p className="raleway-bold text-base text-[#533113] shrink-0">
                         {fmt(item.price * item.quantity)}
                       </p>
                     </div>
                   ))}
                 </div>
-                <hr className="border-[#DEDEDE]" />
+                <hr className="border-[#DEDEDE] shrink-0" />
                 <div className="flex flex-col gap-2 raleway-regular text-base text-[#533113]">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>{fmt(total)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>{selectedShipping ? `Delivery (${selectedShipping.name})` : "Delivery"}</span>
-                    <span>{selectedShipping ? fmt(deliveryFee) : "Select area"}</span>
+                  <div className="flex justify-between gap-3 text-[#533113]/70">
+                    <span>Delivery{deliveryAreaLabel ? ` (${deliveryAreaLabel})` : ""}</span>
+                    <span className="shrink-0 text-right">
+                      {!hasDeliveryChoice
+                        ? "Select area"
+                        : isInternational || quote?.mode === "contact"
+                        ? "To be confirmed"
+                        : fmt(deliveryFee)}
+                    </span>
                   </div>
+                  <p className="raleway-regular text-sm text-[#533113]/50">
+                    Pay directly to the delivery rider
+                  </p>
                   <hr className="border-[#DEDEDE] my-1" />
-                  <div className="flex justify-between raleway-bold text-base">
-                    <span>Total</span>
+                  <div className="flex justify-between raleway-bold text-lg">
+                    <span>You pay now</span>
                     <span>{fmt(grandTotal)}</span>
                   </div>
+                  {isInternational && fmtUsd(grandTotal) && (
+                    <div className="flex justify-between raleway-regular text-sm text-[#533113]/60">
+                      <span>Approx. in USD</span>
+                      <span>{fmtUsd(grandTotal)}</span>
+                    </div>
+                  )}
                 </div>
+
+                <button
+                  type="submit"
+                  form="checkout-form"
+                  disabled={placing || !hasDeliveryChoice || shippingMethods.length === 0}
+                  className="w-full bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest py-4 px-5 hover:bg-[#3d2409] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {placing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                      Starting Payment…
+                    </>
+                  ) : (
+                    <>Pay Securely <ArrowLineUpRightIcon size={16} className="shrink-0" /></>
+                  )}
+                </button>
+
+                <p className="raleway-regular text-sm text-[#533113]/80 bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
+                  Same day delivery within Greater Accra. Next day delivery outside Greater Accra.
+                </p>
               </div>
             </div>
           </div>

@@ -79,12 +79,12 @@ export function orderConfirmHtml({ orderId, form, items, total, deliveryFee, gra
             <td style="text-align:right;color:#533113;font-size:14px;padding:4px 0;opacity:0.7;">GH₵${total.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="color:#533113;font-size:14px;padding:4px 0;opacity:0.7;">${shippingMethod ?? "Delivery"}</td>
-            <td style="text-align:right;color:#533113;font-size:14px;padding:4px 0;opacity:0.7;">GH₵${deliveryFee.toFixed(2)}</td>
+            <td style="color:#533113;font-size:16px;padding:10px 0 0;font-weight:bold;">Paid online</td>
+            <td style="text-align:right;color:#533113;font-size:16px;padding:10px 0 0;font-weight:bold;">GH₵${grandTotal.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="color:#533113;font-size:16px;padding:10px 0 0;font-weight:bold;">Total</td>
-            <td style="text-align:right;color:#533113;font-size:16px;padding:10px 0 0;font-weight:bold;">GH₵${grandTotal.toFixed(2)}</td>
+            <td style="color:#533113;font-size:14px;padding:10px 0 0;opacity:0.7;">${shippingMethod ?? "Delivery"} — pay the rider on delivery</td>
+            <td style="text-align:right;color:#533113;font-size:14px;padding:10px 0 0;opacity:0.7;">GH₵${deliveryFee.toFixed(2)}</td>
           </tr>
         </table>
 

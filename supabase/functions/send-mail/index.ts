@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface MailQueueRow {
   id: string;
-  to: string;
+  to_email: string;
   subject: string;
   html: string;
 }
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     const query = supabase
       .from("mail_queue")
-      .select("id,to,subject,html")
+      .select("id,to_email,subject,html")
       .eq("status", "pending")
       .in("id", ids)
       .order("created_at", { ascending: true })
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
         apiKey: resendApiKey,
         from: mailFrom,
         replyTo,
-        to: row.to,
+        to: row.to_email,
         subject: row.subject,
         html: row.html,
       });

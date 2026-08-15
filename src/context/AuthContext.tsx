@@ -6,10 +6,10 @@ import { queueAndSendMail } from "../lib/mail";
 
 interface AuthContextType {
   user: AppUser | null;
-  isAdmin: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  confirmSignup: (email: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -41,34 +41,92 @@ function toAppUser(user: User): AppUser {
   };
 }
 
+// This context is for the storefront/customer session only (uses the
+// "customer" Supabase client). Admin sign-in lives in AdminAuthContext with
+// its own client/storageKey, so a customer and an admin can be signed in at
+// the same time in the same browser without one login evicting the other.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+    let profileHandledForUid: string | null = null;
 
-    const syncSession = async (sessionUser: User | null) => {
+    const syncSession = async (sessionUser: User | null, event?: AuthChangeEvent) => {
       try {
         if (!sessionUser) {
           if (!mounted) return;
           setUser(null);
-          setIsAdmin(false);
           setLoading(false);
           return;
         }
 
+        // An unconfirmed signup can still hand back a session (depends on
+        // Supabase project auth settings) — don't treat that as logged in,
+        // or the dashboard renders before the profile row / welcome email
+        // logic (both gated on email_confirmed_at) have run.
+        if (!sessionUser.email_confirmed_at) {
+          if (!mounted) return;
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Customer accounts only — admin accounts sign in through the admin
+        // portal with its own session, so bail out here rather than showing
+        // an admin as "logged in" on the storefront.
         const admin = await checkAdmin(sessionUser.id);
+        if (admin) {
+          if (!mounted) return;
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // On first confirmed signup, create profile and send welcome email.
+        // Insert (not select-then-insert) so the profiles PK conflict is the
+        // single source of truth for "already has a profile row" — avoids a
+        // race where two near-simultaneous SIGNED_IN events both pass a
+        // pre-check select. Whether to send the welcome email is decided
+        // separately from account age (created_at vs last_sign_in_at), not
+        // from insert success — SIGNED_IN fires on every login, not just
+        // signup, so insert outcome alone can't tell the two apart.
+        if (event === "SIGNED_IN" && profileHandledForUid !== sessionUser.id) {
+          profileHandledForUid = sessionUser.id;
+          const meta = sessionUser.user_metadata ?? {};
+          const name = typeof meta.full_name === "string" ? meta.full_name : "";
+          const { error: insertError } = await supabase.from("profiles").insert({
+            id: sessionUser.id,
+            full_name: name,
+            email: sessionUser.email ?? "",
+            phone: "",
+          });
+
+          if (insertError && insertError.code !== "23505") {
+            throw insertError;
+          }
+
+          const createdAt = sessionUser.created_at ? new Date(sessionUser.created_at).getTime() : 0;
+          const lastSignInAt = sessionUser.last_sign_in_at ? new Date(sessionUser.last_sign_in_at).getTime() : 0;
+          const isFreshSignup = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 60_000;
+
+          if (isFreshSignup) {
+            await queueAndSendMail([{
+              to: sessionUser.email ?? "",
+              subject: "Welcome to FitwearGH!",
+              html: welcomeEmailHtml(name),
+            }]);
+          }
+        }
+
         if (!mounted) return;
-        setUser(toAppUser(sessionUser));
-        setIsAdmin(admin);
+        setUser((prev) => (prev?.uid === sessionUser.id ? prev : toAppUser(sessionUser)));
         setLoading(false);
       } catch (error) {
         console.error("Auth sync failed:", error);
         if (!mounted) return;
         setUser(null);
-        setIsAdmin(false);
         setLoading(false);
       }
     };
@@ -77,8 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void syncSession(sessionData.session?.user ?? null);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-      void syncSession(session?.user ?? null);
+    const { data } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      void syncSession(session?.user ?? null, event);
     });
 
     return () => {
@@ -98,21 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Admin accounts must sign in via the admin portal.");
     }
     setUser(toAppUser(data.user));
-    setIsAdmin(false);
-  };
-
-  const loginAdmin = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    if (!data.user) throw new Error("No user returned from Supabase.");
-
-    const admin = await checkAdmin(data.user.id);
-    if (!admin) {
-      await supabase.auth.signOut();
-      throw new Error("Not an admin account.");
-    }
-    setUser(toAppUser(data.user));
-    setIsAdmin(true);
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -125,36 +168,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     if (!data.user) throw new Error("No user returned from Supabase.");
+    // Profile creation and welcome email happen after OTP verification via onAuthStateChange
+  };
 
-    await supabase.from("profiles").upsert({
-      id: data.user.id,
-      name,
-      email,
-      phone: "",
-      order_count: 0,
-      total_spent: 0,
-    });
-
-    await queueAndSendMail([
-      {
-        to: email,
-        subject: "Welcome to FitwearGH!",
-        html: welcomeEmailHtml(name),
-      },
-    ]);
-
+  const confirmSignup = async (email: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (error) throw error;
+    if (!data.user) throw new Error("No user returned from Supabase.");
     setUser(toAppUser(data.user));
-    setIsAdmin(false);
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setIsAdmin(false);
   };
 
-  // Expose loginAdmin so AdminLogin can call it directly
-  const ctx = { user, isAdmin, loading, login, register, logout, loginAdmin } as AuthContextType & { loginAdmin: typeof loginAdmin };
+  const ctx: AuthContextType = { user, loading, login, register, confirmSignup, logout };
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
 }
@@ -162,5 +191,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx as AuthContextType & { loginAdmin: (email: string, password: string) => Promise<void> };
+  return ctx;
 }

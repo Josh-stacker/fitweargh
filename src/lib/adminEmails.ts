@@ -1,4 +1,4 @@
-import { supabase } from "../supabase";
+import { supabase, adminSupabase } from "../supabase";
 
 const PRIMARY_ADMIN_EMAIL = "fitweargh1@gmail.com";
 
@@ -25,7 +25,7 @@ export async function syncOrderAdminEmails(emails: string[]) {
     new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean)),
   );
 
-  const { error } = await supabase.from("site_settings").upsert({
+  const { error } = await adminSupabase.from("site_settings").upsert({
     key: "order_notifications",
     value: { emails: cleanEmails },
     updated_at: new Date().toISOString(),

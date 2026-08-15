@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { adminSupabase } from "../../supabase";
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -30,6 +30,7 @@ interface Order {
   delivery_fee?: number | null;
   total: number;
   status: string;
+  payment_status: string;
   line_items: LineItem[];
   items: number;
   created_at: string;
@@ -37,6 +38,20 @@ interface Order {
 }
 
 const STATUSES = ["payment_pending", "pending", "processing", "shipped", "delivered", "cancelled"];
+
+// The raw values are kept in the database; these are what staff read. In
+// particular "pending" means the money has arrived and the parcel has not
+// gone out, which "pending" on its own does not make obvious.
+const STATUS_LABELS: Record<string, string> = {
+  payment_pending: "Awaiting payment",
+  pending: "Paid – not sent",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+const statusLabel = (status: string) => STATUS_LABELS[status] ?? status ?? "unknown";
 
 const STATUS_COLORS: Record<string, string> = {
   payment_pending: "bg-orange-100 text-orange-700 border-orange-200",
@@ -52,12 +67,15 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  // Default to paid: unpaid rows are abandoned checkout attempts and are not
+  // what anyone opens this page to work through.
+  const [filterPayment, setFilterPayment] = useState("paid");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const { data } = await adminSupabase.from("orders").select("*").order("created_at", { ascending: false });
     if (data) setOrders(data as Order[]);
     setLoading(false);
   };
@@ -67,7 +85,7 @@ export default function Orders() {
   const updateStatus = async (orderId: string, status: string) => {
     setUpdatingId(orderId);
     try {
-      await supabase.from("orders").update({ status }).eq("id", orderId);
+      await adminSupabase.from("orders").update({ status }).eq("id", orderId);
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       );
@@ -146,7 +164,12 @@ export default function Orders() {
       o.customer_email?.toLowerCase().includes(search.toLowerCase()) ||
       o.id.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || o.status === filterStatus;
-    return matchSearch && matchStatus;
+    const matchPayment =
+      filterPayment === "all" ||
+      (filterPayment === "paid"
+        ? o.payment_status === "paid"
+        : o.payment_status !== "paid");
+    return matchSearch && matchStatus && matchPayment;
   });
 
   return (
@@ -155,7 +178,8 @@ export default function Orders() {
       <div>
         <h2 className="raleway-bold text-2xl text-[#533113]">Orders</h2>
         <p className="raleway-regular text-base text-[#533113]/50 mt-1">
-          {orders.length} total orders
+          {filtered.length} shown · {orders.filter((o) => o.payment_status === "paid").length} paid
+          of {orders.length} total
         </p>
       </div>
 
@@ -181,8 +205,18 @@ export default function Orders() {
           >
             <option value="all">All statuses</option>
             {STATUSES.map((s) => (
-              <option key={s} value={s} className="capitalize">{s}</option>
+              <option key={s} value={s}>{statusLabel(s)}</option>
             ))}
+          </select>
+
+          <select
+            value={filterPayment}
+            onChange={(e) => setFilterPayment(e.target.value)}
+            className="border border-[#DEDEDE] raleway-regular text-base text-[#533113] px-3 py-2.5 outline-none bg-white cursor-pointer focus:border-[#533113] transition-colors"
+          >
+            <option value="paid">Paid orders</option>
+            <option value="unpaid">Unpaid / abandoned</option>
+            <option value="all">All payments</option>
           </select>
         </div>
       </div>
@@ -229,11 +263,14 @@ export default function Orders() {
                   </td>
                   <td className="px-5 py-3 raleway-bold text-[#533113]">{fmt(order.total ?? 0)}</td>
                   <td className="px-5 py-3">
-                    <StatusSelect
-                      value={order.status}
-                      onChange={(s) => updateStatus(order.id, s)}
-                      loading={updatingId === order.id}
-                    />
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <StatusSelect
+                        value={order.status}
+                        onChange={(s) => updateStatus(order.id, s)}
+                        loading={updatingId === order.id}
+                      />
+                      <PaymentBadge status={order.payment_status} />
+                    </div>
                   </td>
                   <td className="px-5 py-3 raleway-regular text-[#533113]/60 text-sm">
                     {fmtDate(order.created_at)}
@@ -255,8 +292,15 @@ export default function Orders() {
 
       {/* Order detail drawer */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
-          <div className="w-full max-w-md bg-white h-full flex flex-col shadow-xl">
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex justify-end"
+          onClick={() => setSelectedOrder(null)}
+        >
+          {/* Clicks inside the panel must not bubble up and close it. */}
+          <div
+            className="w-full max-w-md bg-white h-full flex flex-col shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#DEDEDE]">
               <h3 className="raleway-bold text-base text-[#533113]">
                 Order #{selectedOrder.id.slice(0, 8)}
@@ -270,11 +314,14 @@ export default function Orders() {
               {/* Status */}
               <div className="flex flex-col gap-2">
                 <p className="raleway-bold text-xs text-[#533113]/60 uppercase tracking-widest">Status</p>
-                <StatusSelect
-                  value={selectedOrder.status}
-                  onChange={(s) => updateStatus(selectedOrder.id, s)}
-                  loading={updatingId === selectedOrder.id}
-                />
+                <div className="flex items-center gap-2">
+                  <StatusSelect
+                    value={selectedOrder.status}
+                    onChange={(s) => updateStatus(selectedOrder.id, s)}
+                    loading={updatingId === selectedOrder.id}
+                  />
+                  <PaymentBadge status={selectedOrder.payment_status} />
+                </div>
               </div>
 
               {/* Customer */}
@@ -352,6 +399,26 @@ export default function Orders() {
   );
 }
 
+const PAYMENT_COLORS: Record<string, string> = {
+  paid: "bg-green-100 text-green-700 border-green-200",
+  unpaid: "bg-gray-100 text-gray-600 border-gray-200",
+  initialized: "bg-orange-100 text-orange-700 border-orange-200",
+  failed: "bg-red-100 text-red-700 border-red-200",
+  amount_mismatch: "bg-red-100 text-red-700 border-red-200",
+};
+
+function PaymentBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`raleway-regular text-xs px-2 py-0.5 border capitalize ${
+        PAYMENT_COLORS[status] ?? "bg-gray-100 text-gray-600 border-gray-200"
+      }`}
+    >
+      {status?.replace(/_/g, " ") ?? "unpaid"}
+    </span>
+  );
+}
+
 function StatusSelect({
   value,
   onChange,
@@ -367,13 +434,13 @@ function StatusSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={loading}
-        className={`appearance-none raleway-regular text-sm px-2.5 py-1 pr-6 border capitalize cursor-pointer outline-none transition-colors ${
+        className={`appearance-none raleway-regular text-sm px-2.5 py-1 pr-6 border cursor-pointer outline-none transition-colors ${
           STATUS_COLORS[value] ?? "bg-gray-100 text-gray-600 border-gray-200"
         } disabled:opacity-50`}
       >
         {STATUSES.map((s) => (
-          <option key={s} value={s} className="capitalize bg-white text-gray-800">
-            {s}
+          <option key={s} value={s} className="bg-white text-gray-800">
+            {statusLabel(s)}
           </option>
         ))}
       </select>
