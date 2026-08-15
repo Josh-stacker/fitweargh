@@ -618,14 +618,13 @@ export default function CartPage() {
                         ) : quote.mode === "exact" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
                             Delivery to {typedTown.trim()}:{" "}
-                            <span className="raleway-bold">{fmt(quote.fee)}</span> — paid to the
-                            delivery rider, not added to your online payment.
+                            <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to the
+                            delivery rider
                           </p>
                         ) : quote.mode === "nearby" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
-                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span> (nearest
-                            area we cover, about {quote.km}km away) — paid to the delivery rider, not
-                            added to your online payment.
+                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to
+                            the delivery rider (nearest area we cover, about {quote.km}km away)
                           </p>
                         ) : (
                           <p className="raleway-regular text-sm text-[#533113]/80">
@@ -817,7 +816,7 @@ export default function CartPage() {
                     </span>
                   </div>
                   <p className="raleway-regular text-sm text-[#533113]/50">
-                    Paid directly to the delivery rider — not included in the amount below.
+                    Pay directly to the delivery rider
                   </p>
                   <hr className="border-[#DEDEDE] my-1" />
                   <div className="flex justify-between raleway-bold text-lg">
