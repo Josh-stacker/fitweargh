@@ -211,6 +211,7 @@ export default function ShippingMethods() {
 
           {!form.is_international && (
             <DistrictPicker
+              town={form.name}
               region={form.region}
               districts={form.districts}
               onRegionChange={(region) => setForm((f) => ({ ...f, region }))}
@@ -304,6 +305,7 @@ export default function ShippingMethods() {
                     />
                     {!editForm.is_international && (
                       <DistrictPicker
+                        town={editForm.name}
                         region={editForm.region}
                         districts={editForm.districts}
                         onRegionChange={(region) => setEditForm((f) => ({ ...f, region }))}

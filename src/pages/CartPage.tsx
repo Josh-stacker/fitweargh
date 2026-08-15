@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { GHANA_REGIONS } from "../data/ghanaDistricts";
-import { quoteDelivery } from "../lib/deliveryPricing";
+import { quoteDelivery, type DeliveryArea } from "../lib/deliveryPricing";
 
 const COLOR_HEX: Record<string, string> = {
   Black: "#000000", White: "#FFFFFF", Red: "#ef4444", Green: "#00864A",
@@ -80,14 +80,9 @@ function saveGuestBilling(form: FormData) {
   }
 }
 
-interface ShippingMethod {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  enabled: boolean;
-  is_international?: boolean;
-}
+// The shape stored in `shipping_methods` — same rows the pricing rules read,
+// so reuse that type rather than keeping a second copy in sync.
+type ShippingMethod = DeliveryArea;
 
 // Free, keyless endpoints. Both are best-effort: if either fails the checkout
 // still works, it just falls back to Ghana/GHS-only behaviour.
@@ -140,12 +135,28 @@ export default function CartPage() {
   const internationalArea = shippingMethods.find((m) => m.is_international) ?? null;
   const isInternational = outsideGhana && Boolean(internationalArea);
 
+  // Customers choose from the areas the admin actually created, filtered to
+  // the region they picked. Typing narrows the list rather than free-texting.
+  const areasInRegion = shippingMethods.filter(
+    (m) => !m.is_international && m.region === deliveryRegion,
+  );
+  const townSuggestions = typedTown.trim()
+    ? areasInRegion.filter((m) => m.name.toLowerCase().includes(typedTown.trim().toLowerCase()))
+    : areasInRegion;
+
+  const chosenArea =
+    areasInRegion.find((m) => m.name.toLowerCase() === typedTown.trim().toLowerCase()) ?? null;
+
+  // An area the admin created is priced outright. Anything else falls back to
+  // the proximity rules, and finally to "contact us".
   const quote = isInternational
     ? null
+    : chosenArea
+    ? ({ mode: "exact", area: chosenArea, fee: Number(chosenArea.price) || 0 } as const)
     : quoteDelivery(shippingMethods, {
         region: deliveryRegion,
         district: null,
-        typedTown: typedTown,
+        typedTown,
       });
 
   const hasDeliveryChoice =
@@ -249,9 +260,11 @@ export default function CartPage() {
       const addressLine = isInternational
         ? [form.street, form.apartment].filter(Boolean).join(", ")
         : form.address;
+      // Domestic orders no longer have a separate town field — the town and
+      // region come from the delivery selection above.
       const cityLine = isInternational
         ? [form.intlTown, form.state, form.postcode].filter(Boolean).join(", ")
-        : form.city;
+        : [typedTown.trim(), deliveryRegion].filter(Boolean).join(", ");
 
       // Record where the customer said they are AND how that produced a price,
       // so fulfilment can see when a fee was inferred or is still outstanding.
@@ -560,20 +573,44 @@ export default function CartPage() {
                   </Field>
                 )}
 
-                {!isInternational && (
+                {!isInternational && deliveryRegion && (
                   <Field label="Town or Area">
                     <input
                       required
+                      list="delivery-town-options"
                       value={typedTown}
                       onChange={(e) => { setTypedTown(e.target.value); setPaymentError(""); }}
-                      placeholder="e.g. Osu, Tema, Kumasi"
+                      placeholder="Start typing to find your area"
+                      autoComplete="off"
                       className="input-base"
                     />
-                    {quote?.mode === "contact" && typedTown.trim().length > 0 && (
-                      <p className="raleway-regular text-sm text-[#533113]/50">
-                        We don't have a set delivery price for this area yet. Pay for your items now and
-                        we'll contact you with a delivery price — or ask us on WhatsApp before paying.
-                      </p>
+                    <datalist id="delivery-town-options">
+                      {townSuggestions.map((area) => (
+                        <option key={area.id} value={area.name} />
+                      ))}
+                    </datalist>
+
+                    {typedTown.trim().length > 0 && quote && (
+                      <div className="bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
+                        {quote.mode === "exact" && (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            Delivery to {typedTown.trim()}:{" "}
+                            <span className="raleway-bold">{fmt(quote.fee)}</span>
+                          </p>
+                        )}
+                        {quote.mode === "nearby" && (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span>{" "}
+                            (nearest area we cover, about {quote.km}km away)
+                          </p>
+                        )}
+                        {quote.mode === "contact" && (
+                          <p className="raleway-regular text-sm text-[#533113]/80">
+                            After completing your order and payment please contact us via WhatsApp or email to
+                            confirm your shipping/delivery fee.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </Field>
                 )}
@@ -630,27 +667,15 @@ export default function CartPage() {
                     </div>
                   </>
                 ) : (
-                  <>
-                    <Field label="Delivery Address">
-                      <input
-                        required
-                        value={form.address}
-                        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                        placeholder="House no. / Street name"
-                        className="input-base"
-                      />
-                    </Field>
-
-                    <Field label="Town & Region">
-                      <input
-                        required
-                        value={form.city}
-                        onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                        placeholder="Osu, Greater Accra"
-                        className="input-base"
-                      />
-                    </Field>
-                  </>
+                  <Field label="Delivery Address">
+                    <input
+                      required
+                      value={form.address}
+                      onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      placeholder="House no. / Street name"
+                      className="input-base"
+                    />
+                  </Field>
                 )}
 
                 <Field label="Order Notes (optional)">
@@ -795,7 +820,7 @@ export default function CartPage() {
                   )}
                 </div>
 
-                <p className="raleway-regular text-sm text-[#533113]/50 border-t border-[#DEDEDE] pt-3">
+                <p className="raleway-regular text-sm text-[#533113]/80 bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
                   Same day delivery within Greater Accra. Next day delivery outside Greater Accra.
                 </p>
               </div>
