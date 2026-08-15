@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
 import { GHANA_REGIONS } from "../data/ghanaDistricts";
 import { quoteDelivery, type DeliveryArea } from "../lib/deliveryPricing";
 
@@ -57,7 +59,12 @@ type FormData = typeof EMPTY_FORM;
 
 const GUEST_BILLING_KEY = "fitweargh_guest_billing";
 
-function loadGuestBilling(): Partial<FormData> {
+interface GuestBilling extends Partial<FormData> {
+  deliveryRegion?: string;
+  deliveryTown?: string;
+}
+
+function loadGuestBilling(): GuestBilling {
   try {
     const raw = localStorage.getItem(GUEST_BILLING_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -66,7 +73,7 @@ function loadGuestBilling(): Partial<FormData> {
   }
 }
 
-function saveGuestBilling(form: FormData) {
+function saveGuestBilling(form: FormData, delivery: { region: string; town: string }) {
   try {
     localStorage.setItem(GUEST_BILLING_KEY, JSON.stringify({
       name: form.name,
@@ -74,6 +81,9 @@ function saveGuestBilling(form: FormData) {
       email: form.email,
       address: form.address,
       city: form.city,
+      // Kept so a cancelled payment can be retried without re-picking a place.
+      deliveryRegion: delivery.region,
+      deliveryTown: delivery.town,
     }));
   } catch {
     // ignore storage failures (private mode, quota, etc.)
@@ -110,7 +120,12 @@ export default function CartPage() {
   const { items, count, total, removeItem, updateQty } = useCart();
   const { user } = useAuth();
 
-  const [step, setStep] = useState<"cart" | "checkout">("cart");
+  // ?step=checkout lets a cancelled or failed payment drop the customer back
+  // on the checkout form to retry, rather than at the top of the cart.
+  const [searchParams] = useSearchParams();
+  const [step, setStep] = useState<"cart" | "checkout">(
+    searchParams.get("step") === "checkout" ? "checkout" : "cart",
+  );
   const [form, setForm] = useState<FormData>({
     ...EMPTY_FORM,
     ...loadGuestBilling(),
@@ -129,11 +144,12 @@ export default function CartPage() {
   // town. Districts are never surfaced — they exist only so
   // lib/deliveryPricing can resolve a price behind the scenes.
   const [outsideGhana, setOutsideGhana] = useState(false);
-  const [deliveryRegion, setDeliveryRegion] = useState("");
-  const [typedTown, setTypedTown] = useState("");
+  const [deliveryRegion, setDeliveryRegion] = useState(loadGuestBilling().deliveryRegion ?? "");
+  const [typedTown, setTypedTown] = useState(loadGuestBilling().deliveryTown ?? "");
   // Held true while the customer is still typing, so we don't tell someone
   // their area isn't covered before they've finished writing its name.
   const [searchingTown, setSearchingTown] = useState(false);
+  const [townListOpen, setTownListOpen] = useState(false);
 
   const internationalArea = shippingMethods.find((m) => m.is_international) ?? null;
   const isInternational = outsideGhana && Boolean(internationalArea);
@@ -143,12 +159,18 @@ export default function CartPage() {
   const areasInRegion = shippingMethods.filter(
     (m) => !m.is_international && m.region === deliveryRegion,
   );
-  const townSuggestions = typedTown.trim()
-    ? areasInRegion.filter((m) => m.name.toLowerCase().includes(typedTown.trim().toLowerCase()))
-    : areasInRegion;
+  // Offer every town the admin listed, plus the area name itself, so someone
+  // in Tema finds "Tema" rather than having to know it sits in "Greater Accra".
+  const townOptions = areasInRegion.flatMap((area) => {
+    const names = area.towns?.length ? area.towns : [area.name];
+    return names.map((name) => ({ id: `${area.id}:${name}`, name, area }));
+  });
+  const needle = typedTown.trim().toLowerCase();
+  const townSuggestions = needle
+    ? townOptions.filter((o) => o.name.toLowerCase().includes(needle))
+    : townOptions;
 
-  const chosenArea =
-    areasInRegion.find((m) => m.name.toLowerCase() === typedTown.trim().toLowerCase()) ?? null;
+  const chosenArea = townOptions.find((o) => o.name.toLowerCase() === needle)?.area ?? null;
 
   // An area the admin created is priced outright. Anything else falls back to
   // the proximity rules, and finally to "contact us".
@@ -221,16 +243,18 @@ export default function CartPage() {
     return () => { cancelled = true; };
   }, [shippingMethods]);
 
-  // Debounce the "we don't cover this" verdict behind a short search state.
+  // Only spin when nothing matched — while suggestions are on screen the list
+  // itself is the feedback, so a spinner would just flicker over it.
+  const hasTownSuggestions = townSuggestions.length > 0;
   useEffect(() => {
-    if (!typedTown.trim()) {
+    if (!typedTown.trim() || hasTownSuggestions) {
       setSearchingTown(false);
       return;
     }
     setSearchingTown(true);
     const timer = setTimeout(() => setSearchingTown(false), 600);
     return () => clearTimeout(timer);
-  }, [typedTown, deliveryRegion]);
+  }, [typedTown, deliveryRegion, hasTownSuggestions]);
 
   // USD is display-only — Paystack always charges in GHS.
   useEffect(() => {
@@ -323,6 +347,10 @@ export default function CartPage() {
 
       const orderId = created.order_id as string;
 
+      // Saved for everyone, not just guests — a cancelled payment should come
+      // back to a filled-in form regardless of whether they have an account.
+      saveGuestBilling(form, { region: deliveryRegion, town: typedTown.trim() });
+
       if (user) {
         await supabase.from("profiles").update({
           full_name: form.name,
@@ -330,8 +358,6 @@ export default function CartPage() {
           address: form.address,
           city: form.city,
         }).eq("id", user.uid);
-      } else {
-        saveGuestBilling(form);
       }
 
       const callbackUrl = `${window.location.origin}/order/processing?order_id=${orderId}`;
@@ -531,12 +557,12 @@ export default function CartPage() {
                     />
                   </Field>
                   <Field label="Phone Number">
-                    <input
-                      required
+                    <PhoneInput
+                      defaultCountry="gh"
                       value={form.phone}
-                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                      placeholder="+233 XX XXX XXXX"
-                      className="input-base"
+                      onChange={(phone) => setForm((f) => ({ ...f, phone }))}
+                      inputClassName="input-base w-full"
+                      className="w-full"
                     />
                   </Field>
                 </div>
@@ -593,22 +619,49 @@ export default function CartPage() {
 
                 {!isInternational && deliveryRegion && (
                   <Field label="Town or Area">
-                    <input
-                      required
-                      list="delivery-town-options"
-                      value={typedTown}
-                      onChange={(e) => { setTypedTown(e.target.value); setPaymentError(""); }}
-                      placeholder="Start typing to find your area"
-                      autoComplete="off"
-                      className="input-base"
-                    />
-                    <datalist id="delivery-town-options">
-                      {townSuggestions.map((area) => (
-                        <option key={area.id} value={area.name} />
-                      ))}
-                    </datalist>
+                    <div className="relative">
+                      <input
+                        required
+                        value={typedTown}
+                        onChange={(e) => {
+                          setTypedTown(e.target.value);
+                          setTownListOpen(true);
+                          setPaymentError("");
+                        }}
+                        onFocus={() => setTownListOpen(true)}
+                        // Delayed so a click on a suggestion registers first.
+                        onBlur={() => setTimeout(() => setTownListOpen(false), 150)}
+                        placeholder="Start typing to find your area"
+                        autoComplete="off"
+                        className="input-base w-full"
+                      />
 
-                    {typedTown.trim().length > 0 && quote && (
+                      {townListOpen && townSuggestions.length > 0 && (
+                        <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#DEDEDE] max-h-56 overflow-y-auto shadow-sm">
+                          {townSuggestions.map((option) => (
+                            <li key={option.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTypedTown(option.name);
+                                  setTownListOpen(false);
+                                  setPaymentError("");
+                                }}
+                                className="w-full text-left raleway-regular text-base text-[#533113] px-4 py-2.5 hover:bg-[#FFFBF6] transition-colors flex justify-between gap-3"
+                              >
+                                <span>{option.name}</span>
+                                <span className="text-[#533113]/50 shrink-0">{fmt(option.area.price)}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Hidden while the suggestion list is doing the talking. */}
+                    {typedTown.trim().length > 0 &&
+                      quote &&
+                      !(townListOpen && townSuggestions.length > 0) && (
                       <div className="bg-[#FFF9E6] border border-[#EBDCA8] px-4 py-3">
                         {searchingTown ? (
                           <p className="raleway-regular text-sm text-[#533113]/70 flex items-center gap-2">
@@ -623,8 +676,9 @@ export default function CartPage() {
                           </p>
                         ) : quote.mode === "nearby" ? (
                           <p className="raleway-regular text-sm text-[#533113]/80">
-                            Delivery: <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to
-                            the delivery rider (nearest area we cover, about {quote.km}km away)
+                            Delivery to {typedTown.trim()}:{" "}
+                            <span className="raleway-bold">{fmt(quote.fee)}</span> : paid to the
+                            delivery rider
                           </p>
                         ) : (
                           <p className="raleway-regular text-sm text-[#533113]/80">

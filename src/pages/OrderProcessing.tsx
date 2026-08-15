@@ -198,13 +198,23 @@ export default function OrderProcessing() {
             </div>
             <h1 className="raleway-bold text-3xl text-[#533113]">Payment Not Confirmed</h1>
             <p className="raleway-regular text-[#533113]/70 text-lg">{errorMsg}</p>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+              {/* Cart is untouched on failure, so retrying just means going
+                  back to the checkout form they already filled in. */}
               <Link
-                to={user ? "/account" : "/cart"}
+                to="/cart?step=checkout"
                 className="bg-[#533113] text-white raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#3d2409] transition-colors"
               >
-                {user ? "Go to My Account" : "Back to Cart"}
+                Try Payment Again
               </Link>
+              {user && (
+                <Link
+                  to="/account"
+                  className="border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#533113]/5 transition-colors"
+                >
+                  My Account
+                </Link>
+              )}
               <Link
                 to="/contact-us"
                 className="border border-[#533113] text-[#533113] raleway-bold text-sm uppercase tracking-widest px-6 py-3 hover:bg-[#533113]/5 transition-colors"

@@ -17,6 +17,10 @@ export interface DeliveryArea {
   region?: string | null;
   /** District names this area's price covers — the "range" the admin picked. */
   districts?: string[] | null;
+  /** Town names the admin typed, shown to customers in the area dropdown. */
+  towns?: string[] | null;
+  /** True when this price applies to every town in `region`. */
+  covers_whole_region?: boolean | null;
 }
 
 /**
@@ -75,11 +79,22 @@ export function quoteDelivery(
   }
   if (!point) return { mode: "contact", fee: 0 };
 
-  const exact = usable.find((area) => areaDistricts(area).includes(point!.district));
+  // Most specific wins: a town-level price beats a region-wide one, so a
+  // "Greater Accra ₵50" baseline can be overridden by "Tema ₵70".
+  const townLevel = usable.filter((a) => !a.covers_whole_region);
+  const regionLevel = usable.filter((a) => a.covers_whole_region);
+
+  const exact = townLevel.find((area) => areaDistricts(area).includes(point!.district));
   if (exact) return { mode: "exact", area: exact, fee: Number(exact.price) || 0 };
 
+  // A region-wide price is a stated rule, so it outranks a proximity guess.
+  const wholeRegion = regionLevel.find((area) => area.region === point!.region);
+  if (wholeRegion) {
+    return { mode: "exact", area: wholeRegion, fee: Number(wholeRegion.price) || 0 };
+  }
+
   let best: { area: DeliveryArea; km: number; viaDistrict: string } | null = null;
-  for (const area of usable) {
+  for (const area of townLevel) {
     for (const covered of areaPoints(area)) {
       const km = distanceKm(point, covered);
       if (km <= MAX_PROXIMITY_KM && (!best || km < best.km)) {

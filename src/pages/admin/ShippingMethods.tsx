@@ -13,6 +13,8 @@ interface ShippingMethod {
   is_international?: boolean;
   region?: string | null;
   districts?: string[] | null;
+  towns?: string[] | null;
+  covers_whole_region?: boolean | null;
 }
 
 const EMPTY_FORM = {
@@ -23,6 +25,8 @@ const EMPTY_FORM = {
   is_international: false,
   region: "",
   districts: [] as string[],
+  towns: [] as string[],
+  covers_whole_region: false,
 };
 
 export default function ShippingMethods() {
@@ -61,6 +65,8 @@ export default function ShippingMethods() {
         is_international: form.is_international,
         region: form.region || null,
         districts: form.districts.length ? form.districts : null,
+        towns: form.towns.length ? form.towns : null,
+        covers_whole_region: form.covers_whole_region,
       }).select().single();
       
       if (error) throw error;
@@ -88,6 +94,8 @@ export default function ShippingMethods() {
       is_international: m.is_international ?? false,
       region: m.region ?? "",
       districts: m.districts ?? [],
+      towns: m.towns ?? [],
+      covers_whole_region: m.covers_whole_region ?? false,
     });
   };
 
@@ -104,6 +112,8 @@ export default function ShippingMethods() {
         is_international: editForm.is_international,
         region: editForm.region || null,
         districts: editForm.districts.length ? editForm.districts : null,
+        towns: editForm.towns.length ? editForm.towns : null,
+        covers_whole_region: editForm.covers_whole_region,
       }).eq("id", id);
 
       setMethods((prev) =>
@@ -118,6 +128,8 @@ export default function ShippingMethods() {
                 is_international: editForm.is_international,
                 region: editForm.region || null,
                 districts: editForm.districts.length ? editForm.districts : null,
+                towns: editForm.towns.length ? editForm.towns : null,
+                covers_whole_region: editForm.covers_whole_region,
               }
             : m
         )
@@ -211,10 +223,13 @@ export default function ShippingMethods() {
 
           {!form.is_international && (
             <DistrictPicker
-              town={form.name}
               region={form.region}
+              coversWholeRegion={form.covers_whole_region}
+              towns={form.towns}
               districts={form.districts}
               onRegionChange={(region) => setForm((f) => ({ ...f, region }))}
+              onCoversWholeRegionChange={(covers_whole_region) => setForm((f) => ({ ...f, covers_whole_region }))}
+              onTownsChange={(towns) => setForm((f) => ({ ...f, towns }))}
               onDistrictsChange={(districts) => setForm((f) => ({ ...f, districts }))}
             />
           )}
@@ -305,10 +320,13 @@ export default function ShippingMethods() {
                     />
                     {!editForm.is_international && (
                       <DistrictPicker
-                        town={editForm.name}
                         region={editForm.region}
+                        coversWholeRegion={editForm.covers_whole_region}
+                        towns={editForm.towns}
                         districts={editForm.districts}
                         onRegionChange={(region) => setEditForm((f) => ({ ...f, region }))}
+                        onCoversWholeRegionChange={(covers_whole_region) => setEditForm((f) => ({ ...f, covers_whole_region }))}
+                        onTownsChange={(towns) => setEditForm((f) => ({ ...f, towns }))}
                         onDistrictsChange={(districts) => setEditForm((f) => ({ ...f, districts }))}
                       />
                     )}
