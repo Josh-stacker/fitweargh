@@ -173,19 +173,19 @@ export default function HeroSlides() {
         image1_path: img1.path,
         image2_url: img2.url,
         image2_path: img2.path,
-        updated_at: new Date().toISOString(),
       };
 
-      if (editing) {
-        await adminSupabase.from("hero_slides").update(data).eq("id", editing.id);
-      } else {
-        await adminSupabase.from("hero_slides").insert(data);
-      }
+      const { error } = editing
+        ? await adminSupabase.from("hero_slides").update(data).eq("id", editing.id)
+        : await adminSupabase.from("hero_slides").insert(data);
+
+      if (error) throw error;
 
       setModalOpen(false);
       fetchSlides();
     } catch (err) {
       console.error("Save error:", err);
+      alert(`Could not save slide: ${(err as Error).message ?? "Unknown error"}`);
     } finally {
       setSaving(false);
     }
